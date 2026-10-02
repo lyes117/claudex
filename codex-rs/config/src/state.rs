@@ -118,6 +118,7 @@ pub struct ConfigLayerEntry {
     pub config: TomlValue,
     pub version: String,
     pub disabled_reason: Option<String>,
+    pub(crate) claude_config_enabled: bool,
     raw_toml: Option<RawTomlLayer>,
     hooks_config_folder_override: Option<AbsolutePathBuf>,
 }
@@ -136,6 +137,7 @@ impl ConfigLayerEntry {
             config,
             version,
             disabled_reason: None,
+            claude_config_enabled: true,
             raw_toml: None,
             hooks_config_folder_override: None,
         }
@@ -153,6 +155,7 @@ impl ConfigLayerEntry {
             config,
             version,
             disabled_reason: None,
+            claude_config_enabled: true,
             raw_toml: Some(RawTomlLayer {
                 contents: raw_toml,
                 base_dir: raw_toml_base_dir,
@@ -172,6 +175,7 @@ impl ConfigLayerEntry {
             config,
             version,
             disabled_reason: Some(disabled_reason.into()),
+            claude_config_enabled: true,
             raw_toml: None,
             hooks_config_folder_override: None,
         }

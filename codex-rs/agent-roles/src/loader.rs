@@ -97,6 +97,37 @@ pub async fn load_agent_roles(
             }
         }
 
+        if let Some(directory) = codex_config::claude::directory_for_layer(layer) {
+            let mut directories = vec![directory.join("agents")];
+            if codex_config::claude::active_directory(config_layer_stack.layers_low_to_high())
+                .as_ref()
+                == Some(&directory)
+            {
+                directories.extend(
+                    codex_config::claude::plugins_for_scope(
+                        &directory,
+                        codex_config::claude::user_config_enabled(
+                            config_layer_stack.layers_low_to_high(),
+                        ),
+                    )?
+                    .into_iter()
+                    .map(|(_, root)| root.join("agents")),
+                );
+            }
+            for directory in directories {
+                let directory = AbsolutePathBuf::from_absolute_path(directory)?;
+                for (name, role) in discover_agent_roles_in_dir(
+                    fs,
+                    &directory,
+                    &declared_role_files,
+                    startup_warnings,
+                )
+                .await?
+                {
+                    layer_roles.entry(name).or_insert(role);
+                }
+            }
+        }
         for (role_name, role) in layer_roles {
             let mut merged_role = role;
             if let Some(existing_role) = roles.get(&role_name) {

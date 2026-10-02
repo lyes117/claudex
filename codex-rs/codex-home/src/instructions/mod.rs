@@ -88,6 +88,63 @@ impl UserInstructionsProvider for CodexHomeUserInstructionsProvider {
     fn load_user_instructions(&self) -> LoadInstructionsFuture<'_> {
         Box::pin(async move {
             let mut loaded = self.load_from_codex_home().await;
+            if let Some(home) = self
+                .codex_home
+                .as_path()
+                .parent()
+                .filter(|_| {
+                    self.codex_home
+                        .as_path()
+                        .file_name()
+                        .is_some_and(|name| name == ".codex")
+                })
+                .map(|path| path.join(".claude"))
+            {
+                let mut paths = vec![home.join("CLAUDE.md")];
+                let mut directories = vec![(home.join("rules"), 0)];
+                while let Some((directory, depth)) = directories.pop() {
+                    if depth > 6 || paths.len() >= 1000 {
+                        break;
+                    }
+                    if let Ok(entries) = std::fs::read_dir(directory) {
+                        for entry in entries.flatten() {
+                            let path = entry.path();
+                            if path.is_dir() {
+                                directories.push((path, depth + 1));
+                            } else if path.extension().is_some_and(|extension| extension == "md") {
+                                paths.push(path);
+                            }
+                        }
+                    }
+                }
+                paths.sort();
+                let mut texts = Vec::new();
+                let mut remaining = 32768;
+                for path in paths {
+                    if remaining == 0 {
+                        break;
+                    }
+                    if let Ok(data) = tokio::fs::read(&path).await {
+                        let data = &data[..data.len().min(remaining)];
+                        remaining -= data.len();
+                        let text = String::from_utf8_lossy(data);
+                        texts.push(format!(
+                            "# Claude instructions from {}\nApply any paths frontmatter only to matching files.\n{text}",
+                            path.display()
+                        ));
+                    }
+                }
+                if !texts.is_empty() {
+                    let text = texts.join("\n\n");
+                    match loaded.instructions.as_mut() {
+                        Some(instructions) => {
+                            instructions.text.push_str("\n\n");
+                            instructions.text.push_str(&text);
+                        }
+                        None => loaded.instructions = Some(Instructions { text, source: None }),
+                    }
+                }
+            }
             let mut state = self
                 .state
                 .lock()

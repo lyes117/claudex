@@ -66,6 +66,47 @@ async fn resolve_skill_roots_with_home_dir(
             .map(|path| local_root(path, SkillScope::User)),
     );
     roots.extend(repo_agents_skill_roots(repository_file_system, config_layer_stack, cwd).await);
+    for layer in config_layer_stack.layers_high_to_low() {
+        if let Some(directory) = codex_config::claude::directory_for_layer(layer) {
+            if !directory.is_dir() {
+                continue;
+            }
+            let scope = if matches!(layer.name, ConfigLayerSource::Project { .. }) {
+                SkillScope::Repo
+            } else {
+                SkillScope::User
+            };
+            if directory.join("skills").is_dir()
+                && let Ok(path) = AbsolutePathBuf::from_absolute_path(directory.join("skills"))
+            {
+                roots.push(local_root(path, scope));
+            }
+            if directory.join("commands").is_dir()
+                && let Ok(path) = AbsolutePathBuf::from_absolute_path(directory.join("commands"))
+            {
+                roots.push(local_root(path, scope));
+            }
+            if codex_config::claude::active_directory(config_layer_stack.layers_low_to_high())
+                .as_ref()
+                == Some(&directory)
+                && let Ok(plugins) = codex_config::claude::plugins_for_scope(
+                    &directory,
+                    codex_config::claude::user_config_enabled(
+                        config_layer_stack.layers_low_to_high(),
+                    ),
+                )
+            {
+                for (_, root) in plugins {
+                    if let Ok(path) = AbsolutePathBuf::from_absolute_path(root.join("skills")) {
+                        roots.push(local_root(path, scope));
+                    }
+                    if let Ok(path) = AbsolutePathBuf::from_absolute_path(root.join("commands")) {
+                        roots.push(local_root(path, scope));
+                    }
+                }
+            }
+        }
+    }
     dedupe_skill_roots_by_path(&mut roots);
     roots
 }

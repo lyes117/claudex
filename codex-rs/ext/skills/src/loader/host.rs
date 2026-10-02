@@ -364,7 +364,37 @@ async fn parse_skill_file(
         file_system.read_file_text(path_uri, ReadFileOptions::default(), /*sandbox*/ None,),
         load_host_skill_metadata(file_system, path, &metadata, plugin_root),
     );
-    let contents = contents.map_err(|error| format!("failed to read file: {error}"))?;
+    let mut contents = contents.map_err(|error| format!("failed to read file: {error}"))?;
+    let is_claude = codex_config::claude::is_markdown_source(path.as_path())
+        || path.file_name().is_some_and(|name| name != "SKILL.md")
+        || plugin_root.is_some_and(|root| root.join(".claude-plugin/plugin.json").is_file());
+    let claude_metadata = if is_claude {
+        codex_config::claude::markdown(&contents)
+            .map_err(|error| error.to_string())?
+            .0
+    } else {
+        serde_json::json!({})
+    };
+    codex_config::claude::validate_skill(&claude_metadata).map_err(|error| error.to_string())?;
+    if path.file_name().is_some_and(|name| name != "SKILL.md") {
+        let (mut metadata, body) =
+            codex_config::claude::markdown(&contents).map_err(|error| error.to_string())?;
+        let name = path
+            .as_path()
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "command".into());
+        if metadata.get("name").is_none() {
+            metadata["name"] = serde_json::Value::String(name.clone());
+        }
+        if metadata.get("description").is_none() {
+            metadata["description"] = serde_json::Value::String(format!("Claude command {name}"));
+        }
+        contents = format!(
+            "---\n{}\n---\n{body}",
+            serde_yaml::to_string(&metadata).map_err(|error| error.to_string())?
+        );
+    }
     let ParsedSkillFrontmatter {
         name,
         description,
@@ -374,8 +404,13 @@ async fn parse_skill_file(
     let LoadedSkillMetadata {
         interface,
         dependencies,
-        policy,
+        mut policy,
     } = loaded_metadata;
+    if claude_metadata.get("disable-model-invocation") == Some(&serde_json::Value::Bool(true)) {
+        policy
+            .get_or_insert_with(Default::default)
+            .allow_implicit_invocation = Some(false);
+    }
 
     Ok(SkillMetadata {
         name,

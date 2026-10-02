@@ -80,6 +80,7 @@ codex-utils-redacted-string = { workspace = true }
 codex-websocket-auth = { workspace = true }
 crossterm = { workspace = true, features = ["event-stream"] }
 futures = { workspace = true }
+fd-lock = "4.0.4"
 http = { workspace = true }
 libc = { workspace = true }
 os_info = { workspace = true }

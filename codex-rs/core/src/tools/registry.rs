@@ -13,7 +13,6 @@ use crate::memory_usage::shell_script_for_invocation;
 use crate::session::session::Session;
 use crate::session::turn_context::TurnContext;
 use crate::tools::context::FunctionToolOutput;
-use crate::tools::context::ToolCallSource;
 use crate::tools::context::ToolCallState;
 use crate::tools::context::ToolInvocation;
 use crate::tools::context::ToolOutput;
@@ -549,6 +548,33 @@ impl ToolRegistry {
         }
 
         let dispatch_trace = ToolDispatchTrace::start(&invocation);
+        let permission_input = match &invocation.payload {
+            ToolPayload::Function { arguments } => {
+                serde_json::from_str(arguments).unwrap_or(serde_json::Value::Null)
+            }
+            ToolPayload::Custom { input } => serde_json::json!({ "input": input }),
+            ToolPayload::ToolSearch { .. } => serde_json::Value::Null,
+        };
+        if let Some(message) = codex_config::claude::permission_block(
+            &invocation.turn.config.config_layer_stack,
+            &tool_name.to_string(),
+            &permission_input,
+        )
+        .map_err(|error| {
+            FunctionCallError::RespondToModel(format!(
+                "Claudex: permission configuration could not be read: {error}"
+            ))
+        })? {
+            let err = FunctionCallError::RespondToModel(message);
+            dispatch_trace.record_failed(&err);
+            notify_tool_finish_if_unclaimed(
+                &invocation,
+                call_state.as_deref(),
+                ToolCallOutcome::Blocked,
+            )
+            .await;
+            return Err(err);
+        }
         let tool = match self.tool(&tool_name) {
             Some(tool) => tool,
             None => {
@@ -601,6 +627,26 @@ impl ToolRegistry {
         }
 
         if let Some(pre_tool_use_payload) = tool.pre_tool_use_payload(&invocation) {
+            if let Some(message) = codex_config::claude::permission_block(
+                &invocation.turn.config.config_layer_stack,
+                pre_tool_use_payload.tool_name.name(),
+                &pre_tool_use_payload.tool_input,
+            )
+            .map_err(|error| {
+                FunctionCallError::RespondToModel(format!(
+                    "Claudex: permission configuration could not be read: {error}"
+                ))
+            })? {
+                let err = FunctionCallError::RespondToModel(message);
+                dispatch_trace.record_failed(&err);
+                notify_tool_finish_if_unclaimed(
+                    &invocation,
+                    call_state.as_deref(),
+                    ToolCallOutcome::Blocked,
+                )
+                .await;
+                return Err(err);
+            }
             match run_pre_tool_use_hooks(
                 &invocation.session,
                 invocation.step_context.as_ref(),
@@ -627,27 +673,37 @@ impl ToolRegistry {
                 }
                 PreToolUseHookResult::Continue {
                     updated_input: Some(updated_input),
-                } => match tool.with_updated_hook_input(invocation.clone(), updated_input) {
-                    Ok(updated_invocation) => {
-                        invocation = updated_invocation;
-                    }
-                    Err(err) => {
-                        if tool.is_builtin_control_tool() {
-                            let mut analytics = ControlToolCallGuard::new(&invocation);
-                            analytics.finish(ControlToolCallStatus::Failed);
+                } => {
+                    match tool.with_updated_hook_input(invocation.clone(), updated_input) {
+                        Ok(updated_invocation) => {
+                            if let Some(payload) = tool.pre_tool_use_payload(&updated_invocation)
+                            && let Some(message) = codex_config::claude::permission_block(&updated_invocation.turn.config.config_layer_stack, payload.tool_name.name(), &payload.tool_input)
+                                .map_err(|error| FunctionCallError::RespondToModel(format!("Claudex: permission configuration could not be read: {error}")))? {
+                            let err = FunctionCallError::RespondToModel(message);
+                            dispatch_trace.record_failed(&err);
+                            notify_tool_finish_if_unclaimed(&invocation, call_state.as_deref(), ToolCallOutcome::Blocked).await;
+                            return Err(err);
                         }
-                        dispatch_trace.record_failed(&err);
-                        notify_tool_finish_if_unclaimed(
-                            &invocation,
-                            call_state.as_deref(),
-                            ToolCallOutcome::Failed {
-                                handler_executed: false,
-                            },
-                        )
-                        .await;
-                        return Err(err);
+                            invocation = updated_invocation;
+                        }
+                        Err(err) => {
+                            if tool.is_builtin_control_tool() {
+                                let mut analytics = ControlToolCallGuard::new(&invocation);
+                                analytics.finish(ControlToolCallStatus::Failed);
+                            }
+                            dispatch_trace.record_failed(&err);
+                            notify_tool_finish_if_unclaimed(
+                                &invocation,
+                                call_state.as_deref(),
+                                ToolCallOutcome::Failed {
+                                    handler_executed: false,
+                                },
+                            )
+                            .await;
+                            return Err(err);
+                        }
                     }
-                },
+                }
                 PreToolUseHookResult::Continue {
                     updated_input: None,
                 } => {}

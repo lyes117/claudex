@@ -1064,7 +1064,15 @@ async fn empty_project_root_markers_only_probe_cwd_candidates() {
             .lock()
             .expect("metadata paths lock")
             .clone(),
-        vec![override_path, agents_path]
+        vec![
+            override_path,
+            agents_path,
+            cwd.join("CLAUDE.md").expect("Claude path"),
+            cwd.join("CLAUDE.local.md").expect("local Claude path"),
+            cwd.join(".claude/CLAUDE.md")
+                .expect("Claude directory path"),
+            cwd.join(".claude/rules").expect("Claude rules path")
+        ]
     );
 }
 
@@ -1631,6 +1639,12 @@ async fn fallback_paths_are_rejected_before_filesystem_probes() {
                 .into_iter()
                 .chain(extra_filenames.iter().copied())
                 .chain(["WORKFLOW.md", ".instructions.md"])
+                .chain([
+                    "CLAUDE.md",
+                    "CLAUDE.local.md",
+                    ".claude/CLAUDE.md",
+                    ".claude/rules"
+                ])
                 .map(|name| cwd.join(name).expect("filename"))
                 .collect::<Vec<_>>()
         );

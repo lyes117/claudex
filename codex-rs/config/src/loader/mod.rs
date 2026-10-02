@@ -334,6 +334,7 @@ pub async fn load_config_layers_state(
     }
 
     let mut is_projectless = false;
+    let mut claude_credential_env_keys = Vec::new();
     if !ignore_project_config && let Some(cwd) = cwd {
         let mut merged_so_far = TomlValue::Table(toml::map::Map::new());
         for layer in &layers {
@@ -396,6 +397,8 @@ pub async fn load_config_layers_state(
             }
         };
         apply_credential_broker_requirements(&mut project_trust_context, &config_requirements_toml);
+        claude_credential_env_keys
+            .clone_from(&project_trust_context.credential_broker_provider_env_keys);
         let project_layers = load_project_layers(
             fs,
             &cwd,
@@ -471,6 +474,46 @@ pub async fn load_config_layers_state(
         ));
     }
 
+    // Read Claude settings in place, preserving native precedence and project trust.
+    let active_claude_directory = crate::claude::active_directory(layers.iter());
+    for layer in &mut layers {
+        if layer.is_disabled() {
+            continue;
+        }
+        if let Some(directory) = crate::claude::directory_for_layer(layer) {
+            if ignore_user_config && crate::claude::home().as_ref() == Some(&directory) {
+                layer.claude_config_enabled = false;
+                continue;
+            }
+            let mut compatible = crate::claude::native_config(&directory, &mut startup_warnings)?;
+            if active_claude_directory.as_ref() == Some(&directory) {
+                let mut plugins = crate::claude::plugin_config(
+                    &directory,
+                    !ignore_user_config,
+                    &mut startup_warnings,
+                )?;
+                merge_toml_values(&mut plugins, &compatible);
+                compatible = plugins;
+            }
+            if matches!(layer.name, ConfigLayerSource::Project { .. }) {
+                // Compatibility must not reintroduce project-local credential/profile overrides.
+                let ignored = sanitize_project_config(
+                    &mut compatible,
+                    CredentialBrokerProjectState::Enabled,
+                    &claude_credential_env_keys,
+                );
+                if !ignored.is_empty() {
+                    startup_warnings.push(format!(
+                        "Claudex: ignored sensitive project environment overrides in {}",
+                        directory.display()
+                    ));
+                }
+            }
+            merge_toml_values(&mut compatible, &layer.config);
+            layer.config = compatible;
+            layer.version = crate::version_for_toml(&layer.config);
+        }
+    }
     if let Err(err) = validate_enabled_config_layers(&layers) {
         if let Some(config_error) = typed_first_layer_config_error_from_entries::<
             ShellEnvironmentPolicyFilterConfigToml,
@@ -509,13 +552,15 @@ async fn load_user_config_layer(
 ) -> io::Result<ConfigLayerEntry> {
     let profile = profile.map(ToString::to_string);
     if ignore_user_config {
-        return Ok(ConfigLayerEntry::new(
+        let mut layer = ConfigLayerEntry::new(
             ConfigLayerSource::User {
                 file: user_file.clone(),
                 profile,
             },
             TomlValue::Table(toml::map::Map::new()),
-        ));
+        );
+        layer.claude_config_enabled = false;
+        return Ok(layer);
     }
 
     load_config_toml_for_required_layer(fs, user_file, strict_config, |config_toml| {
@@ -1667,11 +1712,14 @@ async fn discover_project_layers(
     for dir in dirs {
         let dot_codex_abs = dir.join(".codex");
         let dot_codex_uri = PathUri::from_abs_path(&dot_codex_abs);
-        if !fs
-            .get_metadata(&dot_codex_uri, Default::default(), /*sandbox*/ None)
-            .await
-            .map(|metadata| metadata.is_directory)
-            .unwrap_or(false)
+        if !dir.join(".claude").as_path().is_dir()
+            && !dir.join(".mcp.json").as_path().is_file()
+            && !crate::claude::has_project_mcp(dir.as_path())?
+            && !fs
+                .get_metadata(&dot_codex_uri, Default::default(), /*sandbox*/ None)
+                .await
+                .map(|metadata| metadata.is_directory)
+                .unwrap_or(false)
         {
             continue;
         }

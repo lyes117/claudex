@@ -11,6 +11,10 @@
 //! loss cancels the pending paste; a late clipboard result cannot overwrite newer input.
 //! The live voice strip renders after effort ignition, followed by the Astra sparkle when eligible.
 //! Owned transcripts keep persistent status below the composer and hints on a separate final row.
+//! Claude Markdown commands expand on submission from the existing skill catalog, after built-in
+//! slash-command precedence. Shell quoting and argument placeholders are expanded in memory;
+//! unsupported execution restrictions and dynamic shell injection are rejected.
+//!
 //! Shortcut help expands above the composer, with its close hint replacing the final shortcuts row
 //! so input and persistent status stay anchored when help opens or closes.
 //! Escape dismisses visible shortcut help before editing, transcript backtracking, or interruption.
@@ -3030,6 +3034,48 @@ impl ChatComposer {
             text_elements = Self::trim_text_elements(&expanded_input, &text, text_elements);
         }
 
+        // Claude commands and skills remain in their original Markdown files.
+        // Built-in Codex slash commands retain precedence.
+        if let Some((name, arguments, _)) = parse_slash_name(&text)
+            && self.slash_input().command(name).is_none()
+            && let Some(skill) = self.skills.as_ref().and_then(|skills| {
+                skills.iter().find(|skill| {
+                    skill.name == name && codex_config::claude::is_markdown_source(&skill.path)
+                })
+            })
+        {
+            let arguments = arguments.to_owned();
+            match std::fs::read_to_string(&skill.path)
+                .and_then(|contents| codex_config::claude::markdown(&contents))
+                .and_then(|(metadata, body)| {
+                    let tokens = shlex::split(&arguments).ok_or_else(|| {
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            "Unterminated command argument quote",
+                        )
+                    })?;
+                    codex_config::claude::expand_command(
+                        &metadata,
+                        &body,
+                        &arguments,
+                        &tokens,
+                        &skill.path,
+                    )
+                }) {
+                Ok(body) => {
+                    text = body;
+                    text_elements.clear();
+                }
+                Err(error) => {
+                    self.app_event_tx.send(AppEvent::InsertHistoryCell(Box::new(
+                        history_cell::new_error_event(format!(
+                            "Could not read Claude command: {error}"
+                        )),
+                    )));
+                    return None;
+                }
+            }
+        }
         if slash_validation == SlashValidation::Immediate
             && let SubmissionValidation::UnknownCommand(name) = self
                 .slash_input()

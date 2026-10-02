@@ -224,6 +224,7 @@ pub(crate) async fn run_command(
 
     let mut command = build_command(&runtime.shell, command_line, &runtime.environment, env);
     command.current_dir(cwd);
+    command.env("CLAUDE_PROJECT_DIR", cwd);
 
     #[cfg(windows)]
     let (child, process_tree_job) = match JobObject::spawn_background(&mut command) {

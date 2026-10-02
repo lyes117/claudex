@@ -52,6 +52,7 @@ static ALLOCATOR: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod app_cmd;
+mod claudex;
 mod cloud_config;
 mod daemon_install;
 mod daemon_telemetry;
@@ -107,7 +108,7 @@ use codex_protocol::protocol::AskForApproval;
 use codex_protocol::user_input::UserInput;
 use codex_terminal_detection::TerminalName;
 
-/// Codex CLI
+/// Claudex: Codex engine with in-place Claude configuration compatibility.
 ///
 /// If no subcommand is specified, options will be forwarded to the interactive CLI.
 #[derive(Debug, Parser)]
@@ -119,8 +120,9 @@ use codex_terminal_detection::TerminalName;
     // The executable is sometimes invoked via a platform‑specific name like
     // `codex-x86_64-unknown-linux-musl`, but the help output should always use
     // the generic `codex` command name that users run.
-    bin_name = "codex",
-    override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
+    name = "claudex",
+    bin_name = "claudex",
+    override_usage = "claudex [OPTIONS] [PROMPT]\n       claudex [OPTIONS] <COMMAND> [ARGS]"
 )]
 struct MultitoolCli {
     #[clap(flatten)]
@@ -1011,6 +1013,9 @@ fn stage_str(stage: Stage) -> &'static str {
 }
 
 fn main() -> anyhow::Result<()> {
+    if claudex::dispatch()?.is_some() {
+        return Ok(());
+    }
     codex_build_info::initialize!();
     let remote_control_disabled = codex_app_server::take_remote_control_disabled_env();
     arg0_dispatch_or_else(move |arg0_paths: Arg0DispatchPaths| async move {
@@ -1064,6 +1069,10 @@ async fn cli_main(
         interactive.cwd = options.cwd.clone().or(interactive.cwd.take());
         interactive.no_alt_screen |= options.no_alt_screen;
         interactive.no_daemon |= options.no_daemon;
+    }
+    // Claudex uses its own embedded fork, without replacing or attaching to the user's Codex daemon.
+    if root_remote.is_none() {
+        interactive.no_daemon = true;
     }
     let root_strict_config = interactive.strict_config;
     interactive

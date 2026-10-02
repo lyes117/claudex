@@ -141,7 +141,12 @@ pub(super) async fn discover_skills(
             }
             WalkEntryKind::File => {
                 file_paths.insert(entry.path.clone());
-                if entry.path.basename().as_deref() == Some(SKILLS_FILENAME)
+                if (entry.path.basename().as_deref() == Some(SKILLS_FILENAME)
+                    || (root.basename().as_deref() == Some("commands")
+                        && entry
+                            .path
+                            .basename()
+                            .is_some_and(|name| name.ends_with(".md"))))
                     && (options.mode == SkillDiscoveryMode::Recursive
                         || entry
                             .path

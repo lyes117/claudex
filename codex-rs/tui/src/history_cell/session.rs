@@ -47,8 +47,8 @@ pub(crate) fn with_border_with_inner_width(
 /// Brand title shared by the session header and the status card; each owns its own indentation.
 pub(crate) fn codex_title(version: &str) -> Vec<Span<'static>> {
     vec![
-        ">_ ".fg(accent_color()),
-        "OpenAI Codex".bold(),
+        "✻ ".fg(accent_color()),
+        "Claudex".bold(),
         format!(" (v{version})").dim(),
     ]
 }
@@ -393,7 +393,7 @@ impl HistoryCell for SessionHeaderHistoryCell {
                 .collect();
         }
         let mut lines = vec![
-            Line::from(format!("OpenAI Codex (v{})", self.version)),
+            Line::from(format!("Claudex (v{})", self.version)),
             Line::from(format!(
                 "model: {}{}",
                 self.model,

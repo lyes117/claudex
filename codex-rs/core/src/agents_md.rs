@@ -142,7 +142,12 @@ async fn read_agents_md(
     let mut remaining: u64 = max_total as u64;
     let mut loaded = LoadedAgentsMd::default();
 
-    for p in paths {
+    let mut paths = std::collections::VecDeque::from(paths);
+    let mut visited = std::collections::HashSet::new();
+    while let Some(p) = paths.pop_front() {
+        if !visited.insert(p.clone()) {
+            continue;
+        }
         if remaining == 0 {
             break;
         }
@@ -165,7 +170,28 @@ async fn read_agents_md(
             );
         }
 
-        let text = String::from_utf8_lossy(&data).to_string();
+        let mut text = String::from_utf8_lossy(&data).to_string();
+        if p.basename().is_some_and(|name| name.starts_with("CLAUDE")) {
+            for word in text.split_whitespace() {
+                if let Some(import) = word.strip_prefix('@')
+                    && import.ends_with(".md")
+                    && let Some(parent) = p.parent()
+                    && let Ok(import) = parent.join(import)
+                {
+                    paths.push_back(import);
+                }
+            }
+        }
+        if p.to_string().contains("/.claude/rules/") {
+            let (metadata, body) = codex_config::claude::markdown(&text)?;
+            text = if let Some(patterns) = metadata.get("paths") {
+                format!(
+                    "Apply the following Claude rules ONLY when working on paths matching {patterns}:\n{body}"
+                )
+            } else {
+                body
+            };
+        }
         if !text.trim().is_empty() {
             loaded.entries.push(InstructionEntry {
                 contents: text,
@@ -243,6 +269,7 @@ async fn agents_md_paths(
     let candidate_filenames = &candidate_filenames;
     let mut results = futures::stream::iter(search_dirs)
         .map(|directory| async move {
+            let mut documents = Vec::new();
             for name in candidate_filenames {
                 let candidate = directory
                     .join(name)
@@ -251,20 +278,62 @@ async fn agents_md_paths(
                     .get_metadata(&candidate, GetMetadataOptions::default(), sandbox)
                     .await
                 {
-                    Ok(metadata) if metadata.is_file => return Ok(Some(candidate)),
+                    Ok(metadata) if metadata.is_file => {
+                        documents.push(candidate);
+                        break;
+                    }
                     Ok(_) => {}
                     Err(err) if err.kind() == io::ErrorKind::NotFound => {}
                     Err(err) => return Err(err),
                 }
             }
-            Ok(None)
+            for name in ["CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"] {
+                let candidate = directory.join(name).map_err(io::Error::other)?;
+                if fs
+                    .get_metadata(&candidate, GetMetadataOptions::default(), sandbox)
+                    .await
+                    .is_ok_and(|m| m.is_file)
+                {
+                    documents.push(candidate);
+                }
+            }
+            let mut directories = vec![(
+                directory.join(".claude/rules").map_err(io::Error::other)?,
+                0,
+            )];
+            while let Some((rules, depth)) = directories.pop() {
+                if depth > 6 || documents.len() >= 1000 {
+                    break;
+                }
+                if !fs
+                    .get_metadata(&rules, GetMetadataOptions::default(), sandbox)
+                    .await
+                    .is_ok_and(|metadata| metadata.is_directory)
+                {
+                    continue;
+                }
+                match fs.read_directory(&rules, sandbox).await {
+                    Ok(mut entries) => {
+                        entries.sort_by(|a, b| a.file_name.cmp(&b.file_name));
+                        for entry in entries {
+                            let path = rules.join(&entry.file_name).map_err(io::Error::other)?;
+                            if entry.is_directory {
+                                directories.push((path, depth + 1));
+                            } else if entry.is_file && entry.file_name.ends_with(".md") {
+                                documents.push(path);
+                            }
+                        }
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error),
+                }
+            }
+            Ok::<_, io::Error>(documents)
         })
         .buffered(MAX_CONCURRENT_ANCESTOR_PROBES);
     let mut found = Vec::new();
     while let Some(result) = results.next().await {
-        if let Some(candidate) = result? {
-            found.push(candidate);
-        }
+        found.extend(result?);
     }
     Ok(found)
 }

@@ -41,6 +41,19 @@ pub fn parse_agent_role_file_contents(
     config_base_dir: &Path,
     role_name_hint: Option<&str>,
 ) -> std::io::Result<ResolvedAgentRoleFile> {
+    if role_file_label
+        .extension()
+        .is_some_and(|extension| extension == "md")
+    {
+        let (role_name, description, config) =
+            codex_config::claude::agent_config(contents, role_file_label)?;
+        return Ok(ResolvedAgentRoleFile {
+            role_name,
+            description,
+            nickname_candidates: None,
+            config,
+        });
+    }
     let role_file_toml: TomlValue = toml::from_str(contents).map_err(|err| {
         std::io::Error::new(
             std::io::ErrorKind::InvalidData,

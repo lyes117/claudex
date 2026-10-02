@@ -103,6 +103,7 @@ pub(crate) fn discover_handlers(
     let mut required_load_errors = Vec::new();
     let mut display_order = 0_i64;
     let mut visited_json_hook_folders = HashSet::new();
+    let mut visited_claude_sources = HashSet::new();
     let hook_states = hook_states_from_stack(config_layer_stack);
     let policy = HookDiscoveryPolicy {
         allow_managed_hooks_only: config_layer_stack.is_some_and(|config_layer_stack| {
@@ -150,6 +151,58 @@ pub(crate) fn discover_handlers(
                 _ => None,
             };
             let toml_hooks = load_toml_hooks_from_layer(layer, &mut warnings);
+            if let Some(directory) = codex_config::claude::directory_for_layer(layer) {
+                match codex_config::claude::hook_sources_for_scope(
+                    &directory,
+                    codex_config::claude::active_directory(config_layer_stack.layers_low_to_high())
+                        .as_deref(),
+                    codex_config::claude::user_config_enabled(
+                        config_layer_stack.layers_low_to_high(),
+                    ),
+                    &mut warnings,
+                ) {
+                    Ok(sources) => {
+                        for (path, events, plugin_root) in sources {
+                            if !visited_claude_sources.insert(path.clone()) {
+                                continue;
+                            }
+                            let Ok(path) = AbsolutePathBuf::from_absolute_path(path) else {
+                                continue;
+                            };
+                            let mut env = HashMap::new();
+                            if let Some(root) = plugin_root {
+                                env.insert(
+                                    "CLAUDE_PLUGIN_ROOT".into(),
+                                    root.to_string_lossy().into_owned(),
+                                );
+                            }
+                            append_hook_events(
+                                &mut handlers,
+                                &mut hook_entries,
+                                &mut warnings,
+                                &mut display_order,
+                                HookHandlerSource {
+                                    path: &path,
+                                    key_source: path.display().to_string(),
+                                    source: hook_source,
+                                    is_managed: false,
+                                    requirement: HookRequirement::Optional,
+                                    bypass_hook_trust: policy.bypass_hook_trust,
+                                    hook_states: &hook_states,
+                                    env,
+                                    plugin_id: None,
+                                },
+                                events,
+                                policy,
+                            );
+                        }
+                    }
+                    Err(error) => warnings.push(format!(
+                        "Claudex: cannot load Claude hooks in {}: {error}",
+                        directory.display()
+                    )),
+                }
+            }
 
             if let (Some((json_source_path, json_events)), Some((toml_source_path, toml_events))) =
                 (&json_hooks, &toml_hooks)

@@ -28,7 +28,7 @@ pub(crate) async fn collect_agent_role_files(
                 && path
                     .as_path()
                     .extension()
-                    .is_some_and(|extension| extension == "toml")
+                    .is_some_and(|extension| extension == "toml" || extension == "md")
             {
                 files.push(path);
             }
