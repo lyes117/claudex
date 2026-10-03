@@ -34,15 +34,34 @@ Le helper de titre/recap demande ce plafond en gardant les desactivations separe
 
 ## Limites ouvertes
 
-Les spies sont des contributeurs synthetiques, pas NativeFileTool. Les fixtures recap/titre sur Embedded avec modeles direct et CodeModeOnly passent ; l'echec follow de la suite TUI est corrige et repris seul. La suite core/config complete n'est pas verte. Build et installation du nouveau plafond non executes.
+Les spies sont des contributeurs synthetiques, pas NativeFileTool. Les fixtures recap/titre sur Embedded avec modeles direct et CodeModeOnly passent ; l'echec follow de la suite TUI est corrige et repris seul. La suite core/config complete n'est pas verte. Build et installation verifies ci-dessous ne constituent pas une parite exhaustive.
 
 Les catalogues TUI portent les descripteurs de mode voulus, mais tools=[] ne
 constitue pas une verification independante du mode effectivement resolu : cette
 attente resterait vraie si ce champ etait ignore. Le test natif du broker prouve
 separement l'annonce exec/wait, l'execution JavaScript reelle et les spies a zero.
-Le smoke CLI futur ne prouvera ni un broker execute ni chaque absence d'operation
+Le smoke CLI ne prouve ni un broker execute ni chaque absence d'operation
 filesystem ; il verifie l'inference textuelle avec le plafond demande.
 
 La capture en memoire ne garantit pas une restauration apres fermeture : le plafond durable reste un etage distinct. Les templates de certains modeles contiennent toujours functions.exec malgre tools=[] ; aucun outil n'est reintroduit, mais ce texte peut provoquer une tentative refusee. En MAv2 avec disable_direct_message=true, le routeur exige post ; le plafond vide peut donc bloquer le tour. Le helper temporaire desactive le multi-agent et n'utilise pas cette combinaison. Ces deux limites sont issues de revue de code, pas de preuves d'inference reelle.
 
-Deux commits coherents sont prevus : plafond generique/schema/config/warm, puis helper TUI et preuves adverses natives. Le catalogue et le dispatch restent des mecanismes Codex reels ; aucune contrainte Claude restrictive n'est activee par cette tranche.
+Deux commits coherents portent cette tranche : plafond generique/schema/config/warm, puis helper TUI et preuves adverses natives. Le catalogue et le dispatch restent des mecanismes Codex reels ; aucune contrainte Claude restrictive n'est activee par cette tranche.
+
+## Installation et essais reels
+
+Les commits e581c93 et 129300d portent le plafond et ses preuves ; 1845d13 ajoute
+le transport de schema enfant et f8d7543 les fixtures terminales. Build natif
+reussi (`build-no-tools-and-schema-native-cycle1.log`), installation reussie et
+quatre hashes source/installation identiques. Le binaire principal a le hash
+4D8A3292F84BBE4B655801348F150DAB60B2719371E461121E61FA3503BFCF62 ; le receipt
+`installed-no-tools-and-schema-native-hashes-cycle1.json` enregistre la revision.
+PowerShell sans profil et CMD /d avec PATH frais : version et connexion ChatGPT,
+tous les codes de sortie a zero. Aucune configuration personnelle modifiee.
+
+`no-tools-live-cycle1.log` : inference ChatGPT reussie, catalogue officiel sans
+override, tools.enabled=false ; un seul item termine agent_message, marqueur
+NO_TOOLS_OK. Preuve bornee : `live-no-tools/run-OsLRTt/verified.json`.
+`file-tools-live-after-no-tools-cycle1.log` : Read/Grep/Glob reellement executes
+et cartes restaurees en direct puis CodeMode, avec catalogue de fixture explicite
+et options reparties root/exec ; `live-file-tools/run-Z1AZUu/verified.json`.
+Les chemins de preuve ci-dessus sont relatifs a `.build-tools/` dans le fork.

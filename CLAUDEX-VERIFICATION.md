@@ -83,6 +83,31 @@ Formatage et Clippy ciblé réussis (`fmt-global-config-args-cycle2.log`, `fix-g
 
 Le contrôle réel ChatGPT passe avec le catalogue au niveau général et les autres paramètres après `exec` : trois outils natifs exécutés, en direct puis en CodeMode, avec restauration de leurs cartes (`file-tools-live-mixed-config-cycle1.log`, `live-file-tools/run-E9sC8f/verified.json`). Le helper source CodeMode conserve le hash **A6785BEA38024D4EDE31A9F31844421135A383BC5466EC0F894FCE94051EF98D**, identique à l'installation. Le test vérifie explicitement que le modèle officiel utilise CodeMode par défaut, puis contrôle les identifiants des appels pour détecter la perte du catalogue direct. Il prouve cette transmission du catalogue ; il ne prouve pas l'effet individuel de chaque autre paramètre, ni une reprise CLI à trois niveaux sous ChatGPT.
 
+## Plafond sans outils et premier transport Workflow natif
+
+Les commits e581c93/129300d ajoutent le plafond tools.enabled, les helpers
+temporaires et les preuves adverses ; 1845d13 transporte le schema du premier
+tour enfant, et f8d7543 stabilise les fixtures terminales Windows. Formatage et
+Clippy core/config/TUI reussis. Sept controles natifs du plafond, 47 controles
+TUI cibles et quatre controles du schema enfant passent. La suite TUI complete
+donne 5556/5557 reussites, 301 leaky et huit ignores ; son dernier echec de fixture
+follow est corrige, revu puis repris seul avec succes. La suite core/config
+complete reste non verte : 4587/4609, 21 echecs et une expiration.
+
+Build et installation reussis, revision source f8d7543. Quatre executables source
+et installes identiques ; hash principal :
+**4D8A3292F84BBE4B655801348F150DAB60B2719371E461121E61FA3503BFCF62**.
+PowerShell/CMD avec PATH frais reconnaissent claudex et l'authentification ChatGPT.
+Inference reelle sans outils reussie avec le catalogue officiel sans override
+(`no-tools-live-cycle1.log`, `live-no-tools/run-OsLRTt/verified.json`). Le test
+verifie les items CLI termines et le marqueur textuel ; il ne prouve pas chaque
+absence d'operation filesystem. Read/Grep/Glob restent fonctionnels en direct et
+CodeMode avec leurs cartes restaurees (`file-tools-live-after-no-tools-cycle1.log`,
+`live-file-tools/run-Z1AZUu/verified.json`, catalogue de fixture explicite).
+Les journaux et receipts sont dans `.build-tools/`. Aucun outil Workflow natif
+n'est active par le seul transport de schema ; ses prochaines tranches sont
+decrites dans CLAUDEX-NATIVE-WORKFLOW-DESIGN.md.
+
 ## Limites matérielles de compatibilité
 
 1. Le TUI demeure celui de Codex, adapté pour Claudex. Les écrans et raccourcis Claude Code ne sont pas reproduits intégralement.

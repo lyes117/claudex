@@ -69,6 +69,7 @@ configuration de startup parent conserve son type distinct.
 reussites (4,575 s apres compilation). Le schema est present des la premiere
 requete enfant pour UserInput et AgentMessage ; les deux controles sans schema
 restent inchanges. Ce sont des fixtures SSE avec le runtime natif et sa provenance,
-pas une inference ChatGPT ni un ordonnanceur Workflow. Build/install non executes
-pour cette tranche. La validation et le budget du schema restent a ajouter au
+pas une inference ChatGPT ni un ordonnanceur Workflow. Le code de transport est
+compile et installe avec f8d7543 ; les hashes source/installation sont verifies
+dans installed-no-tools-and-schema-native-hashes-cycle1.json. La validation et le budget du schema restent a ajouter au
 service Workflow futur avant son activation.
