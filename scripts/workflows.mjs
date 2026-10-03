@@ -120,15 +120,21 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
       const position = index++;
       if (position >= 1000) throw new Error('1000-agent run limit');
       const key = hash({ prompt, options });
+      const phase = cleanLabel(options.phase || controller.state.phase || '');
+      try {
+        controller.agent(position, { index: position, label: cleanLabel(options.label || `Agent ${position + 1}`), phase, status: 'pending' });
+      } catch (error) {
+        fatalError ||= error;
+        throw error;
+      }
       const task = queue.then(async () => {
-        controller.agent(position, { index: position, label: cleanLabel(options.label || `Agent ${position + 1}`), phase: cleanLabel(options.phase || controller.state.phase || ''), status: 'pending' });
         await controller.gate();
         if (!replayInvalidated && state.results[position]?.key === key && state.results[position].status !== 'failed') {
           controller.agent(position, { status: 'cached' });
           return structuredClone(state.results[position].result);
         }
         if (!replayInvalidated) { replayInvalidated = true; state.results.splice(position); }
-        log(`[${options.phase || 'Agent'}] ${options.label || position + 1}`);
+        log(`[${phase || 'Agent'}] ${options.label || position + 1}`);
         controller.agent(position, { status: 'running', startedAt: Date.now() });
         let result;
         let failed = false;

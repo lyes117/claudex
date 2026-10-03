@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, mkdirSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runWorkflow } from './workflows.mjs';
@@ -51,6 +51,56 @@ test('pause drains the running agent, blocks the next one, and resume continues'
     sendControl(root, 'pause', 'resume');
     assert.equal(await running, 'two');
     assert.equal(readRun(root, 'pause').status, 'completed');
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('queued agents keep their declaration phase and are visible before execution', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudex-phase-'));
+  let release;
+  let running;
+  try {
+    const scriptPath = join(root, 'fixture.js');
+    writeFileSync(scriptPath, `
+      phase('Preparation'); const first = agent('one');
+      phase('Review'); const second = agent('two');
+      const third = agent('three', { phase: 'Explicit' });
+      phase('After queue'); await first; await second; return await third;
+    `);
+    const pending = new Promise(resolve => { release = resolve; });
+    const calls = [];
+    running = runWorkflow({ scriptPath, cwd: root, runsRoot: root, runId: 'phases', log: () => {}, execute: async prompt => {
+      calls.push(prompt); if (prompt === 'one') await pending; return prompt;
+    } });
+    await until(() => calls.length === 1);
+    assert.deepEqual(readRun(root, 'phases').agents.map(({ phase, status }) => ({ phase, status })), [
+      { phase: 'Preparation', status: 'running' },
+      { phase: 'Review', status: 'pending' },
+      { phase: 'Explicit', status: 'pending' },
+    ]);
+    release();
+    assert.equal(await running, 'three');
+    assert.deepEqual(calls, ['one', 'two', 'three']);
+    assert.deepEqual(readRun(root, 'phases').agents.map(agent => agent.phase), ['Preparation', 'Review', 'Explicit']);
+  } finally {
+    release?.();
+    await running?.catch(() => {});
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a caught pending-state storage failure still fails the run without executing an agent', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'claudex-pending-storage-'));
+  try {
+    const scriptPath = join(root, 'fixture.js');
+    const blocked = join(root, 'pending-storage', 'status.json.part');
+    writeFileSync(scriptPath, "log('block'); try { agent('one'); } catch {} log('unblock'); return 'ok';");
+    let calls = 0;
+    await assert.rejects(runWorkflow({ scriptPath, cwd: root, runsRoot: root, runId: 'pending-storage',
+      execute: async () => { calls++; return 'done'; },
+      log: message => { if (message === 'block') mkdirSync(blocked); if (message === 'unblock') rmdirSync(blocked); },
+    }));
+    assert.equal(calls, 0);
+    assert.equal(readRun(root, 'pending-storage').status, 'failed');
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
