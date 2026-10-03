@@ -984,7 +984,9 @@ impl Session {
         let tool_policy = crate::thread_manager::resolve_local_tool_policy(
             &thread_extension_init,
             &session_configuration.session_source,
+            &config,
         );
+        thread_extension_init.insert(tool_policy.as_ref().clone());
         let mcp_thread_init = thread_extension_init.clone();
         let thread_extension_data = codex_extension_api::ExtensionData::new_with_init(
             thread_id.to_string(),

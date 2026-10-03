@@ -458,6 +458,7 @@ web_search = true
     assert_eq!(
         cfg.tools,
         Some(ToolsToml {
+            enabled: None,
             web_search: None,
             experimental_request_user_input: None,
             update_plan: None,
@@ -478,6 +479,7 @@ web_search = false
     assert_eq!(
         cfg.tools,
         Some(ToolsToml {
+            enabled: None,
             web_search: None,
             experimental_request_user_input: None,
             update_plan: None,
@@ -497,6 +499,7 @@ fn tools_experimental_request_user_input_defaults_to_enabled() {
     assert_eq!(
         cfg.tools,
         Some(ToolsToml {
+            enabled: None,
             web_search: None,
             experimental_request_user_input: Some(ExperimentalRequestUserInput { enabled: true }),
             update_plan: None,
@@ -517,6 +520,7 @@ enabled = false
     assert_eq!(
         cfg.tools,
         Some(ToolsToml {
+            enabled: None,
             web_search: None,
             experimental_request_user_input: Some(ExperimentalRequestUserInput { enabled: false }),
             update_plan: None,
@@ -530,6 +534,7 @@ async fn load_config_resolves_experimental_request_user_input_enabled() -> std::
     let config = Config::load_from_base_config_with_overrides(
         ConfigToml {
             tools: Some(ToolsToml {
+                enabled: None,
                 web_search: None,
                 experimental_request_user_input: Some(ExperimentalRequestUserInput {
                     enabled: false,

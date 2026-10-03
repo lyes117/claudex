@@ -83,9 +83,12 @@ pub(crate) async fn run_codex_thread_interactive(
     };
     let mut thread_extension_init = codex_extension_api::ExtensionDataInit::default();
     thread_extension_init.insert(isolation);
-    let tool_policy =
-        crate::thread_manager::resolve_local_tool_policy(&thread_extension_init, &session_source)
-            .intersect(&parent_session.tool_policy);
+    let tool_policy = crate::thread_manager::resolve_local_tool_policy(
+        &thread_extension_init,
+        &session_source,
+        &config,
+    )
+    .intersect(&parent_session.tool_policy);
     thread_extension_init.insert(tool_policy);
     let (session, io) = Session::spawn(SessionSpawnArgs {
         startup: None,

@@ -24,15 +24,25 @@ impl CapturedToolPolicy {
 pub(crate) fn resolve_local_tool_policy(
     init: &ExtensionDataInit,
     source: &SessionSource,
+    config: &Config,
 ) -> Arc<ToolPolicy> {
-    init.get::<ToolPolicy>().unwrap_or_else(|| {
+    let local = init.get::<ToolPolicy>().unwrap_or_else(|| {
         // Preserve the reviewer fallback even when a parent ceiling is supplied.
         if crate::guardian::is_basic_session_source(source) {
             Arc::new(codex_guardian_reviewer::reviewer_tool_policy())
         } else {
             Arc::default()
         }
-    })
+    });
+    if config.tools_enabled {
+        local
+    } else {
+        Arc::new(local.intersect(&ToolPolicy {
+            allowed_tools: Some(Vec::new()),
+            expose_additional_permissions: false,
+            ..Default::default()
+        }))
+    }
 }
 
 impl ThreadManagerState {
@@ -52,10 +62,11 @@ impl ThreadManagerState {
         &self,
         init: &mut ExtensionDataInit,
         source: &SessionSource,
+        config: &Config,
         captured: Option<CapturedToolPolicy>,
         authority_id: Option<ThreadId>,
     ) -> Arc<ToolPolicy> {
-        let local = resolve_local_tool_policy(init, source);
+        let local = resolve_local_tool_policy(init, source, config);
         let captured = match captured {
             Some(captured) => Some(captured),
             None => self.capture_tool_policy(authority_id).await,
@@ -77,3 +88,7 @@ impl ThreadManagerState {
         effective
     }
 }
+
+#[cfg(test)]
+#[path = "tools_disabled_warm_tests.rs"]
+mod tools_disabled_warm_tests;

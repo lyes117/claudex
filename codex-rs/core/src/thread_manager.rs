@@ -2148,6 +2148,7 @@ impl ThreadManagerState {
             .compose_tool_policy(
                 &mut thread_extension_init,
                 &session_source,
+                &config,
                 inherited_tool_policy,
                 forked_from_thread_id.or(parent_thread_id),
             )

@@ -4349,6 +4349,10 @@
     "ToolsToml": {
       "additionalProperties": false,
       "properties": {
+        "enabled": {
+          "description": "Global tool ceiling. False disables advertising and dispatch for this thread. Does not disable extension startup, hooks or MCP connections.",
+          "type": "boolean"
+        },
         "experimental_request_user_input": {
           "$ref": "#/definitions/ExperimentalRequestUserInput"
         },

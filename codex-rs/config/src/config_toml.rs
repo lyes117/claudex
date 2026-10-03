@@ -670,6 +670,9 @@ pub struct RealtimeAudioToml {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, JsonSchema)]
 #[schemars(deny_unknown_fields)]
 pub struct ToolsToml {
+    /// Global tool ceiling. False disables advertising and dispatch for this thread.
+    /// Does not disable extension startup, hooks or MCP connections.
+    pub enabled: Option<bool>,
     #[serde(
         default,
         deserialize_with = "deserialize_optional_web_search_tool_config"

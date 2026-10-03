@@ -179,6 +179,7 @@ mod resolved_permission_profile;
 #[cfg(test)]
 mod schema;
 mod token_budget_startup;
+mod tools_ceiling;
 mod windows_sandbox_config;
 pub use auth_keyring::bootstrap_auth_config;
 pub use auth_keyring::resolve_bootstrap_auth_keyring_backend_kind;
@@ -1075,6 +1076,9 @@ pub struct Config {
 
     /// Whether to register the experimental request_user_input tool.
     pub experimental_request_user_input_enabled: bool,
+
+    /// Whether any tools may be advertised or dispatched for this thread.
+    pub tools_enabled: bool,
 
     /// Whether to register the update_plan tool.
     pub update_plan_enabled: bool,
@@ -3771,6 +3775,7 @@ impl Config {
         let experimental_request_user_input_enabled =
             resolve_experimental_request_user_input_enabled(&cfg);
         let update_plan_enabled = resolve_update_plan_enabled(&cfg);
+        let tools_enabled = tools_ceiling::enabled(&cfg, &config_layer_stack);
         let tool_registry = ToolRegistryConfig {
             error_on_tool_collisions: cfg
                 .features
@@ -4454,6 +4459,7 @@ impl Config {
             web_search_config,
             experimental_request_user_input_enabled,
             update_plan_enabled,
+            tools_enabled,
             tool_registry,
             code_mode,
             background_terminal_max_timeout,
