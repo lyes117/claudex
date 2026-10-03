@@ -6,7 +6,7 @@ use crate::ToolName;
 /// Supply through `ExtensionDataInit` before starting a thread. The host captures
 /// the policy once; later extension-state changes cannot relax it. Callers must
 /// supply it again when resuming a thread.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ToolPolicy {
     /// `None` keeps ordinary tool selection; an empty list permits no tools.
     /// Names include their namespace; plain names use the default namespace.
@@ -32,6 +32,42 @@ impl Default for ToolPolicy {
 }
 
 impl ToolPolicy {
+    /// Compose two ceilings without granting anything excluded by either one.
+    pub fn intersect(&self, other: &Self) -> Self {
+        let allowed_tools = match (&self.allowed_tools, &other.allowed_tools) {
+            (None, None) => None,
+            (Some(tools), None) | (None, Some(tools)) => Some(tools.clone()),
+            (Some(tools), Some(_)) => Some(
+                tools
+                    .iter()
+                    .filter(|tool| other.allows(tool))
+                    .cloned()
+                    .collect(),
+            ),
+        };
+        Self {
+            allowed_tools,
+            require_managed_sandbox: self.require_managed_sandbox || other.require_managed_sandbox,
+            require_unified_exec: self.require_unified_exec || other.require_unified_exec,
+            expose_additional_permissions: self.expose_additional_permissions
+                && other.expose_additional_permissions,
+        }
+    }
+
+    /// Whether this captured policy satisfies another ceiling, conservatively.
+    /// This checks construction requirements as well as tool names.
+    pub fn is_subset_of(&self, ceiling: &Self) -> bool {
+        let tools_fit = match (&self.allowed_tools, &ceiling.allowed_tools) {
+            (_, None) => true,
+            (None, Some(_)) => false,
+            (Some(tools), Some(_)) => tools.iter().all(|tool| ceiling.allows(tool)),
+        };
+        tools_fit
+            && (!ceiling.require_managed_sandbox || self.require_managed_sandbox)
+            && (!ceiling.require_unified_exec || self.require_unified_exec)
+            && (ceiling.expose_additional_permissions || !self.expose_additional_permissions)
+    }
+
     pub fn allows(&self, tool: &ToolName) -> bool {
         self.allowed_tools.as_ref().is_none_or(|tools| {
             tools.iter().any(|allowed| {
