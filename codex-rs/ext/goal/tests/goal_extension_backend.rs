@@ -1882,6 +1882,7 @@ impl GoalExtensionHarness {
                     tool_name: &tool_name,
                     source: ToolCallSource::Direct,
                     outcome,
+                    result_disposition: codex_extension_api::ToolResultDisposition::Unchanged,
                 })
                 .await;
         }

@@ -194,6 +194,17 @@ pub struct McpToolResultInput<'a> {
     pub result: &'a mut CallToolResult,
 }
 
+/// Host-observed post-tool hook treatment, independent of execution success.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ToolResultDisposition<'a> {
+    /// No post-tool hook changed the result.
+    Unchanged,
+    /// Feedback replaces the direct model-visible output. CodeMode may retain typed output.
+    Feedback(&'a str),
+    /// A post-tool hook rejected the result after execution.
+    Rejected(&'a str),
+}
+
 /// Input supplied when the host finishes executing one tool call.
 pub struct ToolFinishInput<'a> {
     /// Store scoped to the host session runtime.
@@ -212,6 +223,8 @@ pub struct ToolFinishInput<'a> {
     pub source: ToolCallSource,
     /// Host-observed result of the tool call.
     pub outcome: ToolCallOutcome,
+    /// Post-tool hook disposition, separate from whether execution succeeded.
+    pub result_disposition: ToolResultDisposition<'a>,
 }
 
 /// The execution interval represented by a tool timing observation.

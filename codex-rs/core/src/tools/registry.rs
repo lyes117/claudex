@@ -803,8 +803,27 @@ impl ToolRegistry {
                 handler_executed: true,
             },
         };
-        notify_tool_finish_if_unclaimed(&invocation, call_state.as_deref(), lifecycle_outcome)
-            .await;
+        let disposition = match &post_tool_use_outcome {
+            Some(outcome) if outcome.should_block => {
+                codex_extension_api::ToolResultDisposition::Rejected(
+                    outcome
+                        .feedback_message
+                        .as_deref()
+                        .unwrap_or("PostToolUse hook blocked the tool result"),
+                )
+            }
+            Some(outcome) if outcome.feedback_message.is_some() => {
+                codex_extension_api::ToolResultDisposition::Feedback(
+                    outcome.feedback_message.as_deref().unwrap_or_default(),
+                )
+            }
+            Some(_) | None => codex_extension_api::ToolResultDisposition::Unchanged,
+        };
+        if !call_state
+            .is_some_and(|state| state.terminal_outcome_reached.swap(true, Ordering::AcqRel))
+        {
+            notify_tool_finish(&invocation, lifecycle_outcome, disposition).await;
+        }
 
         match result {
             Ok(mut result) => {
@@ -853,7 +872,12 @@ async fn notify_tool_finish_if_unclaimed(
         return false;
     }
 
-    notify_tool_finish(invocation, outcome).await;
+    notify_tool_finish(
+        invocation,
+        outcome,
+        codex_extension_api::ToolResultDisposition::Unchanged,
+    )
+    .await;
     true
 }
 

@@ -6,6 +6,7 @@ use codex_extension_api::McpToolResultInput;
 use codex_extension_api::ToolCallOutcome;
 use codex_extension_api::ToolCallSource as ExtensionToolCallSource;
 use codex_extension_api::ToolFinishInput;
+use codex_extension_api::ToolResultDisposition;
 use codex_extension_api::ToolStartInput;
 use codex_file_system::ExecutorFileSystem;
 use codex_protocol::mcp::CallToolResult;
@@ -107,7 +108,11 @@ pub(crate) async fn process_mcp_tool_result(
     }
 }
 
-pub(crate) async fn notify_tool_finish(invocation: &ToolInvocation, outcome: ToolCallOutcome) {
+pub(crate) async fn notify_tool_finish(
+    invocation: &ToolInvocation,
+    outcome: ToolCallOutcome,
+    result_disposition: ToolResultDisposition<'_>,
+) {
     notify_tool_finish_parts(
         invocation.session.as_ref(),
         invocation.turn.as_ref(),
@@ -115,6 +120,7 @@ pub(crate) async fn notify_tool_finish(invocation: &ToolInvocation, outcome: Too
         &invocation.tool_name,
         invocation.source.clone(),
         outcome,
+        result_disposition,
     )
     .await;
 }
@@ -133,6 +139,7 @@ pub(crate) async fn notify_tool_aborted(
         tool_name,
         source,
         ToolCallOutcome::Aborted,
+        ToolResultDisposition::Unchanged,
     )
     .await;
 }
@@ -144,6 +151,7 @@ async fn notify_tool_finish_parts(
     tool_name: &ToolName,
     source: ToolCallSource,
     outcome: ToolCallOutcome,
+    result_disposition: ToolResultDisposition<'_>,
 ) {
     for contributor in session.services.extensions.tool_lifecycle_contributors() {
         contributor
@@ -156,6 +164,7 @@ async fn notify_tool_finish_parts(
                 tool_name,
                 source: extension_tool_call_source(source.clone()),
                 outcome,
+                result_disposition,
             })
             .await;
     }

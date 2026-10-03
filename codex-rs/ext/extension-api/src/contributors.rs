@@ -51,6 +51,7 @@ pub use tool_lifecycle::McpToolSource;
 pub use tool_lifecycle::ToolCallOutcome;
 pub use tool_lifecycle::ToolFinishInput;
 pub use tool_lifecycle::ToolLifecycleFuture;
+pub use tool_lifecycle::ToolResultDisposition;
 pub use tool_lifecycle::ToolStartInput;
 pub use tool_lifecycle::ToolTimingBoundary;
 pub use tool_lifecycle::ToolTimingInput;
