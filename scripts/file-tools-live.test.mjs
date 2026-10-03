@@ -29,6 +29,7 @@ try {
   model = cache.models?.find(model => model.slug === 'gpt-6.1-sol');
 } catch { throw new Error('Official model descriptor unavailable; no catalog details exposed'); }
 assert.ok(model?.slug === 'gpt-6.1-sol', 'The official model descriptor is required');
+assert.equal(model.tool_mode, 'code_mode_only', 'Mixed-override detection requires the official CodeMode-only default');
 
 async function readThread(threadId) {
   const child = spawn(binary, ['app-server', '--listen', 'stdio://'], {
@@ -86,10 +87,12 @@ for (const codeMode of [false, true]) {
   const catalog = join(root, codeMode ? 'model-code-mode.json' : 'model-direct.json');
   writeFileSync(catalog, JSON.stringify({ models: [{ ...model, tool_mode: codeMode ? 'code_mode_only' : 'direct' }] }));
   const prompt = 'Read sample.txt using the Read tool, list *.txt using Glob, and find SYNTHETIC_FILE_TOOL_MARKER using Grep output_mode content. Call each tool once. Use these actual tools, without shell commands, file writes, extra agents or other tools. Then answer FILE_TOOLS_OK.';
-  const args = ['exec', '--ignore-user-config', '--skip-git-repo-check', '-s', 'read-only',
+  // Keep the catalog at root and other overrides below exec: losing root -c
+  // changes the direct/CodeMode call identity asserted below.
+  const args = ['-c', `model_catalog_json=${JSON.stringify(catalog)}`,
+    'exec', '--ignore-user-config', '--skip-git-repo-check', '-s', 'read-only',
     '-c', `projects={${JSON.stringify(root)}={trust_level="trusted"}}`,
     '-c', 'forced_login_method="chatgpt"', '-c', 'model_reasoning_effort="low"',
-    '-c', `model_catalog_json=${JSON.stringify(catalog)}`,
     '-c', `features.code_mode=${codeMode}`, '-c', `features.code_mode_only=${codeMode}`, '-m', 'gpt-6.1-sol', '-C', root, '--json', prompt];
   const events = parseJsonLines(await captureOwned(binary, args, { cwd: root }));
   const threadId = events.find(event => event.type === 'thread.started')?.thread_id;
@@ -110,7 +113,7 @@ for (const codeMode of [false, true]) {
     assert.ok(Buffer.byteLength(text) <= 8192);
     assert.ok(text.includes(tool === 'Glob' ? 'sample.txt' : 'SYNTHETIC_FILE_TOOL_MARKER'));
   }
-  results.push({ codeMode, catalogOverride: 'tool_mode', threadId, tools: cards.map(card => card.tool), restored: true });
+  results.push({ codeMode, catalogOverride: 'tool_mode', configScopes: ['root', 'exec'], threadId, tools: cards.map(card => card.tool), restored: true });
 }
 writeFileSync(join(root, 'verified.json'), JSON.stringify({ results }, null, 2));
-console.log('PASS real ChatGPT inference: Read/Grep/Glob, direct and CodeMode, restored native cards');
+console.log('PASS real ChatGPT inference: mixed root/exec overrides, Read/Grep/Glob, direct and CodeMode, restored native cards');
