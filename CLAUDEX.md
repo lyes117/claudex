@@ -51,16 +51,16 @@ La pause laisse finir l'agent actif puis bloque les suivants ; la reprise libèr
 
 ## Reconstruction
 
-Rust 1.95.0, MSVC et Windows SDK, Node 22. Les outils de développement téléchargés sont dans `.build-tools` et ne sont pas versionnés. Les exécutables auxiliaires inchangés sont réutilisés depuis le paquet officiel local **de la même version 0.160.0** (code-mode, sandbox Windows, ressources voix et ripgrep) ; l'exécutable principal est compilé depuis ce fork.
+Rust 1.95.0, MSVC et Windows SDK, Python 3.12, Node 22. Les outils de développement téléchargés sont dans `.build-tools` et ne sont pas versionnés. Le builder compile le CLI, CodeMode et les helpers Windows depuis les sources. Il résout par le module amont la paire V8 sandbox publiée par OpenAI et vérifie son manifeste épinglé ; le sandbox V8 reste activé. Les ressources voix et ripgrep restent issues du paquet officiel local **de la même version 0.160.0**. Le builder exige un host Rust Windows x64 MSVC et refuse une cible Cargo explicite afin de conserver le layout de l'installateur.
 
 ```powershell
 $env:Path = "$PWD\.build-tools\bin;$PWD\.build-tools\pwsh;$env:USERPROFILE\.cargo\bin;$env:Path"
-Push-Location codex-rs
-cargo build -p codex-cli --bin codex --profile dev-small
-Pop-Location
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-claudex.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-claudex.ps1
 node scripts/workflows.test.mjs
+Push-Location codex-rs
 just test -p codex-config -p codex-agent-roles -p codex-home -p codex-skills-extension -p codex-hooks -p codex-tui -p codex-cli --cargo-profile dev-small
+Pop-Location
 ```
 
 Le nom du binaire de compilation reste `codex` pour conserver les outils internes amont ; le fichier installé est le véritable binaire natif `claudex.exe`. Les mises à jour automatiques amont sont désactivées pour éviter de remplacer le fork par Codex standard.
