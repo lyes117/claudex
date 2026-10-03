@@ -905,6 +905,7 @@ impl LocalAgentControl {
         let durability_wait = durability_wait_started_at.elapsed();
 
         let start_options = TurnStartOptions {
+            final_output_json_schema: options.final_output_json_schema,
             parent_turn_id: options.parent_turn_id,
             turn_trigger: options.turn_trigger,
             root_turn_id: options.root_turn_id,
