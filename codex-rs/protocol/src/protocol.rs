@@ -3121,6 +3121,15 @@ pub struct HistoryPosition {
 /// and should be used when there is no config override.
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema, TS)]
 pub struct SessionMeta {
+    /// Untrusted creation-ceiling JSON. Validate original persisted bytes and
+    /// canonical thread identity before interpreting this as native authority.
+    #[serde(
+        default,
+        deserialize_with = "crate::tool_policy_snapshot::deserialize_present_tool_policy_snapshot",
+        skip_serializing_if = "Option::is_none"
+    )]
+    #[ts(optional)]
+    pub tool_policy_snapshot: Option<Value>,
     /// ChatGPT user that created this thread; absent when unavailable or for older threads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creator_user_id: Option<String>,
@@ -3201,6 +3210,7 @@ impl Default for SessionMeta {
     fn default() -> Self {
         let id = ThreadId::default();
         SessionMeta {
+            tool_policy_snapshot: None,
             creator_user_id: None,
             creator_account_id: None,
             session_id: id.into(),

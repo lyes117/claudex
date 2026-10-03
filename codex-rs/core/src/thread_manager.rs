@@ -1,6 +1,7 @@
 mod managed;
 mod shared_instructions;
 mod tool_policy;
+mod tool_policy_snapshot;
 
 #[cfg(test)]
 #[path = "thread_manager/tool_policy_tests.rs"]
@@ -9,6 +10,7 @@ mod tool_policy_tests;
 pub(crate) use tool_policy::CapturedToolPolicy;
 pub(crate) use tool_policy::LIVE_THREAD_TOOL_POLICY_MISMATCH;
 pub(crate) use tool_policy::resolve_local_tool_policy;
+pub(crate) use tool_policy_snapshot::snapshot_tool_policy;
 
 use crate::CodexAppsToolsCache;
 use crate::agent::LocalAgentControl;

@@ -22,6 +22,7 @@ pub use tool_name::ToolName;
 pub use tool_policy_snapshot::ToolPolicySnapshot;
 pub use tool_policy_snapshot::ToolPolicySnapshotError;
 pub use tool_policy_snapshot::ToolPolicySnapshotFields;
+pub use tool_policy_snapshot::deserialize_present_tool_policy_snapshot;
 pub mod approvals;
 pub mod capabilities;
 mod codex_error_info;

@@ -987,6 +987,11 @@ impl Session {
             &config,
         );
         thread_extension_init.insert(tool_policy.as_ref().clone());
+        let creation_tool_policy_snapshot = if config.ephemeral {
+            None
+        } else {
+            Some(crate::thread_manager::snapshot_tool_policy(&tool_policy)?)
+        };
         let mcp_thread_init = thread_extension_init.clone();
         let thread_extension_data = codex_extension_api::ExtensionData::new_with_init(
             thread_id.to_string(),
@@ -1019,6 +1024,7 @@ impl Session {
                             session_id,
                             thread_id,
                             extra_config: config.extra_config.clone(),
+                            tool_policy_snapshot: creation_tool_policy_snapshot.clone(),
                             forked_from_id,
                             parent_thread_id,
                             source: session_source,

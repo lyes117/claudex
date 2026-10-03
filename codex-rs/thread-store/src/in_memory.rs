@@ -56,6 +56,44 @@ fn stores() -> &'static Mutex<HashMap<String, Arc<InMemoryThreadStore>>> {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn creation_ceiling_carrier_rejects_invalid_presence_before_store_mutation() {
+        use pretty_assertions::assert_eq;
+        let store = super::InMemoryThreadStore::default();
+        let thread_id = codex_protocol::ThreadId::new();
+        let mut params = create_thread_params(
+            thread_id,
+            codex_protocol::protocol::ThreadHistoryMode::Legacy,
+        );
+        params.tool_policy_snapshot = Some(serde_json::Value::Null);
+        let value = serde_json::to_value(&params).unwrap();
+        let decoded: crate::CreateThreadParams = serde_json::from_value(value).unwrap();
+        assert_eq!(decoded.tool_policy_snapshot, Some(serde_json::Value::Null));
+        for invalid in [
+            serde_json::Value::Null,
+            serde_json::json!({"version":2}),
+            serde_json::json!({"allowed_tools":"x".repeat(8193)}),
+        ] {
+            params.tool_policy_snapshot = Some(invalid);
+            assert!(matches!(
+                crate::ThreadStore::create_thread(&store, params.clone()).await,
+                Err(crate::ThreadStoreError::InvalidRequest { .. })
+            ));
+        }
+        assert_eq!(store.calls().await.create_thread, 0);
+        let snapshot = serde_json::json!({"version":1,"allowed_tools":[],
+            "require_managed_sandbox":true,"require_unified_exec":true,
+            "expose_additional_permissions":false});
+        params.tool_policy_snapshot = Some(snapshot.clone());
+        crate::ThreadStore::create_thread(&store, params)
+            .await
+            .unwrap();
+        let state = store.state.lock().await;
+        let codex_rollout::RolloutItem::SessionMeta(meta) = &state.histories[&thread_id][0] else {
+            panic!("creation must record the canonical header");
+        };
+        assert_eq!(meta.meta.tool_policy_snapshot, Some(snapshot));
+    }
     use super::*;
     use crate::ItemSortKey;
     use crate::ListItemsParams;
@@ -170,6 +208,7 @@ mod tests {
                     session_id: thread_id.into(),
                     thread_id,
                     extra_config: None,
+                    tool_policy_snapshot: None,
                     forked_from_id: None,
                     parent_thread_id,
                     source: SessionSource::Exec,
@@ -444,6 +483,7 @@ mod tests {
             session_id: thread_id.into(),
             thread_id,
             extra_config: None,
+            tool_policy_snapshot: None,
             forked_from_id: None,
             parent_thread_id: None,
             source: SessionSource::Exec,
@@ -571,9 +611,17 @@ impl InMemoryThreadStore {
     }
 
     async fn create_thread(&self, params: CreateThreadParams) -> ThreadStoreResult<()> {
+        if let Some(snapshot) = &params.tool_policy_snapshot {
+            codex_protocol::ToolPolicySnapshot::from_json_value(snapshot).map_err(|error| {
+                crate::ThreadStoreError::InvalidRequest {
+                    message: error.to_string(),
+                }
+            })?;
+        }
         let mut state = self.state.lock().await;
         state.calls.create_thread += 1;
         let session_meta = SessionMeta {
+            tool_policy_snapshot: params.tool_policy_snapshot.clone(),
             session_id: params.session_id,
             id: params.thread_id,
             forked_from_id: params.forked_from_id,

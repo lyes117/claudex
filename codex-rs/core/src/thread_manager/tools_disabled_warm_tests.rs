@@ -27,6 +27,25 @@ async fn warm_resume_keeps_empty_ceiling_and_refuses_to_reuse_broader_runtime() 
             .expect("source");
         source.thread.ensure_rollout_materialized().await;
         source.thread.flush_rollout().await.expect("flush");
+        let metadata = codex_rollout::read_session_meta_line(
+            source
+                .thread
+                .rollout_path()
+                .as_deref()
+                .expect("rollout path"),
+        )
+        .await
+        .expect("canonical header");
+        assert_eq!(
+            metadata.meta.tool_policy_snapshot,
+            Some(serde_json::json!({
+                "version": 1,
+                "allowed_tools": if source_enabled { serde_json::Value::Null } else { serde_json::json!([]) },
+                "require_managed_sandbox": false,
+                "require_unified_exec": false,
+                "expose_additional_permissions": source_enabled,
+            }))
+        );
         config.tools_enabled = !source_enabled;
         let mut requested = StartThreadOptions::new(config);
         requested.initial_history = InitialHistory::Resumed(ResumedHistory {

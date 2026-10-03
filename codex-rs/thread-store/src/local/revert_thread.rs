@@ -177,6 +177,7 @@ async fn create_replacement_recorder(
         source_meta.base_instructions.unwrap_or_default(),
         source_meta.dynamic_tools.unwrap_or_default(),
     )
+    .with_tool_policy_snapshot(source_meta.tool_policy_snapshot)
     .with_creator(source_meta.creator_user_id, source_meta.creator_account_id)
     .with_session_id(source_meta.session_id)
     .with_rollout_id(rollout_id)

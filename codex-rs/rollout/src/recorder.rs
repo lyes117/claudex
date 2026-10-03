@@ -93,6 +93,7 @@ pub struct RolloutRecorder {
 #[allow(clippy::large_enum_variant)]
 pub enum RolloutRecorderParams {
     Create {
+        tool_policy_snapshot: Option<Value>,
         session_id: SessionId,
         conversation_id: ThreadId,
         /// Overrides the rollout ID encoded in the filename.
@@ -205,6 +206,7 @@ impl RolloutRecorderParams {
         dynamic_tools: Vec<DynamicToolSpec>,
     ) -> Self {
         Self::Create {
+            tool_policy_snapshot: None,
             session_id: conversation_id.into(),
             conversation_id,
             rollout_id_override: None,
@@ -238,6 +240,18 @@ impl RolloutRecorderParams {
         {
             *creator_user_id = user_id;
             *creator_account_id = account_id;
+        }
+        self
+    }
+
+    /// Carry the validated native ceiling to a newly owned canonical header.
+    pub fn with_tool_policy_snapshot(mut self, snapshot: Option<Value>) -> Self {
+        if let Self::Create {
+            tool_policy_snapshot,
+            ..
+        } = &mut self
+        {
+            *tool_policy_snapshot = snapshot;
         }
         self
     }
@@ -898,6 +912,7 @@ impl RolloutRecorder {
         let cwd = config.cwd().to_path_buf();
         let state = match params {
             RolloutRecorderParams::Create {
+                tool_policy_snapshot,
                 session_id,
                 conversation_id,
                 rollout_id_override,
@@ -919,6 +934,10 @@ impl RolloutRecorder {
                 subagent_history_start_ordinal,
                 initial_window_id,
             } => {
+                if let Some(snapshot) = &tool_policy_snapshot {
+                    codex_protocol::ToolPolicySnapshot::from_json_value(snapshot)
+                        .map_err(|error| IoError::new(std::io::ErrorKind::InvalidData, error))?;
+                }
                 let ordinal_state =
                     RolloutOrdinalState::for_new_rollout(history_mode, history_base);
                 let (path, started_at) =
@@ -933,6 +952,7 @@ impl RolloutRecorder {
                     .map_err(|e| IoError::other(format!("failed to format timestamp: {e}")))?;
 
                 let session_meta = SessionMeta {
+                    tool_policy_snapshot,
                     session_id,
                     id: conversation_id,
                     forked_from_id,

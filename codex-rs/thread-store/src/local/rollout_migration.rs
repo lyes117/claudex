@@ -433,7 +433,10 @@ impl LocalThreadStore {
                 .is_ok_and(|metadata| metadata.len() == 0);
             let failure_reason = if empty {
                 None
-            } else if error.kind() != io::ErrorKind::Other {
+            } else if !matches!(
+                error.kind(),
+                io::ErrorKind::Other | io::ErrorKind::InvalidData
+            ) {
                 Some(RolloutMigrationFailureReason::RolloutReadFailed)
             } else {
                 Some(RolloutMigrationFailureReason::InvalidSessionMetadata)

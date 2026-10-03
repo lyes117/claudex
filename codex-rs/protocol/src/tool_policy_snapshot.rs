@@ -7,6 +7,17 @@ const MAX_JSON_BYTES: usize = 8192;
 const MAX_TOOLS: usize = 128;
 const MAX_COMPONENT_BYTES: usize = 256;
 
+/// Preserve explicit null in untrusted carriers so an authority validator can
+/// reject it instead of interpreting it as an absent legacy ceiling.
+pub fn deserialize_present_tool_policy_snapshot<'de, D>(
+    deserializer: D,
+) -> Result<Option<serde_json::Value>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    serde_json::Value::deserialize(deserializer).map(Some)
+}
+
 /// Policy data supplied by the native authority, never by a model tool argument.
 /// `None` grants an unrestricted allowlist; `Some([])` grants no tools.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -79,6 +90,22 @@ where
 }
 
 impl ToolPolicySnapshot {
+    /// Validate an already materialized untrusted carrier without allocating an
+    /// unbounded second copy. Disk readers must still check the original bytes.
+    pub fn from_json_value(value: &serde_json::Value) -> Result<Self, ToolPolicySnapshotError> {
+        let mut writer = BoundedWriter {
+            bytes: Vec::with_capacity(MAX_JSON_BYTES),
+            overflowed: false,
+        };
+        if let Err(error) = serde_json::to_writer(&mut writer, value) {
+            return Err(if writer.overflowed {
+                ToolPolicySnapshotError::TooLarge
+            } else {
+                ToolPolicySnapshotError::InvalidJson(error)
+            });
+        }
+        Self::from_json_slice(&writer.bytes)
+    }
     pub fn try_new(fields: ToolPolicySnapshotFields) -> Result<Self, ToolPolicySnapshotError> {
         if let Some(tools) = &fields.allowed_tools {
             if tools.len() > MAX_TOOLS {
@@ -145,6 +172,29 @@ impl ToolPolicySnapshot {
 
     pub fn fields(&self) -> &ToolPolicySnapshotFields {
         &self.fields
+    }
+}
+
+struct BoundedWriter {
+    bytes: Vec<u8>,
+    overflowed: bool,
+}
+
+impl std::io::Write for BoundedWriter {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if bytes.len() > MAX_JSON_BYTES.saturating_sub(self.bytes.len()) {
+            self.overflowed = true;
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "tool policy byte limit",
+            ));
+        }
+        self.bytes.extend_from_slice(bytes);
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
 }
 

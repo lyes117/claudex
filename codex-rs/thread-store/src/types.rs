@@ -72,6 +72,13 @@ pub struct ExtraConfig {}
 /// Parameters required to create a persisted thread.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CreateThreadParams {
+    /// Untrusted JSON carrier for the creation ceiling, validated by the runtime.
+    #[serde(
+        default,
+        deserialize_with = "codex_protocol::deserialize_present_tool_policy_snapshot",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub tool_policy_snapshot: Option<serde_json::Value>,
     /// ChatGPT user that created this thread; absent when unavailable or for older threads.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creator_user_id: Option<String>,

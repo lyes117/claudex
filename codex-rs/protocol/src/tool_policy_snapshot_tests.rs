@@ -213,3 +213,38 @@ fn raw_and_canonical_byte_limits_cannot_be_bypassed_by_whitespace_or_escapes() {
         Err(ToolPolicySnapshotError::TooLarge)
     ));
 }
+
+#[test]
+fn value_carrier_is_bounded_and_metadata_preserves_null_as_untrusted_presence() {
+    let valid = valid_json();
+    assert_eq!(
+        ToolPolicySnapshot::from_json_value(&valid).unwrap(),
+        decode(&valid).unwrap()
+    );
+    let mut oversized = valid;
+    oversized["allowed_tools"] = json!("x".repeat(MAX_JSON_BYTES + 1));
+    assert!(matches!(
+        ToolPolicySnapshot::from_json_value(&oversized),
+        Err(ToolPolicySnapshotError::TooLarge)
+    ));
+    let mut value = serde_json::to_value(crate::protocol::SessionMeta::default()).unwrap();
+    assert!(
+        !value
+            .as_object()
+            .unwrap()
+            .contains_key("tool_policy_snapshot")
+    );
+    value["tool_policy_snapshot"] = serde_json::Value::Null;
+    let meta: crate::protocol::SessionMeta = serde_json::from_value(value.clone()).unwrap();
+    assert_eq!(meta.tool_policy_snapshot, Some(serde_json::Value::Null));
+    assert_eq!(serde_json::to_value(meta).unwrap(), value);
+    let mut writer = BoundedWriter {
+        bytes: Vec::new(),
+        overflowed: false,
+    };
+    std::io::Write::write_all(&mut writer, b"{}").unwrap();
+    let before = writer.bytes.clone();
+    assert!(std::io::Write::write_all(&mut writer, &vec![b' '; MAX_JSON_BYTES]).is_err());
+    assert_eq!(writer.bytes, before);
+    assert!(writer.overflowed);
+}

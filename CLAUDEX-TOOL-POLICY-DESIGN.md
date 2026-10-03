@@ -87,4 +87,28 @@ Le DTO expose Serialize mais pas Deserialize general : les octets persistants do
 
 La revue a reproduit puis fait corriger un repli via type absent/null et le refus indu d'un type echappe. La suite rollout finale passe 138/138, avec controles positifs legacy et negatifs confrontes a un ancetre valide (`tests-tool-policy-header-rollout-cycle4.log`). Les cycles 1 a 3 conservent les echecs intermediaires ; formatage et Clippy cibles passent. `just bazel-lock-update` passe ; la feature raw_value etait deja unifiee, donc aucun diff du lock n'est produit.
 
-Le contrat de compatibilite change volontairement : du JSON malforme AVANT le premier header est refuse, tandis que la tolerance des lignes malformees tardives reste controlee. Le garde compare deux decodages de l'ID canonique, pas encore l'ID source attendu. Ordinal/projection/migration restent hors de cette tranche ; l'autorite doit toujours etre validee par le chemin de restauration avant activation. Aucun plafond n'est encore enregistre ni restaure par le runtime installe.
+Le contrat de compatibilite change volontairement : du JSON malforme AVANT le premier header est refuse, tandis que la tolerance des lignes malformees tardives reste controlee. Le garde compare deux decodages de l'ID canonique, pas encore l'ID source attendu. Ordinal/projection/migration restent hors de cette tranche ; l'autorite doit toujours etre validee par le chemin de restauration avant activation.
+
+### Capture a la creation et conservation lors des reverts
+
+La tranche suivante enregistre le plafond effectif des nouvelles sessions non
+ephemeres, apres composition native et avant initialisation MCP. Le carrier
+SessionMeta/CreateThreadParams reste un Value non fiable ; absent et null
+explicite sont distingues, et chaque creation valide le DTO avant mutation.
+La serialisation d'un Value est bornee a 8 Kio avant copie, sans construire un
+buffer intermediaire non borne. La liste vide n'est pas elargie en null.
+
+Les reverts transmettent exactement le snapshot de creation au nouveau rollout,
+dont l'ID physique peut changer alors que le thread logique reste identique.
+Le test couvre deux reverts successifs. La fixture native observe aussi le vrai
+header cree avec tools.enabled=true/false, puis la reprise chaude existante.
+La reprise consolidee protocol/rollout/thread-store plus les controles core
+cibles passe 777/777 (tests-claudex-pre-install-cycle1.log), dont 760 controles
+des trois premiers packages et 17 controles core.
+
+La revue statique ne trouve pas de P0/P1 sur cette capture. Elle ne constitue
+pas une restauration froide : aucun plafond persistant n'est encore compose
+a la reprise ou au fork. La validation sous lease du writer, l'identite source,
+LastNTurns et la politique de refus des reductions sans journal restent a
+implementer. Les profils Claude contraints restent refuses. Cette capture
+n'autorise pas l'activation du bridge Workflow prive.

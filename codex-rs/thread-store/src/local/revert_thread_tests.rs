@@ -95,6 +95,10 @@ async fn revert_keeps_thread_id_and_hides_suffix_across_repeated_reverts() {
         .meta;
     assert_eq!(replacement_meta.id, thread_id);
     assert_eq!(
+        replacement_meta.tool_policy_snapshot,
+        Some(creation_ceiling_fixture())
+    );
+    assert_eq!(
         (
             replacement_meta.creator_user_id.as_deref(),
             replacement_meta.creator_account_id.as_deref()
@@ -144,6 +148,10 @@ async fn revert_keeps_thread_id_and_hides_suffix_across_repeated_reverts() {
         .await
         .expect("read recovered creator metadata")
         .meta;
+    assert_eq!(
+        recovered.tool_policy_snapshot,
+        Some(creation_ceiling_fixture())
+    );
     assert_eq!(
         (recovered.creator_user_id, recovered.creator_account_id),
         (
@@ -277,6 +285,7 @@ async fn create_paginated_thread(store: &LocalThreadStore, thread_id: ThreadId) 
             session_id: thread_id.into(),
             thread_id,
             extra_config: None,
+            tool_policy_snapshot: Some(creation_ceiling_fixture()),
             forked_from_id: None,
             parent_thread_id: None,
             source: SessionSource::Exec,
@@ -299,6 +308,12 @@ async fn create_paginated_thread(store: &LocalThreadStore, thread_id: ThreadId) 
         })
         .await
         .expect("create paginated thread");
+}
+
+fn creation_ceiling_fixture() -> serde_json::Value {
+    serde_json::json!({"version":1,"allowed_tools":[],
+        "require_managed_sandbox":true,"require_unified_exec":true,
+        "expose_additional_permissions":false})
 }
 
 async fn turn_ids(store: &LocalThreadStore, thread_id: ThreadId) -> Vec<String> {

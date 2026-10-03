@@ -461,6 +461,7 @@ impl ExternalAgentSessionImporter {
             session_id: thread_id.into(),
             thread_id,
             extra_config: None,
+            tool_policy_snapshot: None,
             forked_from_id: None,
             parent_thread_id: None,
             source: source.clone(),
