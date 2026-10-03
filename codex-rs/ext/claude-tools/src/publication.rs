@@ -209,6 +209,15 @@ impl Publications {
         }
     }
 
+    pub(crate) fn abandon(&self, turn_id: &str, call_id: &str) {
+        let _ = self.decide(
+            turn_id,
+            call_id,
+            ToolCallOutcome::Aborted,
+            ToolResultDisposition::Unchanged,
+        );
+    }
+
     fn decide(
         &self,
         turn_id: &str,

@@ -194,6 +194,19 @@ pub struct McpToolResultInput<'a> {
     pub result: &'a mut CallToolResult,
 }
 
+/// Identity of a dispatch scope that has returned or been dropped.
+///
+/// This is a resource-cleanup boundary, not another execution outcome. It may
+/// follow a finish callback, or run without one after cancellation or unwind.
+pub struct ToolDispatchDroppedInput<'a> {
+    /// Store scoped to the owning thread runtime.
+    pub thread_store: &'a ExtensionData,
+    /// Owning turn submission id, including for surviving code-mode cells.
+    pub turn_id: &'a str,
+    /// Model-visible tool call id.
+    pub call_id: &'a str,
+}
+
 /// Host-observed post-tool hook treatment, independent of execution success.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ToolResultDisposition<'a> {

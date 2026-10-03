@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use codex_extension_api::ExtensionData;
 use codex_extension_api::ExtensionFuture;
+use codex_extension_api::ToolDispatchDroppedInput;
 use codex_extension_api::ToolFinishInput;
 use codex_extension_api::ToolLifecycleContributor;
 use codex_extension_api::ToolLifecycleFuture;
@@ -18,6 +19,14 @@ pub(crate) fn publications(thread: &ExtensionData) -> Arc<Publications> {
 }
 
 impl ToolLifecycleContributor for FileTools {
+    fn on_tool_dispatch_dropped(&self, input: ToolDispatchDroppedInput<'_>) {
+        if let Some(registry) = input.thread_store.get::<Publications>() {
+            // Never reuse staged output here: a post-tool hook or an earlier
+            // finish contributor may have failed after filtering that output.
+            registry.abandon(input.turn_id, input.call_id);
+        }
+    }
+
     fn on_tool_start<'a>(&'a self, input: ToolStartInput<'a>) -> ToolLifecycleFuture<'a> {
         Box::pin(async move {
             if matches!(input.tool_name.name.as_str(), "Read" | "Glob" | "Grep")

@@ -92,6 +92,71 @@ fn completion(capture: &Capture) -> (bool, String) {
 }
 
 #[tokio::test]
+async fn dropped_dispatch_discards_staged_output_and_preserves_an_existing_decision() {
+    use codex_extension_api::ExtensionData;
+    use codex_extension_api::ToolDispatchDroppedInput;
+    use codex_extension_api::ToolLifecycleContributor;
+
+    for already_rejected in [false, true] {
+        let (registry, turn, mut capture, mut call) = fixture();
+        let thread = ExtensionData::new("thread");
+        thread.insert(
+            Arc::try_unwrap(registry)
+                .ok()
+                .expect("Unshared fixture registry"),
+        );
+        let registry = thread.get::<Publications>().unwrap();
+        call.turn_item_emitter = Arc::new(codex_tools::NoopTurnItemEmitter);
+        Arc::get_mut(&mut capture).unwrap().finish_gate = Semaphore::new(0);
+        call.turn_item_emitter = capture.clone();
+        registry.begin(&call, FileTool::Read, "{}").await.unwrap();
+        registry.stage("turn", "read", Completion::new(true, "RAW_FILTERED_MARKER"));
+        if already_rejected {
+            // A decision already sent remains owned by the independent publisher.
+            let _ = registry.decide(
+                "turn",
+                "read",
+                ToolCallOutcome::Completed { success: true },
+                ToolResultDisposition::Rejected("Filtered result"),
+            );
+            capture.finish_entered.acquire().await.unwrap().forget();
+        }
+        for _ in 0..2 {
+            crate::FileTools.on_tool_dispatch_dropped(ToolDispatchDroppedInput {
+                thread_store: &thread,
+                turn_id: "turn",
+                call_id: "read",
+            });
+        }
+        if !already_rejected {
+            capture.finish_entered.acquire().await.unwrap().forget();
+        }
+        capture.finish_gate.add_permits(1);
+        registry
+            .finish(
+                "turn",
+                "read",
+                ToolCallOutcome::Aborted,
+                ToolResultDisposition::Unchanged,
+            )
+            .await;
+        assert_eq!(
+            completion(&capture),
+            (
+                false,
+                if already_rejected {
+                    "Filtered result".into()
+                } else {
+                    "File tool interrupted".into()
+                }
+            )
+        );
+        assert!(registry.0.lock().unwrap().is_empty());
+        assert!(turn.0.lock().unwrap().keys.is_empty());
+    }
+}
+
+#[tokio::test]
 async fn hook_disposition_controls_display_without_original_result() {
     for (disposition, expected) in [
         (

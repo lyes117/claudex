@@ -528,6 +528,11 @@ impl ToolRegistry {
         mut invocation: ToolInvocation,
         call_state: Option<Arc<ToolCallState>>,
     ) -> Result<AnyToolResult, FunctionCallError> {
+        let _cleanup = super::dispatch_cleanup::DispatchCleanup {
+            session: Arc::clone(&invocation.session),
+            turn_id: invocation.turn.sub_id.clone(),
+            call_id: invocation.call_id.clone(),
+        };
         let tool_name = invocation.tool_name.clone();
         let call_id_owned = invocation.call_id.clone();
         let otel = invocation

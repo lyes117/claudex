@@ -49,6 +49,7 @@ pub use tool_lifecycle::McpToolContext;
 pub use tool_lifecycle::McpToolResultInput;
 pub use tool_lifecycle::McpToolSource;
 pub use tool_lifecycle::ToolCallOutcome;
+pub use tool_lifecycle::ToolDispatchDroppedInput;
 pub use tool_lifecycle::ToolFinishInput;
 pub use tool_lifecycle::ToolLifecycleFuture;
 pub use tool_lifecycle::ToolResultDisposition;
@@ -378,6 +379,13 @@ pub trait ToolContributor: Send + Sync {
 /// rewriting the invocation. Use `ToolContributor` for owning a tool implementation
 /// and hooks for policy that changes tool payloads.
 pub trait ToolLifecycleContributor: Send + Sync {
+    /// Release extension-owned resources when direct or code-mode dispatch exits.
+    ///
+    /// Called synchronously at normal return, cancellation, or unwind. Cleanup
+    /// must be idempotent, return promptly, avoid host locks, and never panic.
+    /// It must not reinterpret completion telemetry or start new async work.
+    fn on_tool_dispatch_dropped(&self, _input: ToolDispatchDroppedInput<'_>) {}
+
     /// Observe direct calls before readiness, dispatch waiting, and hooks, including blocked calls.
     /// Excludes nested code-mode calls. Observers must return promptly.
     fn on_tool_dispatch(&self, _input: ToolDispatchInput<'_>) {}

@@ -9,6 +9,9 @@ use pretty_assertions::assert_eq;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
+#[path = "dispatch_cleanup_tests.rs"]
+mod dispatch_cleanup_tests;
+
 struct TestHandler {
     tool_name: codex_tools::ToolName,
 }
