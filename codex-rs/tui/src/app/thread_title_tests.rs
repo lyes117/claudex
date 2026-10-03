@@ -175,22 +175,22 @@ async fn automatic_thread_title_respects_origin_metadata_after_switching() -> co
 #[tokio::test]
 async fn slash_rename_generates_editable_title_through_embedded_app_server()
 -> color_eyre::Result<()> {
-    check_thread_title_generation(TitleScenario::Suggestion).await
+    check_thread_title_generation(TitleScenario::Suggestion, /*code_only*/ false).await
 }
 
 #[tokio::test]
 async fn automatic_thread_title_generates_without_a_provisional_name() -> color_eyre::Result<()> {
-    check_thread_title_generation(TitleScenario::Automatic).await
+    check_thread_title_generation(TitleScenario::Automatic, /*code_only*/ false).await
 }
 
 #[tokio::test]
 async fn manual_rename_cancels_running_thread_title() -> color_eyre::Result<()> {
-    check_thread_title_generation(TitleScenario::ManualRename).await
+    check_thread_title_generation(TitleScenario::ManualRename, /*code_only*/ false).await
 }
 
 #[tokio::test]
 async fn overview_rename_cancels_running_thread_title() -> color_eyre::Result<()> {
-    check_thread_title_generation(TitleScenario::OverviewRename).await
+    check_thread_title_generation(TitleScenario::OverviewRename, /*code_only*/ false).await
 }
 
 #[derive(Clone, Copy)]
@@ -201,7 +201,10 @@ enum TitleScenario {
     OverviewRename,
 }
 
-async fn check_thread_title_generation(scenario: TitleScenario) -> color_eyre::Result<()> {
+async fn check_thread_title_generation(
+    scenario: TitleScenario,
+    code_only: bool,
+) -> color_eyre::Result<()> {
     let automatic = !matches!(scenario, TitleScenario::Suggestion);
     let cancel = matches!(
         scenario,
@@ -250,6 +253,24 @@ async fn check_thread_title_generation(scenario: TitleScenario) -> color_eyre::R
         stream_max_retries: Some(0),
         ..ModelProviderInfo::default()
     };
+
+    let mut model = codex_models_manager::model_info::model_info_from_slug("gpt-5.2");
+    model.tool_mode = code_only.then_some(codex_protocol::openai_models::ToolMode::CodeModeOnly);
+    let catalog = codex_protocol::openai_models::ModelsResponse {
+        models: vec![model],
+    };
+    let catalog_path = codex_home.path().join("catalog.json");
+    std::fs::write(&catalog_path, serde_json::to_vec(&catalog)?)?;
+    let config_path = codex_home.path().join("config.toml");
+    let base = std::fs::read_to_string(&config_path)?;
+    std::fs::write(
+        &config_path,
+        format!(
+            "model_catalog_json = {}\n{base}",
+            serde_json::to_string(&catalog_path)?
+        ),
+    )?;
+    app.config.model_catalog = Some(catalog);
 
     let mut tui = crate::tui::test_support::make_test_tui()?;
     let mut app_server = crate::start_embedded_app_server_for_picker(&app.config).await?;
@@ -428,6 +449,7 @@ async fn check_thread_title_generation(scenario: TitleScenario) -> color_eyre::R
     assert!(!render_bottom_popup(&app.chat_widget, /*width*/ 120).contains('⠋'));
 
     let request = response.single_request();
+    assert_eq!(request.body_json()["tools"], serde_json::json!([]));
     assert!(
         request
             .body_json()
@@ -841,4 +863,9 @@ async fn thread_title_progress_clears_failed_requests_and_follows_thread_switche
     assert!(!render_bottom_popup(&app.chat_widget, /*width*/ 120).contains('⠋'));
     app_server.shutdown().await?;
     Ok(())
+}
+
+#[tokio::test]
+async fn automatic_thread_title_keeps_code_only_model_without_tools() -> color_eyre::Result<()> {
+    check_thread_title_generation(TitleScenario::Automatic, /*code_only*/ true).await
 }

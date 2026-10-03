@@ -2,6 +2,8 @@
 
 #[path = "managed_tool_policy_tests.rs"]
 mod tool_policy_tests;
+#[path = "tools_disabled_tests.rs"]
+mod tools_disabled_tests;
 
 use std::future::Future;
 use std::sync::Arc;

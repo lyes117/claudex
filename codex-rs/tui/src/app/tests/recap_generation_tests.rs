@@ -58,6 +58,15 @@ async fn prepare_eligible_recap(app: &mut App, thread_id: ThreadId) {
 
 #[tokio::test]
 async fn recap_generation_uses_bounded_structured_request_and_inserts_result() -> Result<()> {
+    check_recap_generation(/*code_only*/ false).await
+}
+
+#[tokio::test]
+async fn recap_generation_keeps_code_only_model_without_tools() -> Result<()> {
+    check_recap_generation(/*code_only*/ true).await
+}
+
+async fn check_recap_generation(code_only: bool) -> Result<()> {
     let chunks = [
         ev_response_created("recap-response"),
         ev_assistant_message(
@@ -103,6 +112,24 @@ stream_max_retries = 0
         stream_max_retries: Some(0),
         ..ModelProviderInfo::default()
     };
+
+    let mut model = codex_models_manager::model_info::model_info_from_slug(MODEL);
+    model.tool_mode = code_only.then_some(codex_protocol::openai_models::ToolMode::CodeModeOnly);
+    let catalog = codex_protocol::openai_models::ModelsResponse {
+        models: vec![model],
+    };
+    let catalog_path = codex_home.path().join("catalog.json");
+    std::fs::write(&catalog_path, serde_json::to_vec(&catalog)?)?;
+    let config_path = codex_home.path().join("config.toml");
+    let base = std::fs::read_to_string(&config_path)?;
+    std::fs::write(
+        &config_path,
+        format!(
+            "model_catalog_json = {}\n{base}",
+            serde_json::to_string(&catalog_path)?
+        ),
+    )?;
+    app.config.model_catalog = Some(catalog);
 
     let mut app_server = Box::pin(crate::start_embedded_app_server_for_picker(&app.config)).await?;
     let started = app_server.start_thread(&app.config).await?;
