@@ -24,6 +24,7 @@ mod seekable_reader;
 pub(crate) mod session_index;
 mod sqlite_metrics;
 pub mod state_db;
+mod tool_policy_header;
 mod writer_lock;
 
 pub use codex_history::CompactedItem;
@@ -38,6 +39,8 @@ pub use codex_history::RolloutItem;
 pub use codex_history::RolloutLine;
 pub use codex_history::resume_multi_agent_version;
 pub(crate) use codex_protocol::protocol;
+pub use tool_policy_header::SessionPolicyHeader;
+pub use tool_policy_header::parse_session_policy_header;
 
 /// Decodes a persisted rollout record without Serde's flattened-envelope buffering.
 ///

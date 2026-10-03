@@ -111,6 +111,15 @@ async fn read_session_meta_line_preserves_pre_header_and_error_semantics() -> an
         format!("\nnot json\n{ignored_event}\n{contents}"),
     )?;
 
+    assert_eq!(
+        read_session_meta_line(&rollout_path)
+            .await
+            .expect_err("malformed data before the canonical header must not select an ancestor")
+            .kind(),
+        std::io::ErrorKind::InvalidData
+    );
+    fs::write(&rollout_path, format!("\n{ignored_event}\n{contents}"))?;
+
     let session_meta = read_session_meta_line(&rollout_path).await?;
 
     assert_eq!(session_meta.meta.id, thread_id);
@@ -167,6 +176,15 @@ async fn read_session_meta_line_preserves_pre_header_and_error_semantics() -> an
     );
 
     fs::write(&rollout_path, "\nnot json\n")?;
+
+    assert_eq!(
+        read_session_meta_line(&rollout_path)
+            .await
+            .expect_err("malformed data without metadata must fail closed")
+            .kind(),
+        std::io::ErrorKind::InvalidData
+    );
+    fs::write(&rollout_path, "\n")?;
 
     let error = read_session_meta_line(&rollout_path)
         .await

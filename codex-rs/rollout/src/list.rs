@@ -1148,6 +1148,10 @@ async fn read_head_summary(path: &Path, head_limit: usize) -> io::Result<HeadTai
         }
         lines_scanned += 1;
 
+        if !summary.saw_session_meta {
+            crate::parse_session_policy_header(trimmed)?;
+        }
+
         let parsed = crate::parse_rollout_line(trimmed);
         let rollout_line = match parsed {
             Ok(rollout_line) => rollout_line,
@@ -1260,6 +1264,7 @@ async fn read_head_summary(path: &Path, head_limit: usize) -> io::Result<HeadTai
 pub async fn read_head_for_summary(path: &Path) -> io::Result<Vec<serde_json::Value>> {
     let mut lines = compression::open_rollout_line_reader(path).await?;
     let mut head = Vec::new();
+    let mut saw_session_meta = false;
 
     while head.len() < HEAD_RECORD_LIMIT {
         let Some(line) = lines.next_line().await? else {
@@ -1268,6 +1273,9 @@ pub async fn read_head_for_summary(path: &Path) -> io::Result<Vec<serde_json::Va
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
+        }
+        if !saw_session_meta {
+            saw_session_meta = crate::parse_session_policy_header(trimmed)?.is_some();
         }
         if let Ok(rollout_line) = crate::parse_rollout_line(trimmed) {
             match rollout_line.item {
@@ -1301,6 +1309,10 @@ pub async fn read_head_for_summary(path: &Path) -> io::Result<Vec<serde_json::Va
 
     Ok(head)
 }
+
+#[cfg(test)]
+#[path = "tool_policy_listing_tests.rs"]
+mod tool_policy_listing_tests;
 
 fn event_msg_preview(event: &EventMsg) -> Option<String> {
     match event {
@@ -1355,6 +1367,7 @@ pub async fn read_session_meta_line(path: &Path) -> io::Result<SessionMetaLine> 
         if trimmed.is_empty() {
             continue;
         }
+        crate::parse_session_policy_header(trimmed)?;
         let Ok(rollout_line) = crate::parse_rollout_line(trimmed) else {
             if let Ok(value) = serde_json::from_str::<serde_json::Value>(trimmed) {
                 crate::recorder::reject_unknown_thread_history_mode(&value).map_err(|error| {

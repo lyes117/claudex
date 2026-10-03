@@ -1101,6 +1101,9 @@ impl RolloutRecorder {
             if line.trim().is_empty() {
                 continue;
             }
+            if thread_id.is_none() {
+                crate::parse_session_policy_header(&line)?;
+            }
             saw_non_empty_line = true;
             let mut value: Value = match serde_json::from_str(&line) {
                 Ok(value) => value,
