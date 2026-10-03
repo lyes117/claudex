@@ -6,7 +6,6 @@ use std::sync::OnceLock;
 use super::*;
 use crate::empty_state_animation::Greeting;
 use crate::line_truncation::line_width;
-use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
 use crate::style::accent_color;
 use crate::width::display_width;
 
@@ -353,67 +352,25 @@ impl SessionHeaderHistoryCell {
 
 impl HistoryCell for SessionHeaderHistoryCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
-        let width = usize::from(width);
-        let inner_width = width.saturating_sub(/*rhs*/ 4).min(86);
-        let columns = inner_width >= 72;
-        let left_width = if columns {
-            inner_width - 30
-        } else {
-            inner_width
-        };
         let model = self
             .reasoning_label()
             .map(|effort| format!("{} · {effort}", self.model))
             .unwrap_or_else(|| self.model.clone());
-        let mut lines = vec![
-            Line::from(codex_title(self.version)),
-            Line::from(
-                self.greeting
+        let directory = self.format_directory(/*max_width*/ None);
+        super::session_banner::render(
+            super::session_banner::BannerContent {
+                version: self.version,
+                greeting: self
+                    .greeting
                     .get()
                     .map(|greeting| greeting.phrase)
-                    .unwrap_or("Welcome to Claudex")
-                    .fg(accent_color()),
-            ),
-            Line::from(vec![model.into(), " · Codex engine".dim()]),
-            Line::from(self.format_directory(Some(left_width)).dim()),
-        ];
-        if columns {
-            for (line, hint) in lines.iter_mut().zip([
-                "/help commands",
-                "/agents roles",
-                "/tasks session agents",
-                "/workflows runs",
-            ]) {
-                *line = truncate_line_with_ellipsis_if_overflow(line.clone(), left_width);
-                let padding = left_width.saturating_sub(line_width(line));
-                line.spans.push(" ".repeat(padding).into());
-                line.spans.push(" │ ".dim());
-                line.spans.push(hint.fg(accent_color()));
-            }
-        } else {
-            lines.push(Line::from(vec![
-                "/help".fg(accent_color()),
-                " commands · ".dim(),
-                "/tasks".fg(accent_color()),
-                " agents".dim(),
-            ]));
-        }
-        if self.yolo_mode {
-            lines.push(Line::from(vec![
-                "permissions: ".dim(),
-                "YOLO mode".magenta().bold(),
-            ]));
-        }
-        let content_width = if width >= 4 { inner_width } else { width };
-        lines = lines
-            .into_iter()
-            .map(|line| truncate_line_with_ellipsis_if_overflow(line, content_width))
-            .collect();
-        if width >= 4 {
-            with_border_with_inner_width(lines, inner_width)
-        } else {
-            lines
-        }
+                    .unwrap_or("Welcome to Claudex"),
+                model: &model,
+                directory: &directory,
+                unrestricted: self.yolo_mode,
+            },
+            width,
+        )
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {

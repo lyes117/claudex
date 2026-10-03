@@ -118,6 +118,7 @@ mod request_user_input;
 mod search;
 mod separators;
 mod session;
+mod session_banner;
 mod spoken_artifacts;
 mod startup_warnings;
 mod warnings;

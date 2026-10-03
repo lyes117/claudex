@@ -2,9 +2,13 @@
 source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
-╭────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (vtest)                                        │ /help commands              │
-│ Welcome to Claudex                                       │ /agents roles               │
-│ gpt-6.1-sol · high · Codex engine                        │ /tasks session agents       │
-│ project                                                  │ /workflows runs             │
+╭ Claudex vtest ─────────────────────────────────────────────────────────────────────────╮
+│ Welcome to Claudex                                      │ Get started                  │
+│                                                         │ Describe a task to begin     │
+│      ▄████▄                                             │ /help     commands           │
+│     ██  ▄▄▄                                             │ /agents   profiles           │
+│      ▀████▀                                             │ /tasks    session agents     │
+│                                                         │ /workflows runs              │
+│ gpt-6.1-sol · high · Codex engine                                                      │
+│ project                                                                                │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯

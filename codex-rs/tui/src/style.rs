@@ -104,6 +104,15 @@ pub(crate) fn accent_color() -> Color {
     accent_color_for(default_bg())
 }
 
+/// Orange identifies Claudex, with the same contrast and palette checks as informative text.
+pub(crate) fn claudex_brand_color() -> Color {
+    contrast::foreground(
+        /*preferred*/ (215, 119, 87),
+        default_bg(),
+        effective_stdout_color_level(),
+    )
+}
+
 /// Resolve emphasis against the fill actually painted behind it.
 pub(crate) fn accent_color_on(background: Option<Color>) -> Color {
     accent_color_for(background_rgb(background))
