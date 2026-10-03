@@ -97,6 +97,9 @@ impl ChatWidget {
             pet_http_client.clone(),
         );
         let mut widget = Self {
+            claudex_workflow_selection: None,
+            claudex_workflow_rows: Vec::new(),
+            claudex_workflow_generation: 0,
             empty_state_animation: std::cell::RefCell::new(empty_state_animation),
             cyber_policy_notice: Default::default(),
             app_event_tx: app_event_tx.clone(),

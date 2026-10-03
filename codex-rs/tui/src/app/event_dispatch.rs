@@ -39,6 +39,11 @@ impl App {
             && !matches!(
                 &event,
                 AppEvent::OpenDaemonMenu
+                    | AppEvent::PrefillClaudexCommand(_)
+                    | AppEvent::OpenClaudexWorkflow(_)
+                    | AppEvent::ClaudexWorkflowsLoaded { .. }
+                    | AppEvent::ControlClaudexWorkflow { .. }
+                    | AppEvent::ClaudexWorkflowControlled(_)
                     | AppEvent::OpenWarnings
                     | AppEvent::CopyWarning(_)
                     | AppEvent::UpdateWarnings { .. }
@@ -2604,6 +2609,23 @@ impl App {
                 }
             }
             AppEvent::OpenAgentsOverview => self.open_agents_overview(app_server),
+            AppEvent::PrefillClaudexCommand(command) => {
+                self.chat_widget.insert_str(&format!("/{} ", command.command()));
+            }
+            AppEvent::OpenClaudexWorkflow(selection) => {
+                self.chat_widget.open_claudex_workflows(selection);
+            }
+            AppEvent::ClaudexWorkflowsLoaded { generation, selection, result } => {
+                self.chat_widget.apply_claudex_workflows(generation, selection, result);
+            }
+            AppEvent::ControlClaudexWorkflow { run_id, action } => {
+                self.chat_widget.control_claudex_workflow(run_id, action);
+            }
+            AppEvent::ClaudexWorkflowControlled(result) => {
+                if let Err(message) = result {
+                    self.chat_widget.add_error_message(message);
+                }
+            }
             AppEvent::ShowMoreAgentsOverview => self.show_more_agents_overview(app_server),
             AppEvent::NewAgentsOverviewSession { cwd } => {
                 return Box::pin(self.new_agents_overview_session(tui, app_server, cwd)).await;

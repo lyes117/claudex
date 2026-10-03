@@ -291,6 +291,19 @@ pub(crate) enum AppEvent {
     CloseMisalignmentReview,
     /// Open the live command center for recent and locally retained root sessions.
     OpenAgentsOverview,
+    /// Fill the composer from help without executing a command or discarding a draft.
+    PrefillClaudexCommand(crate::slash_command::SlashCommand),
+    OpenClaudexWorkflow(Option<String>),
+    ClaudexWorkflowsLoaded {
+        generation: u64,
+        selection: Option<String>,
+        result: Result<Vec<crate::chatwidget::WorkflowRun>, String>,
+    },
+    ControlClaudexWorkflow {
+        run_id: String,
+        action: String,
+    },
+    ClaudexWorkflowControlled(Result<(), String>),
     ShowMoreAgentsOverview,
     /// Create an empty thread from the command center.
     NewAgentsOverviewSession {

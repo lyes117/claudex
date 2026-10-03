@@ -12,6 +12,7 @@ use strum_macros::IntoStaticStr;
 pub enum SlashCommand {
     // DO NOT ALPHA-SORT! Enum order is presentation order in the popup, so
     // more frequently used commands should be listed first.
+    Help,
     Model,
     Ide,
     Permissions,
@@ -42,6 +43,9 @@ pub enum SlashCommand {
     Voice,
     Goal,
     Agents,
+    Tasks,
+    Workflows,
+    AgentCenter,
     Side,
     Btw,
     Copy,
@@ -89,6 +93,12 @@ impl SlashCommand {
     /// User-visible description shown in the popup.
     pub fn description(self) -> &'static str {
         match self {
+            SlashCommand::Help => "browse commands and keyboard shortcuts",
+            SlashCommand::Tasks => {
+                "view and switch between this session's running and completed subagents"
+            }
+            SlashCommand::Workflows => "view and control local workflow runs",
+            SlashCommand::AgentCenter => "open the Codex shared agent command center",
             SlashCommand::Feedback => "send logs to maintainers",
             SlashCommand::New => "start a new chat during a conversation",
             SlashCommand::Init => "create an AGENTS.md file with instructions for Codex",
@@ -135,7 +145,7 @@ impl SlashCommand {
             SlashCommand::Plan => "switch to Plan mode",
             SlashCommand::Voice => "start or stop voice; use /voice settings to choose a voice",
             SlashCommand::Goal => "set or view the goal for a long-running task",
-            SlashCommand::Agents => "open the agent command center",
+            SlashCommand::Agents => "browse configured Claude and Codex agent roles",
             SlashCommand::MultiAgents => "switch between this session's subagents",
             SlashCommand::Side | SlashCommand::Btw => {
                 "start a side conversation in an ephemeral fork"
@@ -194,6 +204,10 @@ impl SlashCommand {
         matches!(
             self,
             SlashCommand::Copy
+                | SlashCommand::Help
+                | SlashCommand::Tasks
+                | SlashCommand::Workflows
+                | SlashCommand::AgentCenter
                 | SlashCommand::Agents
                 | SlashCommand::Export
                 | SlashCommand::Raw
@@ -219,6 +233,10 @@ impl SlashCommand {
         matches!(
             self,
             SlashCommand::New
+                | SlashCommand::Help
+                | SlashCommand::Tasks
+                | SlashCommand::Workflows
+                | SlashCommand::AgentCenter
                 | SlashCommand::Clear
                 | SlashCommand::Resume
                 | SlashCommand::Agents
@@ -296,7 +314,12 @@ impl SlashCommand {
             | SlashCommand::Btw => true,
             SlashCommand::Rollout => true,
             SlashCommand::TestApproval => true,
-            SlashCommand::Agents | SlashCommand::MultiAgents => true,
+            SlashCommand::Help
+            | SlashCommand::Tasks
+            | SlashCommand::Workflows
+            | SlashCommand::AgentCenter
+            | SlashCommand::Agents
+            | SlashCommand::MultiAgents => true,
             SlashCommand::Theme | SlashCommand::Pets => false,
         }
     }

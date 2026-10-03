@@ -223,7 +223,14 @@ impl ChatComposer {
     }
 
     pub fn set_worktrees_enabled(&mut self, enabled: bool) {
+        let changed = self.worktrees_enabled != enabled;
         self.worktrees_enabled = enabled;
+        if changed && matches!(self.popups.active, ActivePopup::Command(_)) {
+            // Availability changes must update the catalogue, not just its filter.
+            // Keep the dismissal token so a deliberately closed popup stays closed.
+            self.popups.active = ActivePopup::None;
+            self.sync_popups();
+        }
     }
 
     /// Handle key event when the slash-command popup is visible.

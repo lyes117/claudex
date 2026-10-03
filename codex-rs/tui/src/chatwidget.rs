@@ -256,6 +256,9 @@ use crate::text_formatting::truncate_text;
 use crate::tui::FrameRequester;
 mod activity_groups;
 mod activity_presentation;
+mod claudex_commands;
+mod claudex_workflows;
+pub(crate) use claudex_workflows::WorkflowRun;
 mod command_lifecycle;
 mod connector_mentions;
 mod connectors;
@@ -513,6 +516,9 @@ pub(crate) enum ExternalEditorState {
 /// (which view gets Ctrl+C), while `ChatWidget` owns process-level decisions such as interrupting
 /// active work, arming the double-press quit shortcut, and requesting shutdown-first exit.
 pub(crate) struct ChatWidget {
+    claudex_workflow_selection: Option<String>,
+    claudex_workflow_rows: Vec<String>,
+    claudex_workflow_generation: u64,
     pub(crate) empty_state_animation:
         std::cell::RefCell<crate::empty_state_animation::EmptyStateAnimation>,
     pub(crate) cyber_policy_notice: crate::daybreak::NoticeCache,
@@ -2052,7 +2058,7 @@ impl Drop for ChatWidget {
     }
 }
 
-const PLACEHOLDER: &str = "Ask Codex to do anything";
+pub(crate) const PLACEHOLDER: &str = "Try a task, /help for commands, or @path for files";
 const SIDE_PLACEHOLDER: &str = "Ask a follow-up question";
 
 // Extract the first bold (Markdown) element in the form **...** from `s`.

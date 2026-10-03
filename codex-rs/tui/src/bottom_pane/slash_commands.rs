@@ -324,8 +324,12 @@ mod tests {
         assert_eq!(
             commands,
             vec![
+                SlashCommand::Help,
                 SlashCommand::Ide,
                 SlashCommand::Agents,
+                SlashCommand::Tasks,
+                SlashCommand::Workflows,
+                SlashCommand::AgentCenter,
                 SlashCommand::Copy,
                 SlashCommand::Export,
                 SlashCommand::Raw,

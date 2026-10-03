@@ -368,9 +368,18 @@ impl ChatWidget {
                 self.request_empty_side_conversation(cmd);
             }
             SlashCommand::Agents => {
+                self.open_agent_roles();
+            }
+            SlashCommand::Help => {
+                self.open_claudex_help();
+            }
+            SlashCommand::Workflows => {
+                self.open_claudex_workflows(None);
+            }
+            SlashCommand::AgentCenter => {
                 self.app_event_tx.send(AppEvent::OpenAgentsOverview);
             }
-            SlashCommand::MultiAgents => {
+            SlashCommand::Tasks | SlashCommand::MultiAgents => {
                 self.app_event_tx.send(AppEvent::OpenAgentPicker);
             }
             SlashCommand::Permissions => {
@@ -1261,6 +1270,10 @@ impl ChatWidget {
             | SlashCommand::Btw
             | SlashCommand::Keymap
             | SlashCommand::Agents
+            | SlashCommand::Help
+            | SlashCommand::Tasks
+            | SlashCommand::Workflows
+            | SlashCommand::AgentCenter
             | SlashCommand::MultiAgents
             | SlashCommand::Permissions
             | SlashCommand::ElevateSandbox
