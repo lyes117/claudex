@@ -233,21 +233,29 @@ impl Publications {
             if !state.terminal {
                 state.terminal = true;
                 let completion = match outcome {
-                    ToolCallOutcome::Aborted => Completion::new(false, "File tool interrupted"),
+                    ToolCallOutcome::Aborted => {
+                        Completion::new(/*success*/ false, "File tool interrupted")
+                    }
                     ToolCallOutcome::Blocked => {
-                        Completion::new(false, "File tool blocked before execution")
+                        Completion::new(
+                            /*success*/ false,
+                            "File tool blocked before execution",
+                        )
                     }
                     ToolCallOutcome::Completed { .. } | ToolCallOutcome::Failed { .. } => {
                         match disposition {
                             ToolResultDisposition::Rejected(reason) => {
-                                Completion::new(false, reason)
+                                Completion::new(/*success*/ false, reason)
                             }
                             ToolResultDisposition::Feedback(feedback) => {
-                                Completion::new(true, feedback)
+                                Completion::new(/*success*/ true, feedback)
                             }
                             ToolResultDisposition::Unchanged => {
                                 state.result.take().unwrap_or_else(|| {
-                                    Completion::new(false, "File tool produced no result")
+                                    Completion::new(
+                                        /*success*/ false,
+                                        "File tool produced no result",
+                                    )
                                 })
                             }
                         }

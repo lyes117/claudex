@@ -110,7 +110,11 @@ async fn dropped_dispatch_discards_staged_output_and_preserves_an_existing_decis
         Arc::get_mut(&mut capture).unwrap().finish_gate = Semaphore::new(0);
         call.turn_item_emitter = capture.clone();
         registry.begin(&call, FileTool::Read, "{}").await.unwrap();
-        registry.stage("turn", "read", Completion::new(true, "RAW_FILTERED_MARKER"));
+        registry.stage(
+            "turn",
+            "read",
+            Completion::new(/*success*/ true, "RAW_FILTERED_MARKER"),
+        );
         if already_rejected {
             // A decision already sent remains owned by the independent publisher.
             let _ = registry.decide(
@@ -171,7 +175,11 @@ async fn hook_disposition_controls_display_without_original_result() {
     ] {
         let (registry, _, capture, call) = fixture();
         registry.begin(&call, FileTool::Read, "{}").await.unwrap();
-        registry.stage("turn", "read", Completion::new(true, "ORIGINAL_MARKER"));
+        registry.stage(
+            "turn",
+            "read",
+            Completion::new(/*success*/ true, "ORIGINAL_MARKER"),
+        );
         registry
             .finish(
                 "turn",
@@ -190,7 +198,11 @@ async fn completion_survives_callback_forced_abort_after_100ms() {
     let (registry, turn, capture, call) = fixture();
     capture.finish_gate.acquire().await.unwrap().forget();
     registry.begin(&call, FileTool::Read, "{}").await.unwrap();
-    registry.stage("turn", "read", Completion::new(true, "ORIGINAL_MARKER"));
+    registry.stage(
+        "turn",
+        "read",
+        Completion::new(/*success*/ true, "ORIGINAL_MARKER"),
+    );
     let finishing = {
         let registry = registry.clone();
         tokio::spawn(async move {
@@ -245,7 +257,11 @@ async fn abort_during_started_emission_publishes_in_order_and_rejects_late_execu
         (false, "File tool interrupted".into())
     );
     registry.admit(&turn, "turn", "late");
-    registry.stage("turn", "read", Completion::new(true, "LATE_MARKER"));
+    registry.stage(
+        "turn",
+        "read",
+        Completion::new(/*success*/ true, "LATE_MARKER"),
+    );
     assert!(registry.0.lock().unwrap().is_empty());
     assert!(turn.0.lock().unwrap().keys.is_empty());
 }
@@ -254,7 +270,11 @@ async fn abort_during_started_emission_publishes_in_order_and_rejects_late_execu
 async fn finish_and_abort_race_publishes_one_terminal_item() {
     let (registry, turn, capture, call) = fixture();
     registry.begin(&call, FileTool::Read, "{}").await.unwrap();
-    registry.stage("turn", "read", Completion::new(true, "ORIGINAL_MARKER"));
+    registry.stage(
+        "turn",
+        "read",
+        Completion::new(/*success*/ true, "ORIGINAL_MARKER"),
+    );
     tokio::join!(
         registry.close(&turn),
         registry.finish(
