@@ -65,6 +65,7 @@ pub(crate) fn thread_extensions(
         turn_start_admission,
     } = dependencies;
     let mut builder = ExtensionRegistryBuilder::<Config>::with_event_sink(Arc::clone(&event_sink));
+    codex_claude_tools::install(&mut builder);
     if let Some(admission) = turn_start_admission {
         builder.turn_start_admission(admission);
     }

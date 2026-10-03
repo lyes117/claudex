@@ -538,7 +538,13 @@ fn permission_block_in_directories(
                         shell
                             || matches!(
                                 tool,
-                                "view_image" | "read_file" | "list_dir" | "grep_files"
+                                "view_image"
+                                    | "read_file"
+                                    | "list_dir"
+                                    | "grep_files"
+                                    | "Read"
+                                    | "Grep"
+                                    | "Glob"
                             )
                     }
                     "Agent" | "Task" => tool == "spawn_agent",

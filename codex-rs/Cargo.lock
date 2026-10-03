@@ -2081,6 +2081,7 @@ dependencies = [
  "codex-aws-auth",
  "codex-backend-client",
  "codex-chatgpt",
+ "codex-claude-tools",
  "codex-cloud-config",
  "codex-code-mode",
  "codex-config",
@@ -2485,6 +2486,27 @@ dependencies = [
  "codex-utils-cargo-bin",
  "codex-utils-cli",
  "pretty_assertions",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
+name = "codex-claude-tools"
+version = "0.160.0"
+dependencies = [
+ "codex-exec-server",
+ "codex-extension-api",
+ "codex-extension-items",
+ "codex-file-system",
+ "codex-protocol",
+ "codex-tools",
+ "codex-utils-path-uri",
+ "futures",
+ "globset",
+ "pretty_assertions",
+ "regex",
  "serde",
  "serde_json",
  "tempfile",

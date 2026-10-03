@@ -62,6 +62,7 @@ members = [
     "ext/agent",
     "ext/agent-message-board",
     "ext/connectors",
+    "ext/claude-tools",
     "ext/extension-api",
     "ext/goal",
     "ext/git-attribution",
@@ -216,6 +217,7 @@ codex-core-plugins = { path = "core-plugins" }
 codex-diagnostics = { path = "diagnostics" }
 codex-exec = { path = "exec" }
 codex-file-system = { path = "file-system" }
+codex-claude-tools = { path = "ext/claude-tools" }
 codex-exec-server-protocol = { path = "exec-server-protocol" }
 codex-exec-server = { path = "exec-server" }
 codex-exec-server-test-support = { path = "exec-server/tests/support" }
