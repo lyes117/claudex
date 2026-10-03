@@ -41,3 +41,16 @@ Le lecteur d'historique ignore actuellement les records indecodables. Une politi
 8. Les snapshots et clauses ont des tailles bornees ; aucun payload d'outil ou secret d'authentification n'est persiste dans le plafond.
 
 L'outil conversationnel Workflow et le gestionnaire de profils doivent reutiliser ce mecanisme, une fois ses invariants verifies. Une copie de configuration Claude, un prompt disant de respecter une restriction, ou des processus enfants lances sans ce plafond ne constituent pas cette integration.
+
+## Premier etage : heritage parental a chaud
+
+La revue des chemins de construction retient `ThreadManagerState::spawn_thread` comme point commun de composition, avant l'initialisation MCP et la capture dans `Session`. Capturer auparavant un `Arc<ToolPolicy>` dans les chemins qui possedent deja le parent, notamment `InternalSessionParent`, les creations AgentControl et les forks racines. Une eviction du parent pendant la preparation ne doit pas effacer ce plafond.
+
+Deux controles sont indispensables :
+
+- Resoudre la politique locale effective avant composition, y compris le fallback des reviewers Guardian. Inserer directement la politique parentale dans une init vide court-circuiterait ce fallback.
+- Composer avant le retour anticipe d'une reprise active. Si la politique capturee du runtime existant depasse le plafond requis, refuser la reprise au lieu de retourner ce runtime ou de pretendre modifier son plafond immuable.
+
+Pour un fork racine, la source immediate fournit l'autorite, et non son parent historique. Les tests de fork dont la source est dechargee pendant la preparation, de parent inline hors registre, de reprise active et de visibilite de l'init par MCP/lifecycle offrent les fixtures natives a etendre. Ajouter les chemins frais, full-fork, last-N et reprise arretee avec parent resident, en verifiant l'exposition et le dispatch effectifs, dont CodeMode.
+
+Cet etage ne suffit pas a un parent froid ou absent : tant que la restauration durable n'existe pas, aucune autorite parentale ne peut etre reconstruite dans ce cas. Les contraintes des profils Claude restent refusees jusqu'aux preuves du stage durable.
