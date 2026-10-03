@@ -38,12 +38,31 @@ async fn filesystem_errors_are_bounded_before_direct_and_code_mode_propagation()
                 arguments: r#"{"file_path":"fixture"}"#.into(),
             },
         };
-        let message = FileTool::Read
-            .handle(call)
-            .await
-            .err()
-            .expect("The filesystem must fail")
-            .to_string();
+        let publications = Arc::new(publication::Publications::default());
+        publications.admit(
+            &Arc::new(publication::TurnCalls::default()),
+            "turn",
+            "error",
+        );
+        let message = NativeFileTool {
+            tool: FileTool::Read,
+            publications: publications.clone(),
+        }
+        .handle(call)
+        .await
+        .err()
+        .expect("The filesystem must fail")
+        .to_string();
+        publications
+            .finish(
+                "turn",
+                "error",
+                codex_extension_api::ToolCallOutcome::Failed {
+                    handler_executed: true,
+                },
+                codex_extension_api::ToolResultDisposition::Unchanged,
+            )
+            .await;
         assert!(
             message.len() <= MAX_RESPONSE_BYTES,
             "Filesystem errors must obey the model-context byte cap"
@@ -74,11 +93,14 @@ async fn incompatible_payload_does_not_echo_an_arbitrary_call_name() {
             input: "invalid".into(),
         },
     };
-    let failure = FileTool::Read
-        .handle(call)
-        .await
-        .err()
-        .expect("Reject the incompatible payload");
+    let failure = NativeFileTool {
+        tool: FileTool::Read,
+        publications: Arc::new(publication::Publications::default()),
+    }
+    .handle(call)
+    .await
+    .err()
+    .expect("Reject the incompatible payload");
     assert!(matches!(failure, FunctionCallError::Fatal(_)));
     assert!(failure.to_string().len() <= MAX_RESPONSE_BYTES);
     assert!(!failure.to_string().contains("SYNTHETIC_CALL_NAME"));

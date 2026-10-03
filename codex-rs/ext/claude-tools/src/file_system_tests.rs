@@ -7,6 +7,7 @@ pub(super) struct CheckedFileSystem {
     pub sandbox: FileSystemSandboxContext,
     pub walk_truncated: bool,
     pub metadata_error: Option<String>,
+    pub metadata_panic: bool,
     inner: LocalFileSystem,
 }
 
@@ -16,6 +17,7 @@ impl CheckedFileSystem {
             sandbox,
             walk_truncated: false,
             metadata_error: None,
+            metadata_panic: false,
             inner: LocalFileSystem::unsandboxed(),
         }
     }
@@ -47,6 +49,9 @@ impl ExecutorFileSystem for CheckedFileSystem {
         sandbox: Option<&'a FileSystemSandboxContext>,
     ) -> ExecutorFileSystemFuture<'a, FileMetadata> {
         assert_eq!(sandbox, Some(&self.sandbox));
+        if self.metadata_panic {
+            return Box::pin(async { panic!("Synthetic filesystem panic after tool started") });
+        }
         if let Some(message) = &self.metadata_error {
             return Box::pin(async move { Err(std::io::Error::other(message.clone())) });
         }

@@ -229,7 +229,30 @@ async fn direct_and_code_mode_outputs_bound_adversarial_token_dense_text() {
                 arguments: r#"{"file_path":"dense"}"#.into(),
             },
         };
-        let result = FileTool::Read.handle(call).await.unwrap().log_output();
+        let publications = Arc::new(publication::Publications::default());
+        publications.admit(
+            &Arc::new(publication::TurnCalls::default()),
+            &call.turn_id,
+            &call.call_id,
+        );
+        let turn_id = call.turn_id.clone();
+        let call_id = call.call_id.clone();
+        let result = NativeFileTool {
+            tool: FileTool::Read,
+            publications: publications.clone(),
+        }
+        .handle(call)
+        .await
+        .unwrap()
+        .log_output();
+        publications
+            .finish(
+                &turn_id,
+                &call_id,
+                codex_extension_api::ToolCallOutcome::Completed { success: true },
+                codex_extension_api::ToolResultDisposition::Unchanged,
+            )
+            .await;
         assert!(result.len() <= 8192);
         assert!(
             result.len() > 6000,

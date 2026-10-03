@@ -16,7 +16,10 @@ use pretty_assertions::assert_eq;
 
 use crate::FileTool;
 use crate::MAX_RESPONSE_BYTES;
+use crate::NativeFileTool;
 use crate::ToolName;
+use crate::publication::Publications;
+use crate::publication::TurnCalls;
 use crate::tests::environment;
 
 #[derive(Default)]
@@ -55,7 +58,28 @@ async fn file_tool_cards_reflect_real_success_and_failure_once() {
                 arguments: serde_json::json!({"file_path":file_path}).to_string(),
             },
         };
-        let result = FileTool::Read.handle(call).await;
+        let publications = Arc::new(Publications::default());
+        publications.admit(&Arc::new(TurnCalls::default()), "turn", "read");
+        let tool = NativeFileTool {
+            tool: FileTool::Read,
+            publications: publications.clone(),
+        };
+        let result = tool.handle(call).await;
+        assert_eq!(
+            capture.0.lock().unwrap().len(),
+            1,
+            "No completion before PostToolUse"
+        );
+        publications
+            .finish(
+                "turn",
+                "read",
+                codex_extension_api::ToolCallOutcome::Completed {
+                    success: result.is_ok(),
+                },
+                codex_extension_api::ToolResultDisposition::Unchanged,
+            )
+            .await;
         let captured = capture.0.lock().unwrap();
         assert_eq!(captured.len(), 2);
         assert_eq!([captured[0].0, captured[1].0], ["started", "completed"]);

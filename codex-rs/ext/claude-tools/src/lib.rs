@@ -19,6 +19,8 @@ use codex_utils_path_uri::PathConvention;
 use serde_json::Value;
 
 mod display;
+mod lifecycle;
+mod publication;
 mod read;
 mod search;
 mod spec;
@@ -44,13 +46,18 @@ impl FileTool {
     }
 }
 
-impl<'call> ToolExecutor<ToolCall<'call>> for FileTool {
+struct NativeFileTool {
+    tool: FileTool,
+    publications: Arc<publication::Publications>,
+}
+
+impl<'call> ToolExecutor<ToolCall<'call>> for NativeFileTool {
     fn tool_name(&self) -> ToolName {
-        ToolName::plain(self.name())
+        ToolName::plain(self.tool.name())
     }
 
     fn spec(&self) -> ToolSpec {
-        spec::file_tool_spec(*self)
+        spec::file_tool_spec(self.tool)
     }
 
     fn yields_to_client_tools(&self) -> bool {
@@ -81,13 +88,23 @@ impl<'call> ToolExecutor<ToolCall<'call>> for FileTool {
             };
             validate_environment(environment)?;
             let budget = call.response_byte_budget(MAX_RESPONSE_BYTES);
-            let display = display::DisplayCall::start(&call, *self, arguments).await;
+            let mut guard = publication::ExecutionGuard {
+                registry: Some(Arc::clone(&self.publications)),
+                turn_id: call.turn_id.clone(),
+                call_id: call.call_id.clone(),
+            };
+            self.publications.begin(&call, self.tool, arguments).await?;
             let result = tokio::time::timeout(Duration::from_secs(30), async {
-                match self {
-                    Self::Read => read::read(environment, arguments, budget).await,
-                    Self::Glob | Self::Grep => {
-                        search::search(environment, arguments, budget, matches!(self, Self::Grep))
-                            .await
+                match self.tool {
+                    FileTool::Read => read::read(environment, arguments, budget).await,
+                    FileTool::Glob | FileTool::Grep => {
+                        search::search(
+                            environment,
+                            arguments,
+                            budget,
+                            matches!(self.tool, FileTool::Grep),
+                        )
+                        .await
                     }
                 }
             })
@@ -101,7 +118,15 @@ impl<'call> ToolExecutor<ToolCall<'call>> for FileTool {
                     Ok(result)
                 }
             });
-            display.finish(&call, &result).await;
+            self.publications.stage(
+                &call.turn_id,
+                &call.call_id,
+                match &result {
+                    Ok(value) => display::Completion::new(true, value),
+                    Err(error) => display::Completion::new(false, error),
+                },
+            );
+            guard.registry = None;
             let result = result?;
             Ok(Box::new(JsonToolOutput::new(result).with_external_context()) as _)
         })
@@ -114,17 +139,24 @@ impl ToolContributor for FileTools {
     fn tools(
         &self,
         _: &ExtensionData,
-        _: &ExtensionData,
+        thread: &ExtensionData,
     ) -> Vec<Arc<dyn for<'call> ToolExecutor<ToolCall<'call>>>> {
         [FileTool::Read, FileTool::Glob, FileTool::Grep]
             .into_iter()
-            .map(|tool| Arc::new(tool) as Arc<dyn for<'call> ToolExecutor<ToolCall<'call>>>)
+            .map(|tool| {
+                Arc::new(NativeFileTool {
+                    tool,
+                    publications: lifecycle::publications(thread),
+                }) as Arc<dyn for<'call> ToolExecutor<ToolCall<'call>>>
+            })
             .collect()
     }
 }
 
 pub fn install<C: Sync>(registry: &mut ExtensionRegistryBuilder<C>) {
     registry.tool_contributor(Arc::new(FileTools));
+    registry.tool_lifecycle_contributor(Arc::new(FileTools));
+    registry.turn_lifecycle_contributor(Arc::new(FileTools));
 }
 
 fn error(message: impl std::fmt::Display) -> FunctionCallError {
