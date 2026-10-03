@@ -152,14 +152,14 @@ impl McpToolCallCell {
         let node_repl = self.result_kind() == McpResultKind::NodeRepl;
         let compact = node_repl && mode == McpToolCallRenderMode::Display;
         let bullet = match status {
-            Some(true) => "•".green().bold(),
-            Some(false) => "•".red().bold(),
+            Some(true) => "●".green().bold(),
+            Some(false) => "●".red().bold(),
             None => activity_indicator(
                 Some(self.start_time),
                 MotionMode::from_animations_enabled(self.animations_enabled),
                 ReducedMotionIndicator::StaticBullet,
             )
-            .unwrap_or_else(|| "•".dim()),
+            .unwrap_or_else(|| "●".dim()),
         };
         let header_text = if status.is_some() {
             "Called"
@@ -216,7 +216,7 @@ impl McpToolCallCell {
                 adaptive_wrap_hyperlink_lines(&[HyperlinkLine::new(invocation_line)], opts);
             lines.extend(prefix_hyperlink_lines(
                 body_lines,
-                "  └ ".dim(),
+                "  ⎿ ".dim(),
                 "    ".into(),
             ));
         }
@@ -224,7 +224,7 @@ impl McpToolCallCell {
         let detail_lines = self.render_detail_lines(width, mode);
         if !detail_lines.is_empty() {
             let initial_prefix = if inline_invocation {
-                "  └ ".dim()
+                "  ⎿ ".dim()
             } else {
                 "    ".into()
             };

@@ -232,9 +232,9 @@ impl HistoryCell for UserHistoryCell {
             lines.extend(prefix_hyperlink_lines(
                 wrapped_message,
                 if self.spoken {
-                    "› ".red().bold()
+                    "❯ ".red().bold()
                 } else {
-                    "› ".bold().dim()
+                    "❯ ".bold().dim()
                 },
                 "  ".into(),
             ));
@@ -386,7 +386,7 @@ impl ReasoningSummaryCell {
         crate::terminal_hyperlinks::adaptive_wrap_hyperlink_lines(
             &summary_lines,
             RtOptions::new(width as usize)
-                .initial_indent("• ".dim().into())
+                .initial_indent("● ".dim().into())
                 .subsequent_indent("  ".into()),
         )
     }
@@ -454,7 +454,7 @@ impl HistoryCell for AgentMessageCell {
         let mut wrapped = Vec::new();
         for (index, line) in self.lines.iter().enumerate() {
             let initial_indent = if index == 0 && self.is_first_line {
-                "• ".dim().into()
+                "● ".dim().into()
             } else {
                 "  ".into()
             };
@@ -584,12 +584,12 @@ impl AgentMarkdownCell {
             else {
                 return prefix_hyperlink_lines(
                     vec![HyperlinkLine::new(Line::default())],
-                    "• ".dim(),
+                    "● ".dim(),
                     "  ".into(),
                 );
             };
 
-            // Re-render markdown from source at the current width. Reserve 2 columns for the "• " /
+            // Re-render markdown from source at the current width. Reserve 2 columns for the "● " /
             // " " prefix prepended below.
             let lines = crate::markdown::render_markdown_agent_with_list_spacing(
                 &self.markdown_source,
@@ -607,7 +607,7 @@ impl AgentMarkdownCell {
             };
             normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
                 lines,
-                "• ".dim(),
+                "● ".dim(),
                 "  ".into(),
             ))
         };
@@ -688,7 +688,7 @@ impl HistoryCell for StreamingAgentTailCell {
         normalize_whitespace_only_hyperlink_lines(prefix_hyperlink_lines(
             self.lines.clone(),
             if self.is_first_line {
-                "• ".dim()
+                "● ".dim()
             } else {
                 "  ".into()
             },

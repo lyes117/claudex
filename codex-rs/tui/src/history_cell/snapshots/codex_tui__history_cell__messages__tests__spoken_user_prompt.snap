@@ -1,13 +1,12 @@
 ---
 source: tui/src/history_cell/messages_tests.rs
-assertion_line: 107
 expression: "format!(\"{buf:?}\")"
 ---
 Buffer {
     area: Rect { x: 0, y: 0, width: 40, height: 3 },
     content: [
         "                                        ",
-        "› hello from voice                      ",
+        "❯ hello from voice                      ",
         "                                        ",
     ],
     styles: [

@@ -4,14 +4,14 @@ expression: "snapshots.join(\"\\n\\n\")"
 ---
 width 120
 
-› from this site, write out the ascii for solid octants 18 columns
+❯ from this site, write out the ascii for solid octants 18 columns
   https://example.test/terminal-link-wrapping/solid-octants
   [Image #1] See (https://example.test/a).
 
 
 width 60
 
-› from this site, write out the ascii for solid octants 18
+❯ from this site, write out the ascii for solid octants 18
   columns
   https://example.test/terminal-link-wrapping/solid-octants
   [Image #1] See (https://example.test/a).
@@ -19,7 +19,7 @@ width 60
 
 width 24
 
-› from this site, write
+❯ from this site, write
   out the ascii for
   solid octants 18
   columns

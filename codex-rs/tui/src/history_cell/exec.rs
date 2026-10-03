@@ -40,7 +40,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
         let waited_only = self.stdin.is_empty();
 
         let mut header_spans = if waited_only {
-            vec!["• Waited for background terminal".bold()]
+            vec!["● Waited for background terminal".bold()]
         } else {
             vec!["↳ ".dim(), "Interacted with background terminal".bold()]
         };
@@ -67,7 +67,7 @@ impl HistoryCell for UnifiedExecInteractionCell {
         let input_wrapped = adaptive_wrap_hyperlink_lines(
             &plain_hyperlink_lines(input_lines),
             RtOptions::new(wrap_width)
-                .initial_indent(Line::from("  └ ".dim()))
+                .initial_indent(Line::from("  ⎿ ".dim()))
                 .subsequent_indent(Line::from("    ".dim())),
         );
         out.extend(input_wrapped);

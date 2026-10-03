@@ -123,14 +123,14 @@ impl WebSearchCell {
 impl HistoryCell for WebSearchCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let bullet = if self.completed {
-            "•".dim()
+            "●".dim()
         } else {
             activity_indicator(
                 Some(self.start_time),
                 MotionMode::from_animations_enabled(self.animations_enabled),
                 ReducedMotionIndicator::StaticBullet,
             )
-            .unwrap_or_else(|| "•".dim())
+            .unwrap_or_else(|| "●".dim())
         };
         let mut line = Line::from(vec![bullet, " ".into()]);
         let mut summary = self.summary();
@@ -145,11 +145,11 @@ impl HistoryCell for WebSearchCell {
     }
 
     fn transcript_lines(&self, width: u16) -> Vec<Line<'static>> {
-        PrefixedWrappedHistoryCell::new(self.summary(), vec!["• ".dim()], "  ").display_lines(width)
+        PrefixedWrappedHistoryCell::new(self.summary(), vec!["● ".dim()], "  ").display_lines(width)
     }
 
     fn transcript_hyperlink_lines(&self, width: u16) -> Vec<HyperlinkLine> {
-        PrefixedWrappedHistoryCell::new(self.summary(), vec!["• ".dim()], "  ")
+        PrefixedWrappedHistoryCell::new(self.summary(), vec!["● ".dim()], "  ")
             .display_hyperlink_lines(width)
     }
 

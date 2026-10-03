@@ -138,12 +138,12 @@ impl DynamicToolCallData {
 
     fn header(&self) -> Line<'static> {
         let (marker, verb) = if self.interrupted {
-            ("•".red().bold(), "Interrupted")
+            ("●".red().bold(), "Interrupted")
         } else {
             match self.status {
-                DynamicToolCallStatus::InProgress => ("•".dim(), "Calling"),
-                DynamicToolCallStatus::Completed => ("•".green(), "Called"),
-                DynamicToolCallStatus::Failed => ("•".red().bold(), "Failed"),
+                DynamicToolCallStatus::InProgress => ("●".dim(), "Calling"),
+                DynamicToolCallStatus::Completed => ("●".green(), "Called"),
+                DynamicToolCallStatus::Failed => ("●".red().bold(), "Failed"),
             }
         };
         let mut line = Line::from(vec![
@@ -220,7 +220,7 @@ impl HistoryCell for DynamicToolCallCell {
         for (index, mut line) in output.into_iter().enumerate() {
             line.spans.insert(
                 /*index*/ 0,
-                if index == 0 { "  └ " } else { "    " }.dim(),
+                if index == 0 { "  ⎿ " } else { "    " }.dim(),
             );
             lines.push(clipped_line(line.dim(), width));
         }
@@ -242,7 +242,7 @@ impl HistoryCell for DynamicToolCallCell {
         lines.extend(adaptive_wrap_hyperlink_lines(
             &plain_hyperlink_lines(details),
             RtOptions::new(usize::from(width).max(/*other*/ 1))
-                .initial_indent("  └ ".dim().into())
+                .initial_indent("  ⎿ ".dim().into())
                 .subsequent_indent("    ".into()),
         ));
         lines

@@ -79,16 +79,16 @@ impl ExecCell {
         }
         let failed = call.output.as_ref().filter(|output| output.exit_code != 0);
         let marker = if failed.is_some() {
-            "•".red().bold()
+            "●".red().bold()
         } else if self.is_active() {
             activity_indicator(
                 call.start_time,
                 MotionMode::from_animations_enabled(self.animations_enabled()),
                 ReducedMotionIndicator::StaticBullet,
             )
-            .unwrap_or_else(|| "•".dim())
+            .unwrap_or_else(|| "●".dim())
         } else {
-            "•".green().bold()
+            "●".green().bold()
         };
         let title = if let Some(output) = failed {
             format!("Failed (exit {})", output.exit_code)
@@ -116,7 +116,7 @@ impl ExecCell {
                 let mut line = ansi_escape_line(raw.as_ref());
                 line.spans.insert(
                     /*index*/ 0,
-                    if index == 0 { "  └ " } else { "    " }.dim(),
+                    if index == 0 { "  ⎿ " } else { "    " }.dim(),
                 );
                 line.spans.iter_mut().for_each(|span| {
                     span.style = span.style.add_modifier(Modifier::DIM);
@@ -124,7 +124,7 @@ impl ExecCell {
                 lines.push(clipped_line(line, width));
             }
             if lines.len() == 1 && !call.is_unified_exec_interaction() {
-                lines.push(clipped_line(Line::from("  └ (no output)".dim()), width));
+                lines.push(clipped_line(Line::from("  ⎿ (no output)".dim()), width));
             }
         }
         lines

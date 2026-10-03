@@ -20,15 +20,15 @@ impl McpToolCallCell {
     pub(super) fn compact_mcp_lines(&self, width: u16) -> Vec<HyperlinkLine> {
         let status = self.success();
         let (marker, verb) = match status {
-            Some(true) => ("•".green().bold(), "Called"),
-            Some(false) => ("•".red().bold(), "Failed"),
+            Some(true) => ("●".green().bold(), "Called"),
+            Some(false) => ("●".red().bold(), "Failed"),
             None => (
                 activity_indicator(
                     Some(self.start_time),
                     MotionMode::from_animations_enabled(self.animations_enabled),
                     ReducedMotionIndicator::StaticBullet,
                 )
-                .unwrap_or_else(|| "•".dim()),
+                .unwrap_or_else(|| "●".dim()),
                 "Calling",
             ),
         };
@@ -121,7 +121,7 @@ impl McpToolCallCell {
         for (index, detail) in details.into_iter().enumerate() {
             lines.push(clipped_line(
                 Line::from(vec![
-                    if index == 0 { "  └ " } else { "    " }.dim(),
+                    if index == 0 { "  ⎿ " } else { "    " }.dim(),
                     detail.dim(),
                 ]),
                 width,

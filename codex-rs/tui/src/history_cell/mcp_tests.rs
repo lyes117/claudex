@@ -216,8 +216,8 @@ fn code_mode_output_shares_a_row_budget_across_blocks() {
         .collect::<Vec<_>>()
         .join("\n");
     insta::assert_snapshot!(display, @r"
-    • Inspect page
-      └ Page title
+    ● Inspect page
+      ⎿ Page title
         Navigation
         Main content
         +3 lines (ctrl+t to view transcript)
@@ -261,8 +261,8 @@ fn code_mode_output_preserves_trailing_failure_diagnostics_in_transcript() {
         .collect::<Vec<_>>()
         .join("\n");
     insta::assert_snapshot!(display, @r"
-    • Inspect page
-      └ Script failed
+    ● Inspect page
+      ⎿ Script failed
         Page title
         Navigation
         +6 lines (ctrl+t to view transcript)
@@ -427,7 +427,7 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
             .take(2)
             .map(ToString::to_string)
             .collect::<Vec<_>>(),
-        vec!["  └ Returned", "    image"],
+        vec!["  ⎿ Returned", "    image"],
     );
 
     let compact = cell.compact_hyperlink_lines(/*width*/ 80);
@@ -453,20 +453,20 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
         .join("\n");
     insta::assert_snapshot!(format!("compact:\n{compact}\n\nhistory:\n{display}\n\ntranscript:\n{transcript}"), @r#"
     compact:
-    • Called Inspect results
-      └ Returned image
+    ● Called Inspect results
+      ⎿ Returned image
         image-side output
         unknown-side output
 
     history:
-    • Inspect results
-      └ Returned image
+    ● Inspect results
+      ⎿ Returned image
         image-side output
         unknown-side output
 
     transcript:
-    • Called node_repl.js({"title":"Inspect results"})
-      └ Returned image
+    ● Called node_repl.js({"title":"Inspect results"})
+      ⎿ Returned image
         Script completed
         Output:
         image-side output
@@ -511,14 +511,14 @@ fn code_mode_preserves_text_fields_on_nontext_and_unknown_blocks() {
         .join("\n");
     insta::assert_snapshot!(format!("history:\n{display}\n\ntranscript:\n{transcript}"), @r"
     history:
-    • Called cua_repl.js
-      └ Returned image
+    ● Called cua_repl.js
+      ⎿ Returned image
         image-side output
         unknown-side output
 
     transcript:
-    • Called cua_repl.js()
-      └ Returned image
+    ● Called cua_repl.js()
+      ⎿ Returned image
         Script completed
         Output:
         image-side output
@@ -542,7 +542,7 @@ fn titled_image_call_keeps_error_and_full_title_when_narrow() {
     );
     assert_eq!(
         cell.display_lines(/*width*/ 80)[0].to_string(),
-        format!("• {title}")
+        format!("● {title}")
     );
     cell.complete(
         Duration::ZERO,
@@ -556,7 +556,7 @@ fn titled_image_call_keeps_error_and_full_title_when_narrow() {
     );
     let lines = cell.display_lines(/*width*/ 32);
     assert!(lines[0].width() <= 32);
-    assert_eq!(lines[0].spans[0].style, "•".red().bold().style);
+    assert_eq!(lines[0].spans[0].style, "●".red().bold().style);
     insta::assert_snapshot!(
         lines
             .iter()
@@ -660,7 +660,7 @@ fn mcp_result_preview_preserves_source_text_and_excludes_tree_gutters() {
         assert!(
             source
                 .iter()
-                .all(|line| !line.starts_with('•') && !line.starts_with("  └ "))
+                .all(|line| !line.starts_with('●') && !line.starts_with("  ⎿ "))
         );
     }
 }

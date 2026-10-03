@@ -150,7 +150,7 @@ pub(crate) fn output_lines(
         let prefix = if !include_prefix {
             ""
         } else if i == 0 && include_angle_pipe {
-            "  └ "
+            "  ⎿ "
         } else {
             "    "
         };
@@ -206,7 +206,7 @@ fn activity_marker(start_time: Option<Instant>, animations_enabled: bool) -> Spa
         MotionMode::from_animations_enabled(animations_enabled),
         ReducedMotionIndicator::StaticBullet,
     )
-    .unwrap_or_else(|| "•".dim())
+    .unwrap_or_else(|| "●".dim())
 }
 
 impl HistoryCell for ExecCell {
@@ -317,7 +317,7 @@ impl ExecCell {
                 if self.is_active() {
                     activity_marker(self.active_start_time(), self.animations_enabled())
                 } else {
-                    "•".dim()
+                    "●".dim()
                 },
                 " ".into(),
                 if self.is_active() {
@@ -441,7 +441,7 @@ impl ExecCell {
 
         out.extend(prefix_hyperlink_lines(
             out_indented,
-            "  └ ".dim(),
+            "  ⎿ ".dim(),
             "    ".into(),
         ));
         out
@@ -460,8 +460,8 @@ impl ExecCell {
             .duration
             .and_then(|_| call.output.as_ref().map(|o| o.exit_code == 0));
         let bullet = match success {
-            Some(true) => "•".green().bold(),
-            Some(false) => "•".red().bold(),
+            Some(true) => "●".green().bold(),
+            Some(false) => "●".red().bold(),
             None => activity_marker(call.start_time, self.animations_enabled()),
         };
         let is_interaction = call.is_unified_exec_interaction();
@@ -832,7 +832,7 @@ impl ExecDisplayLayout {
 const EXEC_DISPLAY_LAYOUT: ExecDisplayLayout = ExecDisplayLayout::new(
     PrefixedBlock::new("  │ ", "  │ "),
     /*command_continuation_max_lines*/ 2,
-    PrefixedBlock::new("  └ ", "    "),
+    PrefixedBlock::new("  ⎿ ", "    "),
 );
 
 #[cfg(test)]
@@ -955,7 +955,7 @@ mod tests {
     #[test]
     fn truncate_lines_middle_keeps_omitted_count_in_line_units() {
         let lines = vec![
-            Line::from("  └ short"),
+            Line::from("  ⎿ short"),
             Line::from("    this-is-a-very-long-token-that-wraps-many-rows"),
             Line::from(format!(
                 "    {}",
@@ -1127,8 +1127,8 @@ mod tests {
             .join("\n");
 
         insta::assert_snapshot!(rendered, @r"
-        • Exploring
-          └ Read SKILL.md
+        ● Exploring
+          ⎿ Read SKILL.md
         ");
     }
 
@@ -1159,7 +1159,7 @@ mod tests {
 
     #[test]
     fn truncate_lines_middle_does_not_truncate_blank_prefixed_output_lines() {
-        let mut lines = vec![Line::from("  └ start")];
+        let mut lines = vec![Line::from("  ⎿ start")];
         lines.extend(std::iter::repeat_n(Line::from("    "), 26));
         lines.push(Line::from("    end"));
 
@@ -1234,7 +1234,7 @@ mod tests {
             .collect();
 
         assert_eq!(first, second);
-        assert_eq!(first, vec!["• Running echo done".to_string()]);
+        assert_eq!(first, vec!["● Running echo done".to_string()]);
     }
 
     #[test]

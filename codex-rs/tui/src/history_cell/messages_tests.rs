@@ -150,20 +150,20 @@ fn spoken_user_messages_have_a_red_chevron_without_changing_raw_text() {
         .display_hyperlink_lines(/*width*/ 40)
         .into_iter()
         .flat_map(|line| line.line.spans)
-        .find(|span| span.content == "› ")
+        .find(|span| span.content == "❯ ")
         .expect("spoken user marker");
 
     assert!(
         spoken
             .display_lines(/*width*/ 40)
             .iter()
-            .any(|line| line.to_string() == "› hello from voice")
+            .any(|line| line.to_string() == "❯ hello from voice")
     );
     assert!(
         typed
             .display_lines(/*width*/ 40)
             .iter()
-            .any(|line| { line.to_string() == "›   hello from voice" })
+            .any(|line| { line.to_string() == "❯   hello from voice" })
     );
     assert_eq!(marker.style.fg, Some(Color::Red));
     assert!(marker.style.add_modifier.contains(Modifier::BOLD));
@@ -175,7 +175,7 @@ fn spoken_user_messages_have_a_red_chevron_without_changing_raw_text() {
     assert!(typed.display_lines(/*width*/ 40).iter().any(|line| {
         line.spans
             .iter()
-            .any(|span| span.content == "› " && span.style.fg != Some(Color::Red))
+            .any(|span| span.content == "❯ " && span.style.fg != Some(Color::Red))
     }));
 
     let area = Rect::new(
@@ -232,7 +232,7 @@ fn finalized_assistant_file_citation_renders_as_local_path_snapshot() {
 
     let rendered = ratatui::text::Text::from(cell.display_lines(/*width*/ 80));
 
-    insta::assert_snapshot!(rendered, @"• Generated Quarterly Report.xlsx.");
+    insta::assert_snapshot!(rendered, @"● Generated Quarterly Report.xlsx.");
 }
 
 #[test]
@@ -337,7 +337,7 @@ fn spoken_artifacts_link_only_real_workspace_files_and_preserve_existing_urls() 
             line.line, line.hyperlinks[0].columns, line.hyperlinks[1].columns
         ),
         @r"
-    • 中 src/lib.rs:42 and https://example.com
+    ● 中 src/lib.rs:42 and https://example.com
     5..18 -> <workspace>/src/lib.rs
     23..42 -> https://example.com
     "
@@ -381,5 +381,5 @@ fn spoken_windows_relative_paths_keep_original_text_and_link_the_workspace_file(
     assert!(line.line.spans.iter().any(|span| {
         span.content == "src\\lib.rs:42" && span.style.add_modifier.contains(Modifier::UNDERLINED)
     }));
-    insta::assert_snapshot!(line.line.to_string(), @"• Updated src\\lib.rs:42");
+    insta::assert_snapshot!(line.line.to_string(), @"● Updated src\\lib.rs:42");
 }
