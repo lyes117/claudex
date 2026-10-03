@@ -8,9 +8,9 @@ import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { isDeepStrictEqual } from 'node:util';
+import { atomic, cleanLabel, createRunController, listRuns, readRun, sendControl, validRunId, WorkflowStopped } from './workflow-control.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const atomic = (path, value) => { writeFileSync(`${path}.part`, JSON.stringify(value, null, 2)); renameSync(`${path}.part`, path); };
 
 export function validate(value, schema, path = '$') {
   if (!schema || typeof schema !== 'object') throw new Error('Invalid output schema');
@@ -63,11 +63,13 @@ async function executeAgent(prompt, options, context) {
     let persistenceError;
     child.stdin.on('error', error => { persistenceError ||= error; terminate(); });
     const timeout = setTimeout(terminate, 20 * 60 * 1000);
+    context.signal.addEventListener('abort', terminate, { once: true });
     process.once('SIGINT', terminate);
-    child.once('error', error => { clearTimeout(timeout); process.removeListener('SIGINT', terminate); reject(error); });
+    child.once('error', error => { clearTimeout(timeout); context.signal.removeEventListener('abort', terminate); process.removeListener('SIGINT', terminate); reject(error); });
     child.once('close', code => {
       try { context.unregisterChild(child.pid); } catch (error) { persistenceError ||= error; }
       clearTimeout(timeout); process.removeListener('SIGINT', terminate);
+      context.signal.removeEventListener('abort', terminate);
       if (persistenceError) return reject(persistenceError);
       if (code !== 0) return reject(new Error(`Codex agent failed (${code}); run checkpoint retained`));
       try { const result = readFileSync(output, 'utf8').trim(); fulfill(options.schema ? JSON.parse(result) : result); } catch (error) { reject(error); }
@@ -78,7 +80,7 @@ async function executeAgent(prompt, options, context) {
 }
 
 export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId = randomUUID(), runsRoot = join(homedir(), '.claudex', 'workflow-runs'), execute = executeAgent, nativeLockHeld = false, log = message => process.stderr.write(`${message}\n`) }) {
-  if (!/^[a-zA-Z0-9_-]+$/.test(runId)) throw new Error('Invalid run ID');
+  if (!validRunId(runId)) throw new Error('Invalid run ID');
   const script = readFileSync(resolve(scriptPath), 'utf8');
   const directory = join(resolve(runsRoot), runId);
   mkdirSync(directory, { recursive: true });
@@ -98,10 +100,17 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
   writeFileSync(fd, JSON.stringify({ pid: process.pid, children: [] }));
   closeSync(fd);
   let queue = Promise.resolve();
+  let fatalError;
+  let controller;
+  let finalStatus = 'failed';
   try {
     const fingerprint = hash({ script, args, cwd: resolve(cwd) });
-    const state = existsSync(checkpoint) ? JSON.parse(readFileSync(checkpoint, 'utf8')) : { fingerprint, results: [] };
-    if (state.fingerprint !== fingerprint) throw new Error('Script, arguments or cwd changed; use a new run ID');
+    const identity = hash({ args, cwd: resolve(cwd) });
+    const state = existsSync(checkpoint) ? JSON.parse(readFileSync(checkpoint, 'utf8')) : { fingerprint, identity, results: [] };
+    if (state.identity ? state.identity !== identity : state.fingerprint !== fingerprint) throw new Error('Arguments or cwd changed, or legacy checkpoint cannot replay edited script; use a new run ID');
+    if (!Array.isArray(state.results) || state.results.length > 1000) throw new Error('Malformed workflow checkpoint');
+    controller = createRunController(directory, { runId, scriptPath: resolve(scriptPath), cwd: resolve(cwd) });
+    let replayInvalidated = false;
     let index = 0;
     const agent = (prompt, options = {}) => {
       if (typeof prompt !== 'string' || !prompt.trim()) return Promise.reject(new Error('Agent prompt must be nonempty'));
@@ -112,18 +121,31 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
       if (position >= 1000) throw new Error('1000-agent run limit');
       const key = hash({ prompt, options });
       const task = queue.then(async () => {
-        if (state.results[position]) {
-          if (state.results[position].key !== key) throw new Error('Agent sequence changed; use a new run ID');
+        controller.agent(position, { index: position, label: cleanLabel(options.label || `Agent ${position + 1}`), phase: cleanLabel(options.phase || controller.state.phase || ''), status: 'pending' });
+        await controller.gate();
+        if (!replayInvalidated && state.results[position]?.key === key && state.results[position].status !== 'failed') {
+          controller.agent(position, { status: 'cached' });
           return structuredClone(state.results[position].result);
         }
+        if (!replayInvalidated) { replayInvalidated = true; state.results.splice(position); }
         log(`[${options.phase || 'Agent'}] ${options.label || position + 1}`);
-        const result = await execute(prompt, options, { index: position, directory, cwd: resolve(cwd), registerChild: pid => { children.add(pid); updateLock(); }, unregisterChild: pid => { children.delete(pid); updateLock(); } });
-        if (options.schema) validate(result, options.schema);
-        state.results[position] = { key, result: structuredClone(result) };
+        controller.agent(position, { status: 'running', startedAt: Date.now() });
+        let result;
+        let failed = false;
+        try {
+          result = await execute(prompt, options, { index: position, directory, cwd: resolve(cwd), signal: controller.signal, registerChild: pid => { children.add(pid); updateLock(); }, unregisterChild: pid => { children.delete(pid); updateLock(); } });
+          if (options.schema) validate(result, options.schema);
+        } catch {
+          result = null; failed = true;
+          log(`Agent ${position + 1} did not complete; checkpoint retained`);
+        }
+        controller.agent(position, { status: failed ? controller.signal.aborted ? 'stopped' : 'failed' : 'completed', endedAt: Date.now() });
+        state.results[position] = { key, result: structuredClone(result), status: failed ? 'failed' : 'completed' };
+        state.fingerprint = fingerprint; state.identity = identity;
         atomic(checkpoint, state);
         return result;
       });
-      queue = task;
+      queue = task.catch(error => { fatalError ||= error; });
       task.catch(() => {});
       return task;
     };
@@ -135,26 +157,45 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
       return results;
     };
     const pipeline = (items, task) => parallel(items.map((item, index) => () => task(item, index)));
-    const context = vm.createContext({ args, agent, parallel, pipeline, phase: title => log(`[Phase] ${title}`), log,
+    const context = vm.createContext({ args: structuredClone(args), agent, parallel, pipeline, phase: title => { controller.phase(title); log(`[Phase] ${cleanLabel(title)}`); }, log,
       Workflow: () => { throw new Error('Nested Workflow calls are unsupported'); }, workflow: () => { throw new Error('Nested workflows are unsupported'); } }, { codeGeneration: { strings: false, wasm: false } });
-    vm.runInContext('Math.random = () => { throw new Error("Pass randomness through args") }; Date.now = () => { throw new Error("Pass timestamps through args") };', context);
+    vm.runInContext('Math.random = () => { throw new Error("Pass randomness through args") }; const NativeDate = Date; Date = class extends NativeDate { constructor(...args) { if (!args.length) throw new Error("Pass timestamps through args"); super(...args); } static now() { throw new Error("Pass timestamps through args") } };', context);
     const body = script.replace(/\bexport\s+const\s+meta\s*=/, 'const meta =');
-    const result = await new vm.Script(`(async () => {\n${body}\n})()`, { filename: resolve(scriptPath) }).runInContext(context, { timeout: 10000 });
+    const result = await Promise.race([new vm.Script(`(async () => {\n${body}\n})()`, { filename: resolve(scriptPath) }).runInContext(context, { timeout: 10000 }), controller.stopRequested]);
     await queue;
+    if (fatalError) throw fatalError;
+    if (controller.signal.aborted) throw new WorkflowStopped();
+    if (state.fingerprint !== fingerprint || state.results.length > index) {
+      state.fingerprint = fingerprint; state.results.length = index; atomic(checkpoint, state);
+    }
     atomic(join(directory, 'result.json'), { result: result ?? null });
+    finalStatus = 'completed';
     log(`Run ${runId} complete: ${directory}`);
     return result;
-  } finally { await queue.catch(() => {}); unlinkSync(lock); }
+  } catch (error) {
+    if (!(error instanceof WorkflowStopped)) controller?.fail(error);
+    throw error;
+  } finally {
+    await queue.catch(() => {});
+    try { controller?.finish(finalStatus); } finally { unlinkSync(lock); }
+  }
 }
 
 async function main() {
   const [scriptPath, ...rest] = process.argv.slice(2);
-  if (!scriptPath || scriptPath === '--help') { console.log('claudex workflow <script.js> [--args JSON|@file] [--run-id ID] [--cwd PATH]\nTrusted scripts; agents run sequentially through the compiled Codex fork.'); return; }
+  if (!scriptPath || scriptPath === '--help') { console.log('claudex workflow <script.js> [--args JSON|@file] [--run-id ID] [--cwd PATH]\nclaudex workflow list|status <ID>|pause <ID>|resume <ID>|stop <ID>\nTrusted scripts; agents run sequentially through the compiled Codex fork.'); return; }
+  const runsRoot = join(homedir(), '.claudex', 'workflow-runs');
+  if (scriptPath === 'list') { console.log(JSON.stringify(listRuns(runsRoot), null, 2)); return; }
+  if (scriptPath === 'status') { console.log(JSON.stringify(readRun(runsRoot, rest[0]), null, 2)); return; }
+  if (['pause', 'resume', 'stop'].includes(scriptPath)) { console.log(JSON.stringify(sendControl(runsRoot, rest[0], scriptPath))); return; }
   const options = { scriptPath, nativeLockHeld: process.env.CLAUDEX_WORKFLOW_LOCK_HELD === '1' };
+  const seen = new Set();
   console.error(`Executing trusted workflow script: ${resolve(scriptPath)} (Node runtime, not a security sandbox)`);
   for (let index = 0; index < rest.length; index += 2) {
     const [key, value] = rest.slice(index, index + 2);
     if (!value) throw new Error(`Missing value for ${key}`);
+    if (seen.has(key)) throw new Error('Duplicate workflow option');
+    seen.add(key);
     if (key === '--args') options.args = JSON.parse(value.startsWith('@') ? readFileSync(value.slice(1), 'utf8') : value);
     else if (key === '--run-id') options.runId = value;
     else if (key === '--cwd') options.cwd = resolve(value);

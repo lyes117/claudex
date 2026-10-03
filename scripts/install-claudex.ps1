@@ -31,6 +31,7 @@ Copy-Item -LiteralPath (Get-Command rg.exe -ErrorAction Stop).Source -Destinatio
 $manifest = @{ layoutVersion=1; version='0.160.0'; target='x86_64-pc-windows-msvc'; variant='claudex'; entrypoint='bin/claudex.exe'; resourcesDir='codex-resources'; pathDir='codex-path' }
 [IO.File]::WriteAllText((Join-Path (Split-Path $install) 'codex-package.json'), ($manifest | ConvertTo-Json))
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'workflows.mjs') -Destination (Join-Path $install 'workflows.mjs') -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'workflow-control.mjs') -Destination (Join-Path $install 'workflow-control.mjs') -Force
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 $entries = @($userPath -split ';' | Where-Object { $_ })
 if (-not ($entries | Where-Object { $_.TrimEnd('\') -ieq $install.TrimEnd('\') })) {

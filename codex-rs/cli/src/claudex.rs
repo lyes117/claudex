@@ -56,15 +56,49 @@ pub(crate) fn dispatch() -> anyhow::Result<Option<()>> {
                     script.display()
                 );
             }
-            let args = args.collect::<Vec<_>>();
+            let mut args = args.collect::<Vec<_>>();
+            if args.is_empty()
+                || args.first().is_some_and(|arg| {
+                    matches!(
+                        arg.as_str(),
+                        "--help" | "list" | "status" | "pause" | "resume" | "stop"
+                    )
+                })
+            {
+                run_workflow_runtime(&executable, &script, &args)?;
+                return Ok(Some(()));
+            }
+            let mut seen = std::collections::BTreeSet::new();
+            let options = args[1..].chunks_exact(2);
+            if !options.remainder().is_empty() {
+                anyhow::bail!("Workflow options require a value");
+            }
+            for pair in options {
+                if !matches!(pair[0].as_str(), "--args" | "--run-id" | "--cwd") {
+                    anyhow::bail!("Unknown workflow option");
+                }
+                if !seen.insert(pair[0].clone()) {
+                    anyhow::bail!("Duplicate workflow option");
+                }
+            }
+            if !seen.contains("--run-id") {
+                args.extend([
+                    "--run-id".to_string(),
+                    codex_protocol::ThreadId::new().to_string(),
+                ]);
+            }
             let run_id = args
-                .windows(2)
+                .get(1..)
+                .unwrap_or_default()
+                .chunks_exact(2)
                 .find(|pair| pair[0] == "--run-id")
                 .map(|pair| pair[1].as_str())
                 .unwrap_or("new-run");
-            if !run_id
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+            if run_id.is_empty()
+                || run_id.len() > 128
+                || !run_id
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
             {
                 anyhow::bail!("Invalid workflow run ID");
             }
@@ -85,17 +119,26 @@ pub(crate) fn dispatch() -> anyhow::Result<Option<()>> {
             let _guard = lock.try_write().map_err(|_| {
                 anyhow::anyhow!("Workflow run is already active; exclusive OS lock unavailable")
             })?;
-            let status = std::process::Command::new("node")
-                .arg(script)
-                .args(args)
-                .env("CLAUDEX_BIN", executable)
-                .env("CLAUDEX_WORKFLOW_LOCK_HELD", "1")
-                .status()?;
-            if !status.success() {
-                anyhow::bail!("Workflow failed with {status}");
-            }
+            run_workflow_runtime(&executable, &script, &args)?;
             Ok(Some(()))
         }
         _ => Ok(None),
     }
+}
+
+fn run_workflow_runtime(
+    executable: &std::path::Path,
+    script: &std::path::Path,
+    args: &[String],
+) -> anyhow::Result<()> {
+    let status = std::process::Command::new("node")
+        .arg(script)
+        .args(args)
+        .env("CLAUDEX_BIN", executable)
+        .env("CLAUDEX_WORKFLOW_LOCK_HELD", "1")
+        .status()?;
+    if !status.success() {
+        anyhow::bail!("Workflow failed with {status}");
+    }
+    Ok(())
 }
