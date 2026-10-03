@@ -240,7 +240,7 @@ async fn code_mode_claude_file_tools_respect_the_same_permission_gate() -> Resul
     Ok(())
 }
 
-async fn arrange_files(app: &TestAppServer, denied: bool) -> Result<String> {
+pub(super) async fn arrange_files(app: &TestAppServer, denied: bool) -> Result<String> {
     let environment = app.auto_env()?;
     let root = &environment.selection().cwd;
     let file_system = environment.environment().get_filesystem();

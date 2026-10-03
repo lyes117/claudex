@@ -11,6 +11,7 @@ mod application_network;
 mod attestation;
 mod auto_env;
 mod bedrock_setup;
+mod claude_file_lifecycle;
 mod claude_file_tools;
 mod claude_tool_collisions;
 mod client_metadata;
