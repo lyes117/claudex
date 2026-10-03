@@ -1,6 +1,6 @@
 # Restrictions natives des sous-agents : conception verifiee
 
-Etat : heritage parental a chaud implemente dans les sources et soumis a une revue adversariale ; restauration durable et contraintes des profils Claude encore ouvertes. Les profils qui portent des contraintes non prises en charge restent refuses. Le cycle a chaud n'est pas encore installe.
+Etat : heritage parental a chaud implemente, revu et installe avec les helpers compiles depuis les sources ; restauration durable et contraintes des profils Claude encore ouvertes. Les profils qui portent des contraintes non prises en charge restent refuses. Les controles d'exposition et de dispatch de plafonds utilisent des sessions natives de fixture, pas une inference ChatGPT sous profil Claude contraint.
 
 ## Contrat de compatibilite
 

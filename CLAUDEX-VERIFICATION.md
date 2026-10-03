@@ -6,11 +6,21 @@ Date : 3 octobre 2026. Ce rapport concerne un fork local fonctionnel, avec une c
 
 - Dépôt : `C:\Users\lyesb\claudex`, branche `claudex/main`.
 - Base officielle : `openai/codex`, tag `rust-v0.160.0`, commit `a956835d020762cb2b570053af06f643a11c0ecc`. Aucun fork distant publié.
-- L'exécutable principal provient des sources modifiées du fork. Les auxiliaires inchangés proviennent du paquet officiel local 0.160.0 ; ce choix conserve le moteur Windows, le code-mode et les ressources existantes.
+- L'exécutable principal, CodeMode et les deux helpers Windows sont désormais compilés depuis les sources du fork. Les ressources voix et ripgrep restent issues du paquet officiel local 0.160.0. La reconstruction utilise la paire V8 sandbox officielle OpenAI et sa vérification de manifeste épinglée, sans désactiver le sandbox V8.
 - Installation : `%LOCALAPPDATA%\Programs\Claudex\bin\claudex.exe`. Répertoire ajouté au PATH utilisateur, sans remplacement de Codex ou Claude.
 - Reconstruction initiale réussie avec MSVC, profil `dev-small` (`.build-tools/build-shipping.log`), puis reconstruction TUI/workflows réussie (`.build-tools/build-cycle6.log`). SHA-256 du binaire installé identique à celui compilé à chaque installation vérifiée.
 - Authentification officielle partagée avec Codex : `Logged in using ChatGPT`. Le mode ChatGPT est forcé par défaut dans le fork. Aucune clé API distincte requise pour les appels vérifiés.
 - Aucun dépôt existant migré. Aucun `CLAUDE.md`, `.claude`, `.mcp.json`, fichier de configuration global ou secret copié dans le fork.
+
+### Cycle héritage à chaud et helpers compilés
+
+`scripts/build-claudex.ps1 -IncludeTestFixtures` réussit en **6 min 25 s** : `.build-tools/build-hot-policy-native-all-cycle1.log`. Il compile le CLI, le host CodeMode, les deux helpers Windows et le serveur MCP de fixture. Les probes et Cargo utilisent le même cwd ; le dossier de sortie est fixé. Le contrôle réel confirme qu'un `CARGO_TARGET_DIR` différent est supplanté et que le cwd ainsi que les variables V8/repo du caller sont restaurés. Les refus de cible ARM et de cible dans un CARGO_HOME relatif sont aussi vérifiés, sans lancement de build incompatible.
+
+Installation réussie : `.build-tools/install-hot-policy-native-all-cycle1.log`. Les quatre SHA-256 source/installé correspondent. CLI : `DB5C77407419CDB89C05A680B4EDB4BF2E7E79F48B6322AB0EFAA44E04106E44`. Host CodeMode : `A6785BEA38024D4EDE31A9F31844421135A383BC5466EC0F894FCE94051EF98D`. PowerShell sans profil et CMD, avec le PATH utilisateur/machine, lancent `claudex 0.160.0` et reconnaissent `Logged in using ChatGPT`.
+
+Les sources du runtime V8 et du host passent **151/151** tests (`tests-source-v8-runtime-host-cycle1.log`). L'API de plafonds passe **12/12**, dont 1600 compositions. Les vérifications natives d'héritage à chaud sont détaillées dans [CLAUDEX-TOOL-POLICY-DESIGN.md](CLAUDEX-TOOL-POLICY-DESIGN.md). Ce cycle n'active pas les contraintes des profils Claude : la restauration durable est encore ouverte. La suite core complète reste non verte ; les tests qui provisionnent des comptes sandbox Windows ne sont pas exécutés dans les reprises ciblées de ce cycle.
+
+Avec cette nouvelle installation et son helper CodeMode compilé, `scripts/file-tools-live.test.mjs` passe réellement via ChatGPT : `Read`, `Grep`, `Glob`, modes direct/CodeMode et restauration des cartes natives. Preuves : `.build-tools/file-tools-live-source-host-hot-policy-cycle1.log` et `.build-tools/live-file-tools/run-MkFkG3/verified.json`. Le catalogue public de fixture sélectionne les deux modes ; aucune authentification n'est copiée. Cette inférence ne vérifie pas un profil Claude contraint ni une reprise durable de plafond.
 
 ## Vérifications fonctionnelles réelles
 
