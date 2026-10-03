@@ -1,12 +1,13 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
+assertion_line: 478
 expression: "normalize_voice_snapshot_directory(&format!(\"Other task:\\n{other_ui}\\nRestored owner:\\n{}\\n{rendered}\",\nrender_bottom_popup(&app.chat_widget, 80)), &app.config.cwd,)"
 ---
 Other task:
 ────────────────────────────────────────────────────────────────────────────────
 › Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
-  gpt-test default · /tmp/project
+  gpt-test default · /tmp/project   · ← for agents
 Restored owner:
 ────────────────────────────────────────────────────────────────────────────────
  voice ● listening                                  ctrl+x mute     /voice stop
@@ -14,7 +15,7 @@ Restored owner:
 
 › Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
-  gpt-test default · /tmp/project
+  gpt-test default · /tmp/project   · ← for agents
 ╭──────────────────────────────────────────────────────────────────────────────╮
 │ ✻ Claudex (v0.160.0)                           │ /help commands              │
 │ Welcome to Claudex                             │ /agents roles               │

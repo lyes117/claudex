@@ -358,10 +358,7 @@ impl App {
             && key_event.kind == KeyEventKind::Press
         {
             let modifiers = key_event.modifiers;
-            if key_event.code == KeyCode::Esc
-                && modifiers == KeyModifiers::NONE
-                && !matches!(self.app_server_target, AppServerTarget::Embedded)
-            {
+            if key_event.code == KeyCode::Esc && modifiers == KeyModifiers::NONE {
                 self.open_agents_overview(app_server);
                 return;
             }
@@ -567,7 +564,6 @@ impl App {
                 && key_event.code == KeyCode::Left
                 && key_event.modifiers == KeyModifiers::NONE
                 && self.chat_widget.agents_navigation_key_available()
-                && !matches!(self.app_server_target, AppServerTarget::Embedded)
             {
                 self.open_agents_overview(app_server);
             }

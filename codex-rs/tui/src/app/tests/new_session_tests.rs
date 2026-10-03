@@ -182,7 +182,7 @@ async fn replacement_uses_server_defaults_and_preserves_explicit_launch_settings
             ────────────────────────────────────────────────────────────────────────────────
             › Try a task, /help for commands, or @path for files
             ────────────────────────────────────────────────────────────────────────────────
-              server-model high · <PROJECT>
+              server-model high · <PROJECT> · ← for agents
             ");
         }
         server.shutdown().await?;

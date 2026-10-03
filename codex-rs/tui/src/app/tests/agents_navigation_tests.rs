@@ -2,7 +2,7 @@ use super::*;
 use pretty_assertions::assert_eq;
 
 #[tokio::test]
-async fn agents_navigation_requires_local_daemon() -> Result<()> {
+async fn agents_navigation_supports_embedded_and_local_daemon() -> Result<()> {
     let (mut app, mut events, _op_rx) = make_test_app_with_channels().await;
     let mut tui = crate::tui::test_support::make_test_tui()?;
     let mut app_server = start_config_write_test_app_server(&app).await?;
@@ -19,7 +19,10 @@ async fn agents_navigation_requires_local_daemon() -> Result<()> {
             allow_embedded_fallback: true,
         },
     ] {
-        let enabled = matches!(target, AppServerTarget::LocalDaemon { .. });
+        let enabled = matches!(
+            target,
+            AppServerTarget::Embedded | AppServerTarget::LocalDaemon { .. }
+        );
         app.app_server_target = target;
         let init = app.chatwidget_init_for_forked_or_resumed_thread(
             &mut tui,

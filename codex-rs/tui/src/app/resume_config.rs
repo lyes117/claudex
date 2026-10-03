@@ -183,9 +183,6 @@ impl App {
             if options.cancel == Some(crate::onboarding::TrustCancelAction::CurrentTask) {
                 return Err(AppRunControl::Continue);
             }
-            if matches!(self.app_server_target, AppServerTarget::Embedded) {
-                return Err(AppRunControl::Exit(ExitReason::UserRequested));
-            }
             if self
                 .chat_widget
                 .selected_index_for_present_view(AGENTS_OVERVIEW_VIEW_ID)

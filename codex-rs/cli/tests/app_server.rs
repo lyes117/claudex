@@ -39,6 +39,10 @@ fn agents_accept_interactive_configuration_overrides() -> Result<()> {
     for args in [
         ["-c", "features.multi_agent_mode=true", "agents"].as_slice(),
         ["--enable", "multi_agent_mode", "agents"].as_slice(),
+        #[cfg(any(unix, windows))]
+        ["--no-daemon", "agents"].as_slice(),
+        #[cfg(any(unix, windows))]
+        ["agents", "--no-daemon"].as_slice(),
         ["--yolo", "agents"].as_slice(),
         ["--search", "agents"].as_slice(),
         ["--model", "gpt-5", "agents"].as_slice(),
@@ -53,8 +57,20 @@ fn agents_accept_interactive_configuration_overrides() -> Result<()> {
         cmd.assert()
             .failure()
             .stderr(contains("stdin is not a terminal"));
+        assert!(!codex_home.path().join("app-server-daemon").exists());
     }
 
+    Ok(())
+}
+
+#[test]
+fn embedded_agents_reject_explicit_remote_before_connecting() -> Result<()> {
+    let codex_home = TempDir::new()?;
+    let mut cmd = codex_command(codex_home.path())?;
+    cmd.args(["agents", "--no-daemon", "--remote", "ws://fixture.invalid"])
+        .assert()
+        .failure()
+        .stderr(contains("--no-daemon cannot be used with --remote"));
     Ok(())
 }
 

@@ -743,7 +743,7 @@ impl App {
         ));
         chat_widget.set_agents_navigation_enabled(matches!(
             app_server_target,
-            AppServerTarget::LocalDaemon { .. }
+            AppServerTarget::Embedded | AppServerTarget::LocalDaemon { .. }
         ));
         let thread_and_widget_ms = thread_and_widget_started_at.elapsed().as_millis();
         chat_widget.windows_sandbox_local_server = !app_server_target.uses_remote_workspace()

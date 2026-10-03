@@ -730,24 +730,22 @@ async fn delete_current_thread_navigates_only_after_success() -> Result<()> {
         let side_id = side.session.thread_id;
         app.side_threads
             .insert(side_id, SideThreadState::new(thread_id));
-        if !matches!(app.app_server_target, AppServerTarget::Embedded) {
-            // The recording proxy rejects the next unsubscribe after a failed fork.
-            side_config.cwd = side_config.cwd.join("failure");
-            assert!(
-                server
-                    .fork_side_thread(&app.local_settings, side_config, thread_id)
-                    .await
-                    .is_err()
-            );
-            assert_matches!(
-                app.delete_current_thread(&mut tui, &mut server).await?,
-                AppRunControl::Continue
-            );
-            assert_eq!(app.active_thread_id, Some(thread_id));
-            assert!(app.side_threads.contains_key(&side_id));
-            assert!(!app.chat_widget.has_active_view());
-            assert_eq!(recorded_params(&requests, "thread/delete").len(), 1);
-        }
+        // The recording proxy rejects the next unsubscribe after a failed fork.
+        side_config.cwd = side_config.cwd.join("failure");
+        assert!(
+            server
+                .fork_side_thread(&app.local_settings, side_config, thread_id)
+                .await
+                .is_err()
+        );
+        assert_matches!(
+            app.delete_current_thread(&mut tui, &mut server).await?,
+            AppRunControl::Continue
+        );
+        assert_eq!(app.active_thread_id, Some(thread_id));
+        assert!(app.side_threads.contains_key(&side_id));
+        assert!(!app.chat_widget.has_active_view());
+        assert_eq!(recorded_params(&requests, "thread/delete").len(), 1);
         let (tx, mut events) = tokio::sync::mpsc::unbounded_channel();
         app.app_event_tx = AppEventSender::new(tx);
         let control =
@@ -759,37 +757,32 @@ async fn delete_current_thread_navigates_only_after_success() -> Result<()> {
                 .await
                 .is_err()
         );
-        if matches!(app.app_server_target, AppServerTarget::Embedded) {
-            assert_matches!(control, AppRunControl::Exit(ExitReason::ThreadRemoved));
-            assert!(recorded_params(&requests, "thread/unsubscribe").is_empty());
-        } else {
-            assert_matches!(control, AppRunControl::Continue);
-            assert!(app.side_threads.is_empty());
-            assert_eq!(
-                recorded_params(&requests, "thread/unsubscribe"),
-                vec![serde_json::json!({"threadId": side_id.to_string()}); 2]
-            );
-            loop {
-                let event = tokio::time::timeout(Duration::from_secs(/*secs*/ 5), events.recv())
-                    .await?
-                    .expect("command center refresh");
-                let refreshed = matches!(&event, AppEvent::AgentsOverviewThreadsLoaded { .. });
-                Box::pin(app.handle_event(&mut tui, &mut server, event)).await?;
-                if refreshed {
-                    break;
-                }
+        assert_matches!(control, AppRunControl::Continue);
+        assert!(app.side_threads.is_empty());
+        assert_eq!(
+            recorded_params(&requests, "thread/unsubscribe"),
+            vec![serde_json::json!({"threadId": side_id.to_string()}); 2]
+        );
+        loop {
+            let event = tokio::time::timeout(Duration::from_secs(/*secs*/ 5), events.recv())
+                .await?
+                .expect("command center refresh");
+            let refreshed = matches!(&event, AppEvent::AgentsOverviewThreadsLoaded { .. });
+            Box::pin(app.handle_event(&mut tui, &mut server, event)).await?;
+            if refreshed {
+                break;
             }
-            assert_eq!(
-                (
-                    app.active_thread_id,
-                    app.primary_thread_id,
-                    app.chat_widget.thread_id()
-                ),
-                (None, None, None)
-            );
-            assert!(app.chat_widget.composer_is_empty());
-            assert!(app.chat_widget.has_active_view());
         }
+        assert_eq!(
+            (
+                app.active_thread_id,
+                app.primary_thread_id,
+                app.chat_widget.thread_id()
+            ),
+            (None, None, None)
+        );
+        assert!(app.chat_widget.composer_is_empty());
+        assert!(app.chat_widget.has_active_view());
         assert_eq!(
             recorded_params(&requests, "thread/delete"),
             vec![
@@ -975,8 +968,9 @@ async fn archive_current_thread_reports_success_only_after_archiving() -> Result
 
     app.active_thread_id = Some(thread_id);
     assert_matches!(
-        app.archive_current_thread(&mut tui, &mut app_server).await?,
-        AppRunControl::Exit(ExitReason::Archived(archived_id)) if archived_id == thread_id
+        app.archive_current_thread(&mut tui, &mut app_server)
+            .await?,
+        AppRunControl::Continue
     );
 
     app_server.shutdown().await?;
@@ -984,9 +978,10 @@ async fn archive_current_thread_reports_success_only_after_archiving() -> Result
 }
 
 #[tokio::test]
-async fn archive_current_thread_returns_shared_servers_to_agents() -> Result<()> {
+async fn archive_current_thread_returns_native_servers_to_agents() -> Result<()> {
     let endpoint = crate::resolve_remote_addr("ws://127.0.0.1:4500")?;
     for target in [
+        AppServerTarget::Embedded,
         AppServerTarget::LocalDaemon {
             allow_embedded_fallback: true,
             endpoint: endpoint.clone(),

@@ -516,7 +516,7 @@ impl App {
         }
         chat_widget.set_agents_navigation_enabled(matches!(
             self.app_server_target,
-            AppServerTarget::LocalDaemon { .. }
+            AppServerTarget::Embedded | AppServerTarget::LocalDaemon { .. }
         ));
         chat_widget.inherit_backend_banner_state(&mut self.chat_widget);
         chat_widget.inherit_security_setup(&mut self.chat_widget);
@@ -898,7 +898,6 @@ impl App {
                 }
                 // Lifecycle notifications may arrive before the thread/start response.
                 if !self.config.ephemeral
-                    && !matches!(self.app_server_target, AppServerTarget::Embedded)
                     && !self.pending_primary_events.iter().any(|event| {
                         matches!(event, ThreadBufferedEvent::Notification(notification)
                             if matches!(notification.as_ref(),
@@ -1028,9 +1027,7 @@ impl App {
                     None
                 };
                 let thread_id = started.session.thread_id;
-                if !self.config.ephemeral
-                    && !matches!(self.app_server_target, AppServerTarget::Embedded)
-                {
+                if !self.config.ephemeral {
                     self.agents_overview
                         .blank_sessions
                         .insert(thread_id, started.clone());

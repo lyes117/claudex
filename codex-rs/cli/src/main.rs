@@ -150,7 +150,7 @@ struct MultitoolCli {
 
 #[derive(Debug, clap::Subcommand)]
 enum Subcommand {
-    /// Browse all agent sessions on the shared local app-server daemon.
+    /// Browse native agent sessions and saved histories.
     Agents(AgentsCommand),
 
     /// Internal: forward a local TCP socket through an HTTP/3 CONNECT proxy.
@@ -340,7 +340,7 @@ struct DebugTraceReduceCommand {
 
 #[derive(Debug, Parser)]
 struct AgentsCommand {
-    /// The agents overview requires a shared server; this option is rejected.
+    /// Keep the agents dashboard in this terminal's embedded server.
     #[arg(long, hide = true)]
     no_daemon: bool,
     #[clap(flatten)]
@@ -2393,17 +2393,10 @@ async fn run_interactive_tui(
     remote_auth_token_env: Option<String>,
     arg0_paths: Arg0DispatchPaths,
 ) -> std::io::Result<AppExitInfo> {
-    if interactive.no_daemon {
-        if interactive.agents_overview {
-            return Ok(AppExitInfo::fatal(
-                "--no-daemon cannot be used with codex agents. The agents overview requires a shared server. Use codex --no-daemon to work without it.",
-            ));
-        }
-        if remote.is_some() {
-            return Ok(AppExitInfo::fatal(
-                "--no-daemon cannot be used with --remote.",
-            ));
-        }
+    if interactive.no_daemon && remote.is_some() {
+        return Ok(AppExitInfo::fatal(
+            "--no-daemon cannot be used with --remote.",
+        ));
     }
     if let Some(prompt) = interactive.prompt.take() {
         // Normalize CRLF/CR to LF so CLI-provided text can't leak `\r` into TUI state.
@@ -2429,7 +2422,7 @@ async fn run_interactive_tui(
     }
 
     #[cfg(any(unix, windows))]
-    if interactive.agents_overview && remote.is_none() {
+    if interactive.agents_overview && remote.is_none() && !interactive.no_daemon {
         if !std::io::stdin().is_terminal() {
             return Ok(AppExitInfo::fatal("stdin is not a terminal"));
         }

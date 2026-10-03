@@ -2947,21 +2947,6 @@ impl App {
                 self.stop_agents_overview_thread(app_server, thread_id)
                     .await;
             }
-            #[cfg(any(unix, windows))]
-            AppEvent::StartAgentsDaemon => {
-                self.start_agents_daemon();
-            }
-            #[cfg(any(unix, windows))]
-            AppEvent::AgentsDaemonStarted { result } => match result {
-                Ok(()) => self.chat_widget.add_info_message(
-                    "Background server started. Run `codex agents` in another terminal; this session remains unchanged."
-                        .to_string(),
-                    /*hint*/ None,
-                ),
-                Err(error) => self
-                    .chat_widget
-                    .add_error_message(format!("Failed to start the background server: {error}")),
-            },
             AppEvent::OpenAgentPicker => {
                 self.open_agent_picker(app_server).await;
             }
@@ -3653,11 +3638,9 @@ impl App {
             return Ok(AppRunControl::Continue);
         }
 
-        if !matches!(self.app_server_target, AppServerTarget::Embedded) {
-            self.shutdown_side_threads(app_server).await;
-            if !self.side_threads.is_empty() {
-                return Ok(AppRunControl::Continue);
-            }
+        self.shutdown_side_threads(app_server).await;
+        if !self.side_threads.is_empty() {
+            return Ok(AppRunControl::Continue);
         }
 
         let result = async {
@@ -3667,9 +3650,6 @@ impl App {
         }
         .await;
         Ok(match result {
-            Ok(()) if matches!(self.app_server_target, AppServerTarget::Embedded) => {
-                AppRunControl::Exit(ExitReason::Archived(thread_id))
-            }
             Ok(()) => {
                 self.track_agents_overview_notification(&ServerNotification::ThreadArchived(
                     codex_app_server_protocol::ThreadArchivedNotification {
@@ -3721,11 +3701,9 @@ impl App {
             return Ok(AppRunControl::Continue);
         }
 
-        if !matches!(self.app_server_target, AppServerTarget::Embedded) {
-            self.shutdown_side_threads(app_server).await;
-            if !self.side_threads.is_empty() {
-                return Ok(AppRunControl::Continue);
-            }
+        self.shutdown_side_threads(app_server).await;
+        if !self.side_threads.is_empty() {
+            return Ok(AppRunControl::Continue);
         }
 
         let result = async {
@@ -3735,9 +3713,6 @@ impl App {
         }
         .await;
         Ok(match result {
-            Ok(()) if matches!(self.app_server_target, AppServerTarget::Embedded) => {
-                AppRunControl::Exit(ExitReason::ThreadRemoved)
-            }
             Ok(()) => {
                 self.track_agents_overview_notification(&ServerNotification::ThreadDeleted(
                     codex_app_server_protocol::ThreadDeletedNotification {
