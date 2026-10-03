@@ -1,13 +1,22 @@
 use anyhow::Context;
 use anyhow::Result;
 use codex_core::EnvironmentConfig;
+use codex_core::TurnInputRequest;
 use codex_exec_server::CreateDirectoryOptions;
 use codex_exec_server::RemoveOptions;
+use codex_protocol::config_types::CollaborationMode;
+use codex_protocol::config_types::ModeKind;
+use codex_protocol::config_types::Settings;
 use codex_protocol::config_types::WindowsSandboxLevel;
 use codex_protocol::models::PermissionProfile;
 use codex_protocol::models::PermissionProfileSnapshot;
 use codex_protocol::permissions::NetworkSandboxPolicy;
+use codex_protocol::protocol::AskForApproval;
+use codex_protocol::protocol::EventMsg;
+use codex_protocol::protocol::ExecCommandStatus;
+use codex_protocol::protocol::ThreadSettingsOverrides;
 use codex_protocol::sandbox::SandboxType;
+use codex_protocol::user_input::UserInput;
 use codex_utils_absolute_path::AbsolutePathBuf;
 use codex_utils_path_uri::PathUri;
 #[cfg(windows)]
@@ -25,8 +34,13 @@ use core_test_support::responses::start_mock_server;
 use core_test_support::skip_if_wine_exec;
 use core_test_support::test_codex::TestCodex;
 use core_test_support::test_codex::test_codex;
+use core_test_support::test_codex::turn_permission_fields;
 use core_test_support::test_target_os;
+use core_test_support::wait_for_event_match;
+use core_test_support::wait_for_event_with_timeout;
+use pretty_assertions::assert_eq;
 use serde_json::json;
+use std::time::Duration;
 use test_case::test_case;
 use wiremock::MockServer;
 
@@ -461,7 +475,56 @@ async fn workspace_roots_deny_file_and_command_writes_outside_roots() -> Result<
     let response_mock =
         mount_patch_and_command_calls(&server, &patch, &command_path_display, COMMAND_CONTENTS)
             .await?;
-    submit_workspace_turn(&test, "try to write files outside the workspace roots").await?;
+    // Keep the helper's exact turn settings, while observing the native command result.
+    let (sandbox_policy, permission_profile) =
+        turn_permission_fields(workspace_roots_profile(), test.config.cwd.as_path());
+    test.codex
+        .start_or_steer_turn(
+            TurnInputRequest::user_input(vec![UserInput::Text {
+                text: "try to write files outside the workspace roots".into(),
+                text_elements: Vec::new(),
+            }])
+            .with_thread_settings(ThreadSettingsOverrides {
+                approval_policy: Some(AskForApproval::Never),
+                sandbox_policy: Some(sandbox_policy),
+                permission_profile,
+                collaboration_mode: Some(CollaborationMode {
+                    mode: ModeKind::Default,
+                    settings: Settings {
+                        model: test.session_configured.model.clone(),
+                        reasoning_effort: None,
+                        developer_instructions: None,
+                    },
+                }),
+                ..Default::default()
+            }),
+        )
+        .await?;
+    let turn_id = wait_for_event_match(&test.codex, |event| match event {
+        EventMsg::TurnStarted(event) => Some(event.turn_id.clone()),
+        _ => None,
+    })
+    .await;
+    let mut command_end = None;
+    wait_for_event_with_timeout(
+        &test.codex,
+        |event| {
+            if let EventMsg::ExecCommandEnd(event) = event
+                && event.call_id == COMMAND_CALL_ID
+            {
+                command_end = Some((event.exit_code, event.status.clone()));
+            }
+            matches!(event, EventMsg::TurnComplete(event) if event.turn_id == turn_id)
+        },
+        Duration::from_secs(/*secs*/ 30),
+    )
+    .await;
+    assert_eq!(
+        // Native infrastructure errors use -1; timeouts use 124. Neither proves denial.
+        command_end.map(|(exit_code, status)| (exit_code > 0 && exit_code != 124, status)),
+        Some((true, ExecCommandStatus::Failed)),
+        "outside command must report a native failure, independently of OS language"
+    );
 
     let request = response_mock
         .last_request()
@@ -480,24 +543,20 @@ async fn workspace_roots_deny_file_and_command_writes_outside_roots() -> Result<
     let (command_output, _) = request
         .function_call_output_content_and_success(COMMAND_CALL_ID)
         .context("denied command result should be present")?;
-    let command_output = command_output.context("denied command output should be present")?;
     assert!(
-        command_output.contains("Access is denied")
-            || command_output.contains(&command_path_display),
-        "outside command should be denied, got {command_output:?}"
+        !command_output
+            .context("denied command output should be present")?
+            .trim()
+            .is_empty()
     );
-    assert!(
-        test.fs()
-            .read_file(&patch_path, Default::default(), /*sandbox*/ None)
+    for path in [&patch_path, &command_path] {
+        let error = test
+            .fs()
+            .get_metadata(path, Default::default(), /*sandbox*/ None)
             .await
-            .is_err()
-    );
-    assert!(
-        test.fs()
-            .read_file(&command_path, Default::default(), /*sandbox*/ None)
-            .await
-            .is_err()
-    );
+            .expect_err("outside file should not be created");
+        assert_eq!(error.kind(), std::io::ErrorKind::NotFound);
+    }
 
     Ok(())
 }

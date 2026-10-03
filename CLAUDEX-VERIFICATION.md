@@ -108,6 +108,30 @@ Les journaux et receipts sont dans `.build-tools/`. Aucun outil Workflow natif
 n'est active par le seul transport de schema ; ses prochaines tranches sont
 decrites dans CLAUDEX-NATIVE-WORKFLOW-DESIGN.md.
 
+Apres reconstruction des preconditions CLI et du probe Windows natif, la reprise
+CLI/Windows donne 12/15 reussites : les huit tests CLI passent, deux tests Windows
+echouent sur la copie d'un auxiliaire partage (os error 32) et un expire. Avec un
+seul worker, les deux cas de refus passent (9,603 s et 45,258 s), tandis que le
+cas metadata expire encore a 60 s. Aucun delai ou reglage de securite modifie.
+Les auxiliaires stages et compiles ont des hashes identiques ; la cause du
+timeout reste ouverte (`tests-core-cli-windows-prerequisites-cycle1.log`,
+`tests-windows-elevated-isolated-cycle1.log`). Ces reprises ne remplacent pas une
+suite complete verte.
+
+La fixture de refus hors roots ne depend plus du message anglais du systeme :
+elle observe l'echec natif, exclut les codes negatifs et le timeout 124, et exige
+NotFound pour les deux fichiers. Les cinq cas workspace_roots passent, y compris
+les positifs et les metadata protegees (`tests-workspace-denial-locale-cycle2.log`,
+9,347 s). Une autre erreur positive du shell reste possible ; les controles
+positifs utilisent des fixtures independantes. Formatage et Clippy core reussis.
+Il s'agit de controles natifs avec modele de fixture, sans modification moteur.
+
+La compression du seul ancien cache incremental, avec liens refuses et chemin
+verifie dans le fork, termine a zero : 214912 fichiers, 107223041064 octets
+logiques stockes dans 52248551183 octets (`compact-incremental-cache-cycle1.log`).
+Elle libere environ 51,2 Gio sans supprimer ces caches. Les builds suivants
+conservent CARGO_INCREMENTAL=0 ; les sources et l'installation restent distinctes.
+
 ## Limites matérielles de compatibilité
 
 1. Le TUI demeure celui de Codex, adapté pour Claudex. Les écrans et raccourcis Claude Code ne sont pas reproduits intégralement.
