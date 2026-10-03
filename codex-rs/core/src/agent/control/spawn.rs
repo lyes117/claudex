@@ -27,6 +27,7 @@ use codex_context_fragments::to_annotated_content;
 use codex_extension_api::ExtensionDataInit;
 use codex_history::ResponseItemEnvelope;
 use codex_prompts::ResolvedModelMessages;
+use codex_protocol::error::CodexErrorDetails;
 use codex_protocol::intersect_effective_permission_profiles;
 use codex_protocol::protocol::EnvironmentConfigState;
 use codex_thread_store::PersistContext;
@@ -41,6 +42,7 @@ const AGENT_NAMES: &str = include_str!("../../../assets/agent/agent_names.txt");
 struct SpawnAgentThreadInheritance {
     environments: Option<TurnEnvironmentSnapshot>,
     exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
+    tool_policy: Option<crate::thread_manager::CapturedToolPolicy>,
 }
 
 struct SpawnedThreadResult {
@@ -317,6 +319,12 @@ impl LocalAgentControl {
     ) -> CodexResult<()> {
         let state = self.runtime.upgrade()?;
         let owner_thread_id = parent.as_ref().map(|parent| parent.session.thread_id);
+        let parent_tool_policy = parent
+            .as_ref()
+            .map(|parent| Arc::clone(&parent.session.tool_policy));
+        let captured_parent_policy = parent
+            .as_ref()
+            .map(|parent| crate::thread_manager::CapturedToolPolicy::from_session(&parent.session));
         if let Some(parent) = &parent {
             let parent_thread_id = parent.session.thread_id;
             let registered_parent = state.get_thread(parent_thread_id).await.ok();
@@ -335,7 +343,19 @@ impl LocalAgentControl {
                 )));
             }
         }
-        if owner_thread_id.is_none() && state.get_thread(thread_id).await.is_ok() {
+        if owner_thread_id.is_none()
+            && let Ok(thread) = state.get_thread(thread_id).await
+        {
+            if let Some(parent) = state
+                .capture_tool_policy(thread.session_source.parent_thread_id())
+                .await
+                && !thread.session.tool_policy.is_subset_of(&parent.policy)
+            {
+                return Err(CodexErr::InvalidRequest(
+                    "cannot resume a live subagent whose tool policy exceeds its parent's ceiling"
+                        .to_owned(),
+                ));
+            }
             self.touch_loaded_v2_residency(&state, thread_id).await;
             return Ok(());
         }
@@ -389,6 +409,14 @@ impl LocalAgentControl {
             }
             if let Ok(thread) = state.get_thread(thread_id).await {
                 self.validate_loaded_v2_child(&thread, parent_thread_id)?;
+                if parent_tool_policy
+                    .as_ref()
+                    .is_some_and(|policy| !thread.session.tool_policy.is_subset_of(policy))
+                {
+                    return Err(CodexErr::InvalidRequest(
+                        "cannot resume a live subagent whose tool policy exceeds its parent's ceiling".to_owned(),
+                    ));
+                }
                 self.touch_loaded_v2_residency(&state, thread_id).await;
                 return Ok(());
             }
@@ -584,9 +612,16 @@ impl LocalAgentControl {
         };
         // Reserving a slot can evict an idle nested parent. Capture its instructions
         // alongside its authority so the child does not depend on a later live lookup.
+        let inherited_tool_policy = match captured_parent_policy {
+            Some(captured) => Some(captured),
+            None => state.capture_tool_policy(parent_thread_id).await,
+        };
         let residency_slot = self
             .reserve_v2_residency_slot(&state, &config, Some(thread_id))
             .await?;
+        let fallback_policy = inherited_tool_policy
+            .as_ref()
+            .map(|captured| Arc::clone(&captured.policy));
 
         match state
             .resume_thread_with_history_with_source(ResumeThreadWithHistoryOptions {
@@ -599,6 +634,7 @@ impl LocalAgentControl {
                 inherited_environments,
                 inherited_instructions,
                 inherited_exec_policy,
+                inherited_tool_policy,
                 client_mcp_extensions,
             })
             .await
@@ -613,7 +649,28 @@ impl LocalAgentControl {
                 Ok(())
             }
             Err(err) => {
+                // A policy rejection must never become success through the race fallback.
+                if matches!(err.details(), CodexErrorDetails::InvalidRequest(message)
+                    if message == crate::thread_manager::LIVE_THREAD_TOOL_POLICY_MISMATCH)
+                {
+                    return Err(err);
+                }
                 if let Ok(thread) = state.get_thread(thread_id).await {
+                    let current = state.capture_tool_policy(parent_thread_id).await;
+                    let ceiling = match (&fallback_policy, current) {
+                        (Some(captured), Some(current)) => {
+                            Some(captured.intersect(&current.policy))
+                        }
+                        (Some(captured), None) => Some(captured.as_ref().clone()),
+                        (None, Some(current)) => Some(current.policy.as_ref().clone()),
+                        (None, None) => None,
+                    };
+                    if ceiling
+                        .as_ref()
+                        .is_some_and(|ceiling| !thread.session.tool_policy.is_subset_of(ceiling))
+                    {
+                        return Err(err);
+                    }
                     if let Some(parent_thread_id) = owner_thread_id {
                         self.validate_loaded_v2_child(&thread, parent_thread_id)?;
                     }
@@ -636,6 +693,13 @@ impl LocalAgentControl {
     ) -> CodexResult<(LiveAgent, ThreadConfigSnapshot)> {
         let spawn_started_at = Instant::now();
         let state = self.runtime.upgrade()?;
+        let inherited_tool_policy = state
+            .capture_tool_policy(options.parent_thread_id.or_else(|| {
+                session_source
+                    .as_ref()
+                    .and_then(SessionSource::parent_thread_id)
+            }))
+            .await;
         let multi_agent_version = state
             .effective_multi_agent_version_for_spawn(
                 &InitialHistory::New,
@@ -676,6 +740,7 @@ impl LocalAgentControl {
             .registry
             .reserve_spawn_slot(reservation_max_threads)?;
         let inheritance = SpawnAgentThreadInheritance {
+            tool_policy: inherited_tool_policy,
             environments: match &options.environments {
                 Some(environments) => Some(environments.clone()),
                 None => {
@@ -756,6 +821,7 @@ impl LocalAgentControl {
                     inheritance.environments,
                     inheritance.exec_policy,
                     environments,
+                    inheritance.tool_policy,
                 ))
                 .await?;
                 SpawnedThreadResult {
@@ -926,6 +992,7 @@ impl LocalAgentControl {
         let SpawnAgentThreadInheritance {
             environments: inherited_environments,
             exec_policy: inherited_exec_policy,
+            tool_policy: inherited_tool_policy,
         } = inheritance;
         if options.fork_parent_spawn_call_id.is_none() {
             return Err(CodexErr::Fatal(
@@ -1239,6 +1306,7 @@ impl LocalAgentControl {
                 inherited_exec_policy,
                 /*environments*/ None,
                 thread_extension_init,
+                inherited_tool_policy,
             )
             .await?;
         let child_create = child_create_started_at.elapsed();
@@ -1395,6 +1463,7 @@ impl LocalAgentControl {
         let inherited_exec_policy = self
             .inherited_exec_policy_for_source(&state, Some(&session_source), &config)
             .await;
+        let inherited_tool_policy = state.capture_tool_policy(parent_thread_id).await;
 
         let resumed_thread = state
             .resume_thread_with_history_with_source(ResumeThreadWithHistoryOptions {
@@ -1407,6 +1476,7 @@ impl LocalAgentControl {
                 inherited_environments,
                 inherited_instructions: None,
                 inherited_exec_policy,
+                inherited_tool_policy,
                 client_mcp_extensions: None,
             })
             .await?;

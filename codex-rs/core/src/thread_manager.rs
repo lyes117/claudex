@@ -1,5 +1,14 @@
 mod managed;
 mod shared_instructions;
+mod tool_policy;
+
+#[cfg(test)]
+#[path = "thread_manager/tool_policy_tests.rs"]
+mod tool_policy_tests;
+
+pub(crate) use tool_policy::CapturedToolPolicy;
+pub(crate) use tool_policy::LIVE_THREAD_TOOL_POLICY_MISMATCH;
+pub(crate) use tool_policy::resolve_local_tool_policy;
 
 use crate::CodexAppsToolsCache;
 use crate::agent::LocalAgentControl;
@@ -250,6 +259,7 @@ pub struct InternalSessionParent {
     pub(crate) agent_control: AgentControlInit,
     pub(crate) originator: String,
     pub(crate) inherited_instructions: Option<SessionInstructions>,
+    pub(crate) tool_policy: Arc<codex_extension_api::ToolPolicy>,
 }
 
 pub struct StartThreadOptions {
@@ -327,6 +337,7 @@ struct ThreadSpawnRequest {
     inherited_environments: Option<TurnEnvironmentSnapshot>,
     inherited_instructions: Option<SessionInstructions>,
     inherited_exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
+    inherited_tool_policy: Option<CapturedToolPolicy>,
     user_shell_override: Option<crate::shell::Shell>,
 }
 
@@ -348,6 +359,7 @@ impl ThreadSpawnRequest {
             inherited_environments: None,
             inherited_instructions: None,
             inherited_exec_policy: None,
+            inherited_tool_policy: None,
             user_shell_override: None,
         }
     }
@@ -393,6 +405,7 @@ pub(crate) struct ResumeThreadWithHistoryOptions {
     pub(crate) inherited_environments: Option<TurnEnvironmentSnapshot>,
     pub(crate) inherited_instructions: Option<SessionInstructions>,
     pub(crate) inherited_exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
+    pub(crate) inherited_tool_policy: Option<CapturedToolPolicy>,
     pub(crate) client_mcp_extensions: Option<ClientMcpExtensions>,
 }
 
@@ -1097,6 +1110,7 @@ impl ThreadManager {
             },
             originator: parent.config_snapshot().await.originator,
             inherited_instructions,
+            tool_policy: Arc::clone(&parent.session.tool_policy),
         });
         self.start_thread(options).await
     }
@@ -1138,6 +1152,10 @@ impl ThreadManager {
             request.parent_thread_id = Some(parent.thread_id);
             request.parent_originator = Some(parent.originator);
             request.inherited_instructions = parent.inherited_instructions;
+            request.inherited_tool_policy = Some(CapturedToolPolicy {
+                thread_id: parent.thread_id,
+                policy: parent.tool_policy,
+            });
             request.forked_from_thread_id = request.options.initial_history.forked_from_id();
             request
         } else {
@@ -1533,7 +1551,7 @@ impl ThreadManager {
         };
         // Capture the live source before later startup work can unload it. Keep
         // the fork's own providers, not the source's task-bound callback.
-        let instructions = self
+        let (instructions, inherited_tool_policy) = self
             .state
             .instructions_for_spawn(
                 options
@@ -1566,6 +1584,7 @@ impl ThreadManager {
         request.forked_from_thread_id = source_thread_id;
         request.fork_persistence = fork_persistence;
         request.inherited_instructions = Some(instructions);
+        request.inherited_tool_policy = inherited_tool_policy;
         Box::pin(self.state.spawn_thread(request)).await
     }
 
@@ -1807,21 +1826,24 @@ impl ThreadManagerState {
         parent_thread_id: Option<ThreadId>,
         forked_from_thread_id: Option<ThreadId>,
         thread_provider: Option<Arc<dyn ThreadInstructionsProvider>>,
-    ) -> SessionInstructions {
-        let inherited_thread_id = match session_source {
+    ) -> (SessionInstructions, Option<CapturedToolPolicy>) {
+        let inherited_thread_id = forked_from_thread_id.or(match session_source {
             SessionSource::SubAgent(SubAgentSource::ThreadSpawn {
                 parent_thread_id, ..
             }) => Some(*parent_thread_id),
-            _ => parent_thread_id.or(forked_from_thread_id),
-        };
-        let inherited = match inherited_thread_id {
+            _ => parent_thread_id,
+        });
+        let (inherited, policy) = match inherited_thread_id {
             Some(thread_id) => match self.get_thread(thread_id).await {
-                Ok(thread) => thread.session.inherited_instructions().await,
-                Err(_) => SessionInstructions::default(),
+                Ok(thread) => (
+                    thread.session.inherited_instructions().await,
+                    Some(CapturedToolPolicy::from_session(&thread.session)),
+                ),
+                Err(_) => (SessionInstructions::default(), None),
             },
-            None => SessionInstructions::default(),
+            None => (SessionInstructions::default(), None),
         };
-        if session_source.is_non_root_agent() {
+        let instructions = if session_source.is_non_root_agent() {
             inherited
         } else {
             SessionInstructions {
@@ -1830,7 +1852,8 @@ impl ThreadManagerState {
                 thread: inherited.thread,
                 ..Default::default()
             }
-        }
+        };
+        (instructions, policy)
     }
 
     async fn inherited_originator_for_parent_thread(
@@ -1910,6 +1933,7 @@ impl ThreadManagerState {
             /*inherited_environments*/ None,
             /*inherited_exec_policy*/ None,
             /*environments*/ None,
+            /*inherited_tool_policy*/ None,
         ))
         .await
     }
@@ -1928,6 +1952,7 @@ impl ThreadManagerState {
         inherited_environments: Option<TurnEnvironmentSnapshot>,
         inherited_exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
         environments: Option<Vec<TurnEnvironmentSelection>>,
+        inherited_tool_policy: Option<CapturedToolPolicy>,
     ) -> CodexResult<NewThread> {
         let client_mcp_extensions = self.client_mcp_extensions_for_child(parent_thread_id).await;
         let options = StartThreadOptions {
@@ -1945,6 +1970,7 @@ impl ThreadManagerState {
         request.forked_from_thread_id = forked_from_thread_id;
         request.inherited_environments = inherited_environments;
         request.inherited_exec_policy = inherited_exec_policy;
+        request.inherited_tool_policy = inherited_tool_policy;
         Box::pin(self.spawn_thread(request)).await
     }
 
@@ -1962,6 +1988,7 @@ impl ThreadManagerState {
             inherited_environments,
             inherited_instructions,
             inherited_exec_policy,
+            inherited_tool_policy,
             client_mcp_extensions,
         } = options;
         let client_mcp_extensions = match client_mcp_extensions {
@@ -1983,6 +2010,7 @@ impl ThreadManagerState {
         request.inherited_environments = inherited_environments;
         request.inherited_instructions = inherited_instructions;
         request.inherited_exec_policy = inherited_exec_policy;
+        request.inherited_tool_policy = inherited_tool_policy;
         Box::pin(self.spawn_thread(request)).await
     }
 
@@ -2001,6 +2029,7 @@ impl ThreadManagerState {
         inherited_exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
         environments: Option<Vec<TurnEnvironmentSelection>>,
         thread_extension_init: ExtensionDataInit,
+        inherited_tool_policy: Option<CapturedToolPolicy>,
     ) -> CodexResult<NewThread> {
         let client_mcp_extensions = self.client_mcp_extensions_for_child(parent_thread_id).await;
         let options = StartThreadOptions {
@@ -2020,6 +2049,7 @@ impl ThreadManagerState {
         request.forked_from_thread_id = forked_from_thread_id;
         request.inherited_environments = inherited_environments;
         request.inherited_exec_policy = inherited_exec_policy;
+        request.inherited_tool_policy = inherited_tool_policy;
         Box::pin(self.spawn_thread(request)).await
     }
 
@@ -2050,6 +2080,7 @@ impl ThreadManagerState {
             inherited_environments,
             inherited_instructions,
             inherited_exec_policy,
+            inherited_tool_policy,
             user_shell_override,
         } = request;
         let StartThreadOptions {
@@ -2105,6 +2136,22 @@ impl ThreadManagerState {
                 )
             });
         let is_resumed_thread = matches!(&initial_history, InitialHistory::Resumed(_));
+        let parent_thread_id = parent_thread_id
+            .or_else(|| initial_history.get_resumed_parent_thread_id())
+            .or(match &session_source {
+                SessionSource::SubAgent(SubAgentSource::ThreadSpawn {
+                    parent_thread_id, ..
+                }) => Some(*parent_thread_id),
+                _ => None,
+            });
+        let tool_policy = self
+            .compose_tool_policy(
+                &mut thread_extension_init,
+                &session_source,
+                inherited_tool_policy,
+                forked_from_thread_id.or(parent_thread_id),
+            )
+            .await;
         if reserved_thread_id.is_some() && matches!(&initial_history, InitialHistory::Resumed(_)) {
             return Err(CodexErr::InvalidRequest(
                 "reserved thread ID cannot be used when resuming a thread".to_string(),
@@ -2114,6 +2161,11 @@ impl ThreadManagerState {
             let mut threads = self.threads.write().await;
             if let Some(thread) = threads.get(&resumed.conversation_id).cloned() {
                 if thread.is_running() {
+                    if !thread.session.tool_policy.is_subset_of(&tool_policy) {
+                        return Err(CodexErr::InvalidRequest(
+                            LIVE_THREAD_TOOL_POLICY_MISMATCH.to_owned(),
+                        ));
+                    }
                     // The parent's pool still owns this runtime and its rollout writer.
                     // Returning it would report success without allowing client access.
                     if matches!(
@@ -2161,14 +2213,6 @@ impl ThreadManagerState {
             }
             (_, control) => control,
         };
-        let parent_thread_id = parent_thread_id
-            .or_else(|| initial_history.get_resumed_parent_thread_id())
-            .or(match &session_source {
-                SessionSource::SubAgent(SubAgentSource::ThreadSpawn {
-                    parent_thread_id, ..
-                }) => Some(*parent_thread_id),
-                _ => None,
-            });
         // Host controllers can already be shared with live threads. Publish root settings
         // only after registration succeeds, so a failed start cannot update their tree.
         let initial_host_config = (self.agent_control_factory.is_some()
@@ -2214,6 +2258,7 @@ impl ThreadManagerState {
                                 thread_instructions_provider,
                             )
                             .await
+                            .0
                         }
                     },
                     inherited_exec_policy,

@@ -108,6 +108,7 @@ impl PreparedGuardianContext {
                     runtime: self.parent.services.local_agent_runtime.clone(),
                 },
                 originator: self.context.turn().originator.clone(),
+                tool_policy: Arc::clone(&self.parent.tool_policy),
                 // Review the same applied instructions captured by the reuse key.
                 // A live provider could advance independently while reviewing this action.
                 inherited_instructions: Some(SessionInstructions {

@@ -98,12 +98,21 @@ async fn live_fork_keeps_instructions_when_source_is_unloaded_during_setup() {
     Arc::get_mut(&mut manager.state)
         .expect("unshared manager")
         .user_instructions_provider = Arc::new(ParentInstructionsProvider(global.clone()));
+    let policy = codex_extension_api::ToolPolicy {
+        allowed_tools: Some(vec![codex_extension_api::ToolName::plain("Read")]),
+        require_unified_exec: true,
+        expose_additional_permissions: false,
+        ..Default::default()
+    };
+    let mut init = ExtensionDataInit::new();
+    init.insert(policy.clone());
     let source = manager
         .start_thread(StartThreadOptions {
             environments: Some(Vec::new()),
             thread_instructions_provider: Some(Arc::new(ParentInstructionsProvider(
                 thread.clone(),
             ))),
+            thread_extension_init: init,
             ..StartThreadOptions::new(config.clone())
         })
         .await
@@ -136,6 +145,7 @@ async fn live_fork_keeps_instructions_when_source_is_unloaded_during_setup() {
     assert!(futures::poll!(&mut fork).is_pending());
     assert!(removal.await.is_some());
     let fork = fork.await.expect("fork survives source removal");
+    assert_eq!(fork.thread.session.tool_policy.as_ref(), &policy);
     let instructions = fork.thread.session.inherited_instructions().await;
     assert_eq!(
         (instructions.user, instructions.thread),
@@ -1516,6 +1526,7 @@ async fn spawn_internal_session_preserves_parent_lineage_without_forking_history
                     runtime: parent.thread.session.services.local_agent_runtime.clone(),
                 },
                 originator: reviewer_config.originator.clone(),
+                tool_policy: Arc::clone(&parent.thread.session.tool_policy),
                 inherited_instructions: None,
             }),
             session_source: Some(SessionSource::Internal(
@@ -2196,6 +2207,30 @@ async fn resume_active_thread_from_rollout_returns_running_thread() {
         .expect("resume active source thread");
     assert_eq!(resumed.thread_id, source.thread_id);
     assert!(Arc::ptr_eq(&resumed.thread, &source.thread));
+
+    let mut restricted =
+        StartThreadOptions::new(source.thread.session.get_config().await.as_ref().clone());
+    restricted.initial_history = InitialHistory::Resumed(ResumedHistory {
+        conversation_id: source.thread_id,
+        history: Arc::new(Vec::new()),
+        rollout_path: source.thread.rollout_path(),
+    });
+    restricted
+        .thread_extension_init
+        .insert(codex_extension_api::ToolPolicy {
+            allowed_tools: Some(vec![]),
+            ..Default::default()
+        });
+    let error = manager
+        .start_thread(restricted)
+        .await
+        .err()
+        .expect("refuse broader live runtime");
+    assert!(error.to_string().contains("tool policy exceeds"));
+    assert_eq!(
+        source.thread.session.tool_policy.as_ref(),
+        &codex_extension_api::ToolPolicy::default()
+    );
 
     source
         .thread

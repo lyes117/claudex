@@ -981,16 +981,10 @@ impl Session {
         // Publish the already resolved model before extensions make startup decisions.
         // Turn construction refreshes this attachment when the selected model changes.
         thread_extension_init.insert(model_info);
-        let tool_policy = thread_extension_init
-            .get::<codex_extension_api::ToolPolicy>()
-            .unwrap_or_else(|| {
-                // Older reviewer rollouts predate the explicit startup policy.
-                if crate::guardian::is_basic_session_source(&session_configuration.session_source) {
-                    Arc::new(codex_guardian_reviewer::reviewer_tool_policy())
-                } else {
-                    Arc::default()
-                }
-            });
+        let tool_policy = crate::thread_manager::resolve_local_tool_policy(
+            &thread_extension_init,
+            &session_configuration.session_source,
+        );
         let mcp_thread_init = thread_extension_init.clone();
         let thread_extension_data = codex_extension_api::ExtensionData::new_with_init(
             thread_id.to_string(),
