@@ -73,3 +73,47 @@ pas une inference ChatGPT ni un ordonnanceur Workflow. Le code de transport est
 compile et installe avec f8d7543 ; les hashes source/installation sont verifies
 dans installed-no-tools-and-schema-native-hashes-cycle1.json. La validation et le budget du schema restent a ajouter au
 service Workflow futur avant son activation.
+
+## Tranche locale en cours de validation
+
+`agent/control/workflow.rs` capture la session, le step et l'annulation depuis
+une invocation native. Le groupe entier est prepare avant admission ; seules
+les identites retournees par les admissions sont fermees. Le superviseur attend
+toutes les completions, preserve l'ordre des appels et attend les fermetures.
+Les enfants frais ont la delegation desactivee dans cette tranche.
+
+Limites : quatre enfants, prompt et schema de 8 KiB chacun, resultat du groupe
+de 8 KiB ; JSON de profondeur 12 et 256 noeuds. Le validateur refuse les mots-cles
+inconnus, les doubles cles resultat, les schemas ouverts et les resultats invalides.
+Son sous-ensemble comprend type, properties, required, additionalProperties=false,
+items, enum et description ; pas de ref, union, format, pattern ou bornes numeriques.
+Les nombres flottants integres ne valent integer qu'en dessous de 2^53 en valeur
+absolue ; les entiers JSON i64/u64 restent exacts. Ceci ne prouve pas la compatibilite
+des schemas de film.workflow.js.
+
+Avant admission, le bridge applique aussi les contraintes de transport documentees :
+racine objet, toutes les proprietes requises, objets fermes, y compris dans les items
+imbriques. Source : [Structured Outputs officiel](https://developers.openai.com/api/docs/guides/structured-outputs).
+Ce refus n'adapte pas les schemas Claude optionnels. Le decoder distingue les
+conteneurs reels des nombres arbitrary_precision et refuse les doubles cles.
+Les flottants integres suivent [la semantique integer de JSON Schema](https://json-schema.org/understanding-json-schema/reference/numeric)
+dans la plage prise en charge.
+
+La fermeture utilise les Arc des threads possedes et attend leur terminaison avant
+de retirer un runtime encore identique. Elle ne depend pas d'une barriere de
+persistance reussie avant l'arret. Une reprise remplacant le runtime ne doit pas
+etre retiree par un cleanup tardif ; le statut attendu reste celui du thread capture.
+La revue trouve toutefois une course entre le retour de spawn et la capture par
+lookup ID : un remplacement dans cet intervalle pourrait etre capture et arrete.
+La capture de l'Arc au point d'admission natif reste necessaire avant activation.
+Autre limite ouverte du validateur : la conversion f64 peut arrondir des petites
+fractions precises en entier ou valeur enum. Le seuil 2^53 ne suffit pas ; il
+faut comparer exactement les lexemes decimaux bornes ou refuser ce sous-ensemble.
+
+La deadline couvre preparation et attente ; une admission deja commencee est
+attendue avant arret, et la fermeture native n'a pas de deadline externe.
+La livraison automatique des completions au parent reste celle de Codex et peut
+preceder la validation locale. Elle doit etre adaptee avant activation publique,
+avec revue du budget des fragments parents/enfants. Aucun outil Workflow n'est
+enregistre et aucun runner JS n'est active par cette tranche. Les fixtures SSE
+utilisent le runtime natif ; elles ne sont pas une inference ChatGPT ou un film reel.

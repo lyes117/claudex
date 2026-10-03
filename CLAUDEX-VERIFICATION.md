@@ -132,9 +132,72 @@ logiques stockes dans 52248551183 octets (`compact-incremental-cache-cycle1.log`
 Elle libere environ 51,2 Gio sans supprimer ces caches. Les builds suivants
 conservent CARGO_INCREMENTAL=0 ; les sources et l'installation restent distinctes.
 
+## Capture du plafond et livraison de l'interface — 3 octobre 2026
+
+Le DTO de plafond et les lecteurs d'en-tête stricts sont commités (0e67c23,
+991bd2c). La tranche suivante capture le plafond effectif à la création,
+préserve un `null` explicite pour le rejeter, valide avant mutation et transmet
+le même snapshot lors des reverts. La suite protocol/rollout/thread-store
+passe 760/760 (`tests-tool-policy-carrier-cycle3.log`). La reprise consolidée
+passe ensuite 777/777 en 65,367 s (`tests-claudex-pre-install-cycle1.log`) :
+les derniers ajouts du deuxième revert et de capture native core, huit cas de
+schéma et huit cas natifs de bridge sont inclus.
+Cela ne restaure pas encore l'autorité lors d'une reprise froide ; aucun profil
+Claude contraint n'est activé par cette seule capture.
+
+La nouvelle interface (bannière, compositeur, marqueurs de transcript et outils)
+est dans les sources. La revue statique ne trouve pas de P0/P1 sur ce delta.
+Son premier cycle effectivement exécuté donne 358/454 réussites et 96 échecs
+(`tests-claudex-shell-cycle4.log`) : 78 cas de rendu à vérifier et 18 assertions
+révélant une régression réelle de Sparkle avec le fond Reset. Le calcul du fondu
+est corrigé et revu. Après inspection des captures et déroulement des tests à
+plusieurs états, le cycle 22 normal passe 454/454 en 10,308 s
+(`tests-claudex-shell-cycle22.log`). Aucun snapshot n'est en attente ; aucune
+assertion n'est forcée. La suite TUI complète reste à reprendre.
+
+Formatage et Clippy ciblé réussissent (`fmt-claudex-ui-delivery-cycle1.log`,
+`fix-claudex-ui-delivery-cycle1.log`). Les seuls changements de formatage hors
+périmètre et l'import de fixture Windows supprimé par Clippy sont restaurés
+après inspection. Commits : 2481557 pour la capture, 33a1cb9/5e19824/2caf7d7
+pour l'interface et 76b247c pour son golden inline déjà vérifié.
+
+Build natif réussi en 4 min 27 s, installation réussie. Les quatre exécutables
+installés correspondent aux sources ; nouveau hash principal :
+**686F915909ED8517B19BB052ADE931C751BDCC290D2D44EEB08DF00E83D96A36**.
+Receipt : `installed-claudex-ui-delivery-hashes-cycle1.json`. Le build commence
+à 2caf7d7 avec des modifications privées de workflow non commités ; ces modules
+restent sans appel de production. Les fichiers config/auth contrôlés ont les
+mêmes empreintes immédiatement avant/après installation, sans copie de secrets.
+PowerShell sans profil et CMD avec PATH frais lancent le binaire et confirment
+ChatGPT (`launch-claudex-ui-powershell-cycle2.log`, `launch-claudex-ui-cmd-cycle2.log`).
+Le cycle PowerShell précédent présente un défaut CLIXML du harness, corrigé par
+sortie texte explicite ; il n'est pas compté comme preuve propre.
+
+Le terminal Windows réel affiche la nouvelle bannière et le prompt, ouvre
+/help, colle « étude 研究 » sur deux lignes et ferme normalement à code 0.
+Preuve : `live-ui/run-d677344f7d9b40168364135f9e113d6f/verified.json`.
+La réponse assistant avec le marqueur ● est observée ; l'inférence CLI séparée
+valide exactement NO_TOOLS_OK via ChatGPT, sans override du catalogue officiel
+(`no-tools-live-ui-delivery-cycle1.log`, `live-no-tools/run-TQd1SW/verified.json`).
+Read/Grep/Glob sont ensuite exécutés réellement en direct et CodeMode, avec
+cartes natives restaurées (`file-tools-live-ui-delivery-cycle1.log`,
+`live-file-tools/run-1dGo4e/verified.json`, catalogue de fixture explicite).
+Cela ne démontre pas tous les raccourcis, le rendu de chaque écran ni l'arrêt de
+tous les processus externes. Des menus et textes promotionnels Codex subsistent.
+
+Le nouveau bridge de workflows natifs reste privé et sans outil enregistré.
+Ses 13 premiers tests exécutés donnent 9 réussites et 4 échecs ; après correction,
+ses 16 cas passent dans la reprise consolidée.
+La perte de propriété sur erreur de flush et l'écart de transport strict sont
+corrigés ; leur reprise est incluse dans les 777 contrôles. La revue trouve
+encore une course de capture d'Arc après admission et un arrondi numérique f64,
+documentés dans le design. Ils bloquent l'activation. La notification brute au
+parent avant validation, le runner borné et la reprise après panne restent
+des étapes séparées. Ces résultats ne constituent pas une parité complète.
+
 ## Limites matérielles de compatibilité
 
-1. Le TUI demeure celui de Codex, adapté pour Claudex. Les écrans et raccourcis Claude Code ne sont pas reproduits intégralement.
+1. La nouvelle bannière, le compositeur et les marqueurs Claudex sont installés et vérifiés. Des menus, textes et raccourcis de Codex restent présents ; l'ensemble des interactions Claude Code n'est pas encore reproduit.
 2. Les métadonnées de sécurité Claude non applicables au moteur natif entraînent le rejet de l'agent ou du skill concerné, plutôt qu'une exécution avec des permissions fictives. Les règles `ask` bloquent ; certains refus de chemins bloquent conservativement l'outil entier.
 3. Les hooks gardent les payloads natifs Codex. Les hooks HTTP, prompt et agent, ainsi que les événements absents du moteur natif, ne sont pas pris en charge. Un script exigeant un payload Claude exact doit être adapté.
 4. Les plugins locaux activés sont lus depuis leur registre et leurs répertoires standards. Les chemins personnalisés de manifeste, téléchargements et marketplace Claude ne sont pas implémentés.
