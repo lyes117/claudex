@@ -240,7 +240,10 @@ async fn responses_mode_stream_cli() {
         .arg(&repo_root)
         .arg("hello?");
     cmd.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     println!("Status: {}", output.status);
@@ -280,7 +283,10 @@ async fn responses_mode_stream_cli_supports_openai_base_url_config_override() {
         .arg(&repo_root)
         .arg("hello?");
     cmd.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     assert!(output.status.success());
@@ -338,7 +344,10 @@ async fn exec_cli_applies_model_instructions_file() {
         .arg(&repo_root)
         .arg("hello?\n");
     cmd.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     println!("Status: {}", output.status);
@@ -410,7 +419,10 @@ async fn exec_cli_profile_applies_model_instructions_file() {
         .arg(&repo_root)
         .arg("hello?\n");
     cmd.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     println!("Status: {}", output.status);
@@ -451,7 +463,10 @@ async fn responses_api_stream_cli() {
         .arg(&repo_root)
         .arg("hello?");
     cmd.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     assert!(output.status.success());
@@ -492,7 +507,10 @@ async fn integration_creates_and_checks_session_file() -> anyhow::Result<()> {
         .arg(&repo_root)
         .arg(&prompt);
     cmd.env("CODEX_HOME", home.path())
-        .env(CODEX_API_KEY_ENV_VAR, "dummy");
+        .env(CODEX_API_KEY_ENV_VAR, "dummy")
+        // These fixtures use only a local mock provider, not subscription auth.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"");
 
     let output = run_cli_command(&mut cmd).unwrap();
     assert!(
@@ -602,6 +620,9 @@ async fn integration_creates_and_checks_session_file() -> anyhow::Result<()> {
     let mut cmd2 = Command::new(bin2);
     cmd2.arg("exec")
         .arg("--skip-git-repo-check")
+        // Keep both global overrides before the resume subcommand.
+        .arg("-c")
+        .arg("forced_login_method=\"api\"")
         .arg("-c")
         .arg(format!("openai_base_url=\"{}/v1\"", server.uri()))
         .arg("-C")
@@ -610,10 +631,15 @@ async fn integration_creates_and_checks_session_file() -> anyhow::Result<()> {
         .arg("resume")
         .arg("--last");
     cmd2.env("CODEX_HOME", home.path())
-        .env("OPENAI_API_KEY", "dummy");
+        .env("OPENAI_API_KEY", "dummy")
+        .env("OPENAI_BASE_URL", format!("{}/v1", server.uri()));
 
     let output2 = run_cli_command(&mut cmd2).unwrap();
-    assert!(output2.status.success(), "resume codex-cli run failed");
+    assert!(
+        output2.status.success(),
+        "resume codex-cli run failed: {}",
+        String::from_utf8_lossy(&output2.stderr)
+    );
     assert_eq!(resp_mock.requests().len(), 2);
 
     // Find the new session file containing the resumed marker.
