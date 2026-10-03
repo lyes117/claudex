@@ -31,6 +31,50 @@ fn dynamic_item(id: &str, status: DynamicToolCallStatus) -> AppServerThreadItem 
 }
 
 #[tokio::test]
+async fn late_dynamic_completion_after_abort_updates_one_retained_row() {
+    let mut outputs = Vec::new();
+    for mode in [TranscriptMode::Owned, TranscriptMode::Terminal] {
+        let (mut chat, mut rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
+        chat.local_settings.transcript_mode = mode;
+        drain_insert_history(&mut rx);
+        chat.on_dynamic_tool_item(dynamic_item("late-file", DynamicToolCallStatus::InProgress));
+        let cells = std::iter::from_fn(|| rx.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::InsertHistoryCell(cell) => Some(cell),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(cells.len(), 1);
+        chat.finish_dynamic_activity();
+        assert!(lines_to_single_string(&cells[0].raw_lines()).contains("Interrupted"));
+        chat.on_dynamic_tool_item(dynamic_item("late-file", DynamicToolCallStatus::Completed));
+        assert!(
+            drain_insert_history(&mut rx).is_empty(),
+            "Late completion must not append a second row"
+        );
+        chat.on_dynamic_tool_item(dynamic_item("late-file", DynamicToolCallStatus::Completed));
+        assert!(
+            drain_insert_history(&mut rx).is_empty(),
+            "Duplicate completion must not append a row"
+        );
+        chat.on_dynamic_tool_item(dynamic_item("late-file", DynamicToolCallStatus::InProgress));
+        assert!(drain_insert_history(&mut rx).is_empty());
+        assert!(
+            chat.transcript.dynamic_calls.is_empty(),
+            "Late start must not reactivate a finished call"
+        );
+        outputs.push(lines_to_single_string(
+            &cells[0].display_lines(/*width*/ 80),
+        ));
+    }
+    assert_eq!(outputs[0], outputs[1]);
+    insta::assert_snapshot!(outputs[0], @"
+    • Called test.lookup · 25ms
+      └ Result for late-file
+    ");
+}
+
+#[tokio::test]
 async fn terminal_dynamic_activity_retains_calls_across_both_fallbacks() {
     let mut outputs = Vec::new();
     for (owned_enabled, alternate_screen) in

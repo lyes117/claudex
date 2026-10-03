@@ -37,6 +37,9 @@ pub(super) struct TranscriptState {
     /// Shared retained rows for concurrently running dynamic tools, removed on completion.
     pub(super) dynamic_calls:
         std::collections::HashMap<String, crate::history_cell::DynamicToolCallCell>,
+    /// Bounded references for late or repeated terminal notifications after interruption.
+    pub(super) recent_dynamic_calls:
+        std::collections::VecDeque<crate::history_cell::DynamicToolCallCell>,
     /// Monotonic-ish counter used to invalidate transcript overlay caching.
     pub(super) active_cell_revision: u64,
     /// One bounded entry shared by layout and paint across unchanged active-cell frames.
@@ -66,6 +69,17 @@ pub(super) struct TranscriptState {
 }
 
 impl TranscriptState {
+    pub(super) fn retain_finished_dynamic(
+        &mut self,
+        cell: crate::history_cell::DynamicToolCallCell,
+    ) {
+        const MAX_RECENT: usize = 256;
+        self.recent_dynamic_calls.push_back(cell);
+        if self.recent_dynamic_calls.len() > MAX_RECENT {
+            self.recent_dynamic_calls.pop_front();
+        }
+    }
+
     pub(super) fn new(active_cell: Option<Box<dyn HistoryCell>>) -> Self {
         Self {
             active_cell,

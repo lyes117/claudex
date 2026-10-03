@@ -31,8 +31,26 @@ impl ChatWidget {
         let id = id.clone();
         if let Some(cell) = self.transcript.dynamic_calls.get(&id) {
             cell.update_from_item(item);
-            if !cell.is_active() {
-                self.transcript.dynamic_calls.remove(&id);
+            if !cell.is_active()
+                && let Some(cell) = self.transcript.dynamic_calls.remove(&id)
+            {
+                self.transcript.retain_finished_dynamic(cell);
+            }
+        } else if let Some(cell) = self
+            .transcript
+            .recent_dynamic_calls
+            .iter()
+            .find(|cell| cell.call_id() == id)
+        {
+            // An out-of-order start cannot reactivate a previously finished row.
+            if !matches!(
+                &item,
+                ThreadItem::DynamicToolCall {
+                    status: codex_app_server_protocol::DynamicToolCallStatus::InProgress,
+                    ..
+                }
+            ) {
+                cell.update_from_item(item);
             }
         } else if let Some(cell) = history_cell::DynamicToolCallCell::from_item(item) {
             self.flush_answer_stream_with_separator();
@@ -40,6 +58,8 @@ impl ChatWidget {
                 self.transcript
                     .dynamic_calls
                     .insert(cell.call_id().to_owned(), cell.clone());
+            } else {
+                self.transcript.retain_finished_dynamic(cell.clone());
             }
             self.add_to_history(cell);
         }
@@ -47,8 +67,15 @@ impl ChatWidget {
     }
 
     pub(super) fn finish_dynamic_activity(&mut self) {
-        for (_, cell) in self.transcript.dynamic_calls.drain() {
+        let unfinished = self
+            .transcript
+            .dynamic_calls
+            .drain()
+            .map(|(_, cell)| cell)
+            .collect::<Vec<_>>();
+        for cell in unfinished {
             cell.mark_interrupted();
+            self.transcript.retain_finished_dynamic(cell);
         }
     }
 }
