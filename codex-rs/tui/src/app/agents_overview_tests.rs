@@ -1,6 +1,9 @@
 #[path = "agents_overview_discovery_tests.rs"]
 mod discovery;
 
+#[path = "embedded_agents_navigation_tests.rs"]
+mod embedded_navigation;
+
 #[path = "agent_center_tests.rs"]
 mod command_center;
 
