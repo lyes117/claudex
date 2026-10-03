@@ -3,7 +3,7 @@ source: tui/src/bottom_pane/chat_composer/paste_tests.rs
 expression: terminal.backend()
 ---
 "────────────────────────────────────────────────────────────"
-"› first line                                                "
+"❯ first line                                                "
 "    second line                                             "
 "   third line                                               "
 "                                                            "

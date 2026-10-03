@@ -7,7 +7,7 @@ expression: terminal.backend()
 "                                                                                                    "
 "  enter insert · esc close                                                                          "
 "────────────────────────────────────────────────────────────────────────────────────────────────────"
-"› $unbound-skill  $bound-skill continue                                                             "
+"❯ $unbound-skill  $bound-skill continue                                                             "
 "                                                                                                    "
 "────────────────────────────────────────────────────────────────────────────────────────────────────"
 "                                                                                 100% context left  "

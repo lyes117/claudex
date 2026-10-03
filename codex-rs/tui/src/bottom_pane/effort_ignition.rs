@@ -25,7 +25,6 @@ use ratatui::text::Span;
 
 use crate::color::blend;
 use crate::color::is_light;
-use crate::style::user_message_bg_rgb;
 use crate::terminal_palette::StdoutColorLevel;
 use crate::terminal_palette::best_color_for_level;
 use crate::terminal_palette::default_bg;
@@ -104,7 +103,7 @@ impl EffortTier {
 
     fn prompt_glyph(self) -> &'static str {
         match self {
-            Self::Max => "›",
+            Self::Max => "❯",
             Self::Ultra => "»",
         }
     }
@@ -235,7 +234,7 @@ impl EffortIgnition {
             area,
             protected,
             buf,
-            band_rgb: user_message_bg_rgb(term_bg),
+            band_rgb: term_bg,
             color_level,
         };
         paint_style(

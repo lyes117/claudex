@@ -59,7 +59,7 @@ fn paint(tier: EffortTier, style: IgnitionStyle, elapsed: Duration, area: Rect, 
             area.height.saturating_sub(1).min(1),
         ),
         buf,
-        band_rgb: user_message_bg_rgb(term_bg),
+        band_rgb: term_bg,
         color_level: StdoutColorLevel::TrueColor,
     };
     paint_style(
@@ -167,7 +167,7 @@ fn max_and_ultra_prompts_render_their_accent_and_glyph() {
         /*x*/ 0, /*y*/ 0, /*width*/ 1, /*height*/ 1,
     );
     for (tier, glyph, color) in [
-        (EffortTier::Max, "›", Color::Yellow),
+        (EffortTier::Max, "❯", Color::Yellow),
         (EffortTier::Ultra, "»", Color::Magenta),
     ] {
         let mut buf = Buffer::empty(area);
@@ -195,6 +195,44 @@ fn effort_ignition_clock_waits_for_its_first_visible_frame() {
     assert_eq!(ignition.started_at.get(), None);
     assert!(!ignition.is_finished());
     assert_eq!(ignition.charge_alpha(), 0.0);
+}
+
+#[test]
+fn effort_animation_blends_from_the_unshaded_terminal_surface() {
+    crate::terminal_palette::with_test_default_colors(
+        crate::terminal_probe::DefaultColors {
+            fg: (40, 40, 40),
+            bg: (255, 255, 255),
+        },
+        || {
+            let area = Rect::new(/*x*/ 0, /*y*/ 0, WIDTH, HEIGHT);
+            let protected = Rect::new(/*x*/ 0, /*y*/ 1, WIDTH, /*height*/ 1);
+            let ignition = EffortIgnition::new(EffortTier::Max, IgnitionStyle::Wave);
+            ignition
+                .started_at
+                .set(Some(Instant::now() - Duration::from_millis(475)));
+            let mut buffer = test_buffer(area);
+            assert!(ignition.render(area, protected, &mut buffer));
+            let mut painted = 0;
+            for cell in &buffer.content {
+                if let Color::Rgb(red, _, blue) = cell.bg {
+                    painted += 1;
+                    // Max's light-theme wave blends (176,98,0) from terminal white.
+                    // Infer the fade from blue; an old shaded band violates this relation.
+                    let expected_red = 255.0 - (255.0 - f32::from(blue)) * 79.0 / 255.0;
+                    assert!((f32::from(red) - expected_red).abs() <= 2.0);
+                }
+            }
+            assert!(
+                painted > 0,
+                "the active wave must exercise the production renderer"
+            );
+            assert_eq!(
+                frame(area, &buffer)[1],
+                DRAFT.to_string() + &" ".repeat(usize::from(WIDTH) - DRAFT.len())
+            );
+        },
+    );
 }
 
 #[cfg(unix)]

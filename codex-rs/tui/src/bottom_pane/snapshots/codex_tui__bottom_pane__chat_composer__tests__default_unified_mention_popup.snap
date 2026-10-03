@@ -8,6 +8,6 @@ expression: terminal.backend()
 "› Sample Plugin   Plugin with skills and an MCP server                                        Plugin"
 "  enter/tab insert · esc close · ↑/↓ select · ←/→ filter                                            "
 "────────────────────────────────────────────────────────────────────────────────────────────────────"
-"› @sa                                                                                               "
+"❯ @sa                                                                                               "
 "────────────────────────────────────────────────────────────────────────────────────────────────────"
 "                                                                                 100% context left  "

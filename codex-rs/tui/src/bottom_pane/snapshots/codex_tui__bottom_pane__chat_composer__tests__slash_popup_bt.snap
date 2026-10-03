@@ -4,6 +4,6 @@ expression: terminal.backend()
 ---
 "› /btw  start a side conversation in an ephemeral fork      "
 "────────────────────────────────────────────────────────────"
-"› /bt                                                       "
+"❯ /bt                                                       "
 "────────────────────────────────────────────────────────────"
 "                                         100% context left  "

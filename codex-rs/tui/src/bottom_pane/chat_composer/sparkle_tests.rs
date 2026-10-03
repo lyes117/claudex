@@ -193,7 +193,14 @@ fn sparkle_fades_without_adding_dots_and_finishes_by_fifteen_seconds() {
         assert!(!dots(&fading).is_empty());
         assert!(dots(&fading).iter().all(|dot| dots(&last).contains(dot)));
         let contrast = |cell: &ratatui::buffer::Cell| match (cell.fg, cell.bg) {
-            (Color::Rgb(fr, fg, fb), Color::Rgb(br, bg, bb)) => {
+            (Color::Rgb(fr, fg, fb), background) => {
+                let (br, bg, bb) = match background {
+                    Color::Rgb(br, bg, bb) => (br, bg, bb),
+                    Color::Reset => {
+                        crate::terminal_palette::default_bg().expect("measured palette")
+                    }
+                    other => panic!("expected a known terminal surface: {other:?}"),
+                };
                 u32::from(fr.abs_diff(br)) + u32::from(fg.abs_diff(bg)) + u32::from(fb.abs_diff(bb))
             }
             colors => panic!("expected true color: {colors:?}"),

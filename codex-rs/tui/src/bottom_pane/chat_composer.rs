@@ -375,7 +375,6 @@ use crate::render::Insets;
 use crate::render::RectExt;
 use crate::render::renderable::Renderable;
 use crate::slash_command::SlashCommand;
-use crate::style::user_message_style;
 use codex_protocol::ThreadId;
 use codex_protocol::user_input::ByteRange;
 use codex_protocol::user_input::MAX_USER_INPUT_TEXT_CHARS;
@@ -4972,7 +4971,9 @@ impl ChatComposer {
         if let Some((warning_area, line)) = warning_notice {
             line.render(warning_area, buf);
         }
-        let style = user_message_style();
+        // Keep the editable shell on the terminal's own surface. Submitted prompts
+        // retain their separate history style, while input geometry stays unchanged.
+        let style = Style::default().bg(ratatui::style::Color::Reset);
         // The layout already reserves one row above and below the input.
         // Paint separators in those rows without changing cursor/paste geometry.
         let effect_owns_margins = self.sparkle.needs_blank_margins()
@@ -5002,7 +5003,7 @@ impl ChatComposer {
                     Span::from("!").light_red().bold()
                 } else if self.luna_reserve_active {
                     // Reserve keeps one arrow at every reasoning effort; only its foreground changes.
-                    "›"
+                    "❯"
                         .fg(crate::terminal_palette::best_color((246, 197, 67)))
                         .bold()
                 } else if let Some(tier) = self.effort_tier {
@@ -5013,10 +5014,10 @@ impl ChatComposer {
                         .unwrap_or(1.0);
                     tier.prompt(charge)
                 } else {
-                    "›".bold()
+                    "❯".bold()
                 }
             } else {
-                "›".dim()
+                "❯".dim()
             };
             buf.set_span(
                 textarea_rect.x - LIVE_PREFIX_COLS,
@@ -5120,6 +5121,10 @@ mod agents_navigation_tests;
 mod effort_tests;
 
 #[cfg(test)]
+#[path = "chat_composer/claudex_shell_tests.rs"]
+mod claudex_shell_tests;
+
+#[cfg(test)]
 #[path = "chat_composer/embedded_input_tests.rs"]
 mod embedded_input_tests;
 
@@ -5197,10 +5202,7 @@ mod tests {
             let mut buffer = Buffer::empty(area);
             composer.render(area, &mut buffer);
 
-            assert_eq!(
-                buffer[(0, 1)].bg,
-                crate::terminal_palette::rgb_color((244, 244, 244))
-            );
+            assert_eq!(buffer[(0, 1)].bg, ratatui::style::Color::Reset);
             insta::assert_snapshot!("light_terminal_palette_composer", format!("{buffer:?}"));
         });
     }

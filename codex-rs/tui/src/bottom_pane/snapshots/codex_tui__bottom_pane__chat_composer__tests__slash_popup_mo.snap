@@ -4,6 +4,6 @@ expression: terminal.backend()
 ---
 "› /model  choose what model and reasoning effort to use     "
 "────────────────────────────────────────────────────────────"
-"› /mo                                                       "
+"❯ /mo                                                       "
 "────────────────────────────────────────────────────────────"
 "                                         100% context left  "
