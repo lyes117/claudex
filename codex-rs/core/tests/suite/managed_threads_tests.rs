@@ -1,5 +1,8 @@
 //! Exercises owned thread startup and shutdown through the real runtime and persistence store.
 
+#[path = "managed_tool_policy_tests.rs"]
+mod tool_policy_tests;
+
 use std::future::Future;
 use std::sync::Arc;
 use std::task::Context as TaskContext;
