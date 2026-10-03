@@ -1,6 +1,6 @@
 # Navigation native des agents dans le TUI embarque
 
-Etat : implementation et verification en cours. Le binaire installe correspond encore au cycle des parametres CLI ; cet etage TUI n'est pas encore installe.
+Etat : implemente, construit et installe depuis 2170ca4. Les controles cibles et la navigation interactive ci-dessous passent ; les suites completes restent non vertes.
 
 ## Perimetre
 
@@ -45,3 +45,9 @@ La reprise CLI sans cache incremental (`tests-embedded-agents-cli-package-cycle2
 `tests-embedded-agents-cli-scope-cycle3.log` : 320 controles executes, 320 reussites, 155 ignores par le filtre. Ce cycle couvre les 314 tests non ignores du binaire, les cinq fixtures app-server et le garde queue/remote corrige. Aucun nouveau passage de la suite CLI complete n'est revendique.
 
 Formatage et Clippy cibles TUI+CLI reussis (`fmt-embedded-agents-cycle1.log`, `fix-embedded-agents-cycle1.log`, `fmt-embedded-agents-cycle2.log`). Clippy fusionne seulement le if du garde --no-daemon/--remote ; aucun nouveau test apres ces modifications mecaniques. Le formatage preexistant de event_dispatch est isole dans un commit de style, les nouvelles fixtures dans un commit de tests, puis le comportement dans une tranche distincte. La revue de l'index confirme que ce commit de style conserve tous les identifiants, litteraux et anciennes branches fonctionnelles.
+
+## Installation et terminal reel
+
+Le build natif termine en 4 min 51 s (`build-embedded-agents-native-cycle1.log`), puis l'installation reussit (`install-embedded-agents-native-cycle1.log`). Les SHA256 des quatre executables sources et installes sont identiques (`installed-embedded-agents-native-hashes-cycle1.json`). Main : `327443F53493DE1F290F0A04446D58673FAC4A948D6D1500B3CCA9A0B9CB3B3E`. PowerShell sans profil et CMD avec PATH Machine+User trouvent Claudex, affichent 0.160.0 et confirment la connexion ChatGPT avec code de sortie zero.
+
+Une session du binaire installe dans un vrai pseudo-terminal Windows ouvre le tableau, annule un controle de confiance pour un ancien dossier de fixture et revient au tableau. Deux nouvelles sessions sans tour apparaissent Ready ; Enter rouvre une session et la fleche gauche revient au tableau. Ctrl+C ferme normalement avec code zero. Aucun tour modele soumis. Un brouillon saisi et affiche est ensuite explicitement efface pour naviguer : ce parcours ne prouve pas sa conservation lors d'un changement de session, contrairement a la fixture native. Le timing de saisie avant thread/start n'est pas controle. Les 61 avertissements de profils/skills visibles empechent de revendiquer leur chargement complet.
