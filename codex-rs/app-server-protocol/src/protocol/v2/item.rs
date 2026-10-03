@@ -994,6 +994,28 @@ impl From<CoreTurnItem> for ThreadItem {
                 path: image.path.into(),
             },
             CoreTurnItem::Extension(extension) => match extension {
+                ExtensionItem::FileTool(item) => ThreadItem::DynamicToolCall {
+                    id: item.id,
+                    namespace: None,
+                    tool: item.tool,
+                    arguments: item.arguments,
+                    status: match item.status {
+                        codex_extension_items::file_tool::FileToolStatus::InProgress => {
+                            DynamicToolCallStatus::InProgress
+                        }
+                        codex_extension_items::file_tool::FileToolStatus::Completed => {
+                            DynamicToolCallStatus::Completed
+                        }
+                        codex_extension_items::file_tool::FileToolStatus::Failed => {
+                            DynamicToolCallStatus::Failed
+                        }
+                    },
+                    content_items: item
+                        .output
+                        .map(|text| vec![DynamicToolCallOutputContentItem::InputText { text }]),
+                    success: item.success,
+                    duration_ms: item.duration_ms,
+                },
                 ExtensionItem::ImageGeneration(item) => ThreadItem::ImageGeneration(item),
                 ExtensionItem::Sleep(item) => ThreadItem::Sleep(item),
                 ExtensionItem::WebSearch(item) => ThreadItem::WebSearch(item),

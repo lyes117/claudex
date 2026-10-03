@@ -74,6 +74,74 @@ fn dynamic_status_and_output_match_persisted_presentations() {
 }
 
 #[test]
+fn claude_file_tool_cards_render_live_and_restored_without_losing_output() {
+    let cwd = test_path_buf("/workspace").abs();
+    let mut snapshots = Vec::new();
+    for (tool, arguments, output) in [
+        (
+            "Read",
+            json!({"file_path":"src/main.rs"}),
+            json!({"lines":[{"line":1,"text":"premier été"}],"offset":1,"truncated":false}),
+        ),
+        (
+            "Glob",
+            json!({"pattern":"**/*.rs"}),
+            json!({"results":["src/main.rs"],"skipped":0,"truncated":false}),
+        ),
+        (
+            "Grep",
+            json!({"pattern":"main","output_mode":"content"}),
+            json!({"results":[{"path":"src/main.rs","line":1,"text":"fn main() {}"}],"skipped":0,"truncated":false}),
+        ),
+    ] {
+        let output = output.to_string();
+        let item = ThreadItem::DynamicToolCall {
+            id: tool.to_owned(),
+            namespace: None,
+            tool: tool.to_owned(),
+            arguments,
+            status: DynamicToolCallStatus::Completed,
+            content_items: Some(vec![DynamicToolCallOutputContentItem::InputText {
+                text: output.clone(),
+            }]),
+            success: Some(true),
+            duration_ms: Some(25),
+        };
+        let live = DynamicToolCallCell::from_item(item.clone()).unwrap();
+        let restored = thread_items_to_transcript_cells(
+            /*thread_id*/ None,
+            &cwd,
+            [item],
+            RawReasoningVisibility::Hidden,
+            /*config*/ None,
+        );
+        assert_eq!(restored.len(), 1);
+        for width in [26, 80] {
+            let lines = live.display_lines(width);
+            assert_eq!(lines, restored[0].display_lines(width));
+            assert!(lines.iter().all(|line| line.width() <= usize::from(width)));
+            snapshots.push(format!(
+                "{tool}, width={width}\n{}",
+                lines
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            ));
+        }
+        let raw = live
+            .raw_lines()
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(raw.ends_with(&output));
+        snapshots.push(format!("{tool}, full retained output\n{raw}"));
+    }
+    insta::assert_snapshot!(snapshots.join("\n\n"));
+}
+
+#[test]
 fn dynamic_preview_reports_hidden_lines_and_retains_full_output() {
     let mut snapshots = Vec::new();
     for count in [3, 4] {

@@ -1,0 +1,43 @@
+---
+source: tui/src/history_cell/dynamic_tests.rs
+assertion_line: 107
+expression: "snapshots.join(\"\\n\\n\")"
+---
+Read, width=26
+• Called Read · 25ms
+  └ {"lines":[{"line":1,"…
+
+Read, width=80
+• Called Read · 25ms
+  └ {"lines":[{"line":1,"text":"premier été"}],"offset":1,"truncated":false}
+
+Read, full retained output
+• Called Read · 25ms
+Arguments: {"file_path":"src/main.rs"}
+{"lines":[{"line":1,"text":"premier été"}],"offset":1,"truncated":false}
+
+Glob, width=26
+• Called Glob · 25ms
+  └ {"results":["src/main…
+
+Glob, width=80
+• Called Glob · 25ms
+  └ {"results":["src/main.rs"],"skipped":0,"truncated":false}
+
+Glob, full retained output
+• Called Glob · 25ms
+Arguments: {"pattern":"**/*.rs"}
+{"results":["src/main.rs"],"skipped":0,"truncated":false}
+
+Grep, width=26
+• Called Grep · 25ms
+  └ {"results":[{"path":"…
+
+Grep, width=80
+• Called Grep · 25ms
+  └ {"results":[{"path":"src/main.rs","line":1,"text":"fn main() {}"}],"skipped…
+
+Grep, full retained output
+• Called Grep · 25ms
+Arguments: {"pattern":"main","output_mode":"content"}
+{"results":[{"path":"src/main.rs","line":1,"text":"fn main() {}"}],"skipped":0,"truncated":false}
