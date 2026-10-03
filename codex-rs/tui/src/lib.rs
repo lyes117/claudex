@@ -2420,8 +2420,15 @@ requires_openai_auth = {requires_openai_auth}
                 false,
             ),
             (
-                "enabled for the default provider",
+                "enabled with the default ChatGPT authentication",
                 enabled,
+                LoginStatus::NotAuthenticated,
+                AppServerTarget::Embedded,
+                false,
+            ),
+            (
+                "enabled when API authentication is explicitly selected",
+                "forced_login_method = \"api\"\n[features]\nbedrock_setup_wizard = true\n",
                 LoginStatus::NotAuthenticated,
                 AppServerTarget::Embedded,
                 true,
@@ -2469,7 +2476,16 @@ requires_openai_auth = {requires_openai_auth}
         ] {
             let codex_home = TempDir::new()?;
             std::fs::write(codex_home.path().join("config.toml"), config_toml)?;
-            let config = build_config(&codex_home).await?;
+            // Onboarding eligibility depends on this fixture, not on configuration
+            // discovered above the checkout running the test.
+            let config = ConfigBuilder::default()
+                .loader_overrides(LoaderOverrides {
+                    ignore_project_config: true,
+                    ..LoaderOverrides::without_managed_config_for_tests()
+                })
+                .codex_home(codex_home.path().to_path_buf())
+                .build()
+                .await?;
 
             assert_eq!(
                 should_show_bedrock_setup_wizard(

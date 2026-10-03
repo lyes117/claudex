@@ -4,7 +4,9 @@ expression: "format!(\"created from the dashboard:\\n{}\\nreturned to the existi
 ---
 created from the dashboard:
                             ⠈     ⢀     ⠁                 ⠂
-›⠁Ask Codex to do anything         ⠈      ⠁
+›⠁Try a task, /help for commands, or @path for files
        ⢀            ⠠     ⠄         ⠠          ⢀    ⠠     ⡀
 returned to the existing task:
-› Ask Codex to do anything
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────

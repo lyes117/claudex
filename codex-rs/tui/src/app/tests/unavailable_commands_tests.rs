@@ -42,7 +42,7 @@ async fn unavailable_thread_routes_local_and_recovery_commands() -> Result<()> {
         "/new",
         "/clear recovery",
         "/resume",
-        "/agents",
+        "/agent-center",
         "/subagents",
         "/raw on",
         "/warnings",
@@ -62,7 +62,7 @@ async fn unavailable_thread_routes_local_and_recovery_commands() -> Result<()> {
                 (command, &event),
                 ("/new", AppEvent::NewSession { name: None })
                     | ("/resume", AppEvent::OpenResumePicker)
-                    | ("/agents", AppEvent::OpenAgentsOverview)
+                    | ("/agent-center", AppEvent::OpenAgentsOverview)
                     | ("/subagents", AppEvent::OpenAgentPicker)
                     | ("/raw on", AppEvent::RawOutputModeChanged { enabled: true })
                     | ("/warnings", AppEvent::OpenWarnings)

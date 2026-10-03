@@ -1,5 +1,5 @@
 ---
 source: tui/src/chatwidget/tests/questions_tests.rs
-expression: "render_bottom_popup(&chat, 80).lines().next().unwrap()"
+expression: "render_bottom_popup(&chat,\n80).lines().find(|line| line.starts_with('›')).unwrap()"
 ---
-› Ask Codex to do anything
+› Try a task, /help for commands, or @path for files

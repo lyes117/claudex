@@ -8,9 +8,9 @@ History 20
   ↳ Recap: The draft is ready.
 
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -20,9 +20,9 @@ History 20
 
 • Follow-up response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -32,9 +32,9 @@ History 20
 
 • Streaming response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -46,9 +46,9 @@ History 20
            Next: Review the changes.
 
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -60,9 +60,9 @@ History 20
 
 • Follow-up response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -74,9 +74,9 @@ History 20
 
 • Streaming response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
@@ -88,9 +88,9 @@ History 20
            changes.
 
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
 
@@ -102,9 +102,9 @@ History 20
 
 • Follow-up response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
 
@@ -116,59 +116,59 @@ History 20
 
 • Streaming response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
 
 80x7, Recap at tail
            Next: Review the changes.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
 80x7, Message after recap
 • Follow-up response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
 80x7, Live message after recap
 • Streaming response.
 
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
 32x6, Recap at tail
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
 
 32x6, Message after recap
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
 
 32x6, Live message after recap
 
-
-› Ask Codex to do anything
-
+────────────────────────────────
+› Try a task, /help for command
+────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts

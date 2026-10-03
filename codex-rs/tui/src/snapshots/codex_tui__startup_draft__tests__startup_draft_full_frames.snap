@@ -3,59 +3,74 @@ source: tui/src/startup_draft_tests.rs
 expression: "snapshots.join(\"\\n---\\n\")"
 ---
 empty (48 columns):
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for
+────────────────────────────────────────────────
   ? for shortcuts
 ---
 resuming (48 columns):
-
-  ✻ Claudex (v<VERSION>)
-     loading
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Welcome to Claudex                           │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
   Resuming session…
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for
+────────────────────────────────────────────────
   ? for shortcuts
 ---
 forking (48 columns):
-
-  ✻ Claudex (v<VERSION>)
-     loading
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Welcome to Claudex                           │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
   Forking session…
-
+────────────────────────────────────────────────
 › draft while loading
-
+────────────────────────────────────────────────
 
 ---
 multiline (48 columns):
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
+────────────────────────────────────────────────
 › first startup line
   second startup line
-
+────────────────────────────────────────────────
 
 ---
 narrow (18 columns):
+╭────────────────╮
+│ ✻ Claudex (v0… │
+│ Pull up a pro… │
+│ loading · Cod… │
+│ loading        │
+│ /help command… │
+╰────────────────╯
 
-  ✻ Claudex (v0.1…
-     loading
-
-  Pull up a promp…
-
-
+──────────────────
 › first startup
   line
   second startup
   line
+──────────────────

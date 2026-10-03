@@ -3747,16 +3747,16 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
 
-        insta::assert_snapshot!(snapshot, @r"
+        insta::assert_snapshot!(snapshot, @"
 
-          Question 1/1 (1 unanswered)
-          Share details.
+        Question 1/1 (1 unanswered)
+        Share details.
+        ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        › Type your answer (optional)
 
-          › Type your answer (optional)
 
-
-
-          ctrl+x enter to submit answer | esc to interrupt
+        ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        ctrl+x enter to submit answer | esc to interrupt
         ");
     }
 

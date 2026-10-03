@@ -58,10 +58,10 @@ fn draw(composer: &ChatComposer, width: u16, now: Instant) -> (Buffer, Rect) {
         composer.desired_height(width),
     );
     let layout = composer.layout_with_options(area, Default::default());
-    let phase = composer.sparkle.phase.replace(Phase::Unarmed);
+    composer.sparkle.suppress_live_render.set(true);
     let mut buffer = Buffer::empty(area);
     composer.render(area, &mut buffer);
-    composer.sparkle.phase.set(phase);
+    composer.sparkle.suppress_live_render.set(false);
     composer.render_sparkle_at(
         layout.composer,
         layout.textarea,

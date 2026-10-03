@@ -1,0 +1,11 @@
+---
+source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+expression: "render_bottom_popup(&chat, 90)"
+---
+  Workflows
+  Local runs · enter to inspect · status refreshes every second
+
+
+› 1. fixture-run  running · 0/2 agents · Research
+
+  enter select · esc back

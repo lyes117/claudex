@@ -14,6 +14,9 @@
 //! Claude Markdown commands expand on submission from the existing skill catalog, after built-in
 //! slash-command precedence. Shell quoting and argument placeholders are expanded in memory;
 //! unsupported execution restrictions and dynamic shell injection are rejected.
+//! Claudex draws separators in the existing blank input margins. Active native visual effects
+//! retain those blank cells. Worktree availability changes refresh an open command catalogue
+//! while preserving an explicitly dismissed popup and the current draft.
 //!
 //! Shortcut help expands above the composer, with its close hint replacing the final shortcuts row
 //! so input and persistent status stay anchored when help opens or closes.
@@ -304,6 +307,7 @@ use ratatui::style::Stylize;
 use ratatui::text::Line;
 use ratatui::text::Span;
 use ratatui::widgets::Block;
+use ratatui::widgets::Borders;
 use ratatui::widgets::Paragraph;
 use ratatui::widgets::StatefulWidgetRef;
 use ratatui::widgets::Widget;
@@ -4969,7 +4973,24 @@ impl ChatComposer {
             line.render(warning_area, buf);
         }
         let style = user_message_style();
-        Block::default().style(style).render(composer_rect, buf);
+        // The layout already reserves one row above and below the input.
+        // Paint separators in those rows without changing cursor/paste geometry.
+        let effect_owns_margins = self.sparkle.needs_blank_margins()
+            || (matches!(self.popups.active, ActivePopup::None)
+                && self
+                    .effort_ignition
+                    .as_ref()
+                    .is_some_and(|effect| !effect.is_finished()));
+        let borders = if composer_rect.height >= 3 && !effect_owns_margins {
+            Borders::TOP | Borders::BOTTOM
+        } else {
+            Borders::NONE
+        };
+        Block::default()
+            .borders(borders)
+            .border_style(Style::default().dim())
+            .style(style)
+            .render(composer_rect, buf);
         if !remote_images_rect.is_empty() {
             Paragraph::new(self.attachments.remote_image_lines())
                 .style(style)
@@ -5232,9 +5253,9 @@ mod tests {
 
         let spacing_row = row_to_string(hint_row_idx - 1);
         assert_eq!(
-            spacing_row.trim(),
-            "",
-            "expected blank spacing row above hints but saw: {spacing_row:?}",
+            spacing_row,
+            "─".repeat(usize::from(area.width)),
+            "expected separator row above hints but saw: {spacing_row:?}",
         );
     }
 

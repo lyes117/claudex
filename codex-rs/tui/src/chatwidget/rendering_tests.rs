@@ -383,10 +383,17 @@ async fn initial_session_header_starts_at_the_top_of_the_viewport() {
         Some(ChatWidget::placeholder_session_header_cell(&widget.config));
 
     let frame = render_frame(&widget, /*width*/ 48);
+    let header_rows = widget
+        .transcript
+        .active_cell
+        .as_ref()
+        .unwrap()
+        .display_lines(48)
+        .len();
     let header = frame
         .content
         .chunks(usize::from(frame.area.width))
-        .take(/*n*/ 3)
+        .take(header_rows)
         .map(|row| {
             row.iter()
                 .map(ratatui::buffer::Cell::symbol)
@@ -398,11 +405,24 @@ async fn initial_session_header_starts_at_the_top_of_the_viewport() {
         .join("\n")
         .replace(crate::version::CODEX_CLI_VERSION, "<VERSION>");
 
-    let cwd = widget.config.cwd.as_path().display().to_string();
+    let cwd = crate::history_cell::SessionHeaderHistoryCell::format_directory_inner(
+        widget.config.cwd.as_path(),
+        Some(44),
+    );
+    assert!(header.starts_with('╭'));
+    assert!(
+        header.contains(&cwd),
+        "the whole header, including its directory, must be rendered"
+    );
 
-    insta::assert_snapshot!(header.replace(&cwd, "/tmp/project"), @r"
-      >_ OpenAI Codex (v<VERSION>)
-         /tmp/project
+    insta::assert_snapshot!(header.replace(&cwd, "/tmp/project"), @"
+    ╭──────────────────────────────────────────────╮
+    │ ✻ Claudex (v<VERSION>)                         │
+    │ Welcome to Claudex                           │
+    │ loading · Codex engine                       │
+    │ /tmp/project                               │
+    │ /help commands · /tasks agents               │
+    ╰──────────────────────────────────────────────╯
     ");
 }
 

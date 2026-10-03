@@ -2,6 +2,7 @@
 source: tui/src/chatwidget/tests/security_setup_tests.rs
 expression: rendered
 ---
-› Ask Codex to do anything
-
+──────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+──────────────────────────────────────────────────────────────────────
   test-model-a default · /tmp/project

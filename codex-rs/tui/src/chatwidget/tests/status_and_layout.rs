@@ -981,6 +981,10 @@ async fn rolling_rate_limit_snapshot_preserves_prior_individual_limit() {
         resets_at: 1_800_000_000,
     });
     chat.on_rate_limit_snapshot(Some(usage_limits));
+    let prior_limit = chat.rate_limit_snapshots_by_limit_id["codex"]
+        .individual_limit
+        .clone()
+        .expect("monthly limits should be cached");
 
     chat.on_rolling_rate_limit_snapshot(snapshot(/*percent*/ 20.0));
 
@@ -992,9 +996,14 @@ async fn rolling_rate_limit_snapshot_preserves_prior_individual_limit() {
         .individual_limit
         .as_ref()
         .expect("rolling updates should preserve monthly limits");
-    assert_eq!(individual_limit.used, "8,000");
-    assert_eq!(individual_limit.limit, "25,000");
-    assert_eq!(individual_limit.percent_remaining, 68.0);
+    assert_eq!(individual_limit.used, prior_limit.used);
+    assert_eq!(individual_limit.limit, prior_limit.limit);
+    assert_eq!(
+        individual_limit.percent_remaining,
+        prior_limit.percent_remaining
+    );
+    assert_eq!(individual_limit.captured_at, prior_limit.captured_at);
+    assert_eq!(individual_limit.resets_at, prior_limit.resets_at);
 
     chat.on_rate_limit_snapshot(Some(snapshot(/*percent*/ 30.0)));
     let display = chat

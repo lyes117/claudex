@@ -1,6 +1,5 @@
 ---
 source: tui/src/chatwidget/tests/security_setup_tests.rs
-assertion_line: 19
 expression: rendered
 ---
   Keep using Daybreak mode
@@ -11,7 +10,7 @@ expression: rendered
 › 1. Set up security
 
   Press a number to choose · esc to dismiss · type to continue
-
-› Ask Codex to do anything
-
+──────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+──────────────────────────────────────────────────────────────────────
   test-model-a default · /tmp/project

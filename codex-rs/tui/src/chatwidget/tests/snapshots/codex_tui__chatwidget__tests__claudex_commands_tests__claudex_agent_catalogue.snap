@@ -1,0 +1,12 @@
+---
+source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+expression: rendered
+---
+  Agent roles
+  Loaded configuration · /tasks shows agents in this session
+
+  Find a role
+
+› researcher  Inspect the repository with evidence.
+
+  enter select · esc back

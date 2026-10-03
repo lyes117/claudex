@@ -1,6 +1,5 @@
 ---
 source: tui/src/bottom_pane/chat_composer/status_surface_tests.rs
-assertion_line: 344
 expression: "format!(\"{buf:?}\")"
 ---
 Buffer {
@@ -10,9 +9,9 @@ Buffer {
         "› /memories  configure memory use and generation                                ",
         "  /mention   mention a file                                                     ",
         "  /mcp       list configured MCP tools; use /mcp verbose for details            ",
-        "                                                                                ",
+        "────────────────────────────────────────────────────────────────────────────────",
         "› /m                                                                            ",
-        "                                                                                ",
+        "────────────────────────────────────────────────────────────────────────────────",
         "  model · high · fast                                                           ",
     ],
     styles: [
@@ -33,7 +32,10 @@ Buffer {
         x: 4, y: 3, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
         x: 13, y: 3, fg: Reset, bg: Reset, underline: Reset, modifier: DIM,
         x: 68, y: 3, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+        x: 0, y: 4, fg: Reset, bg: Reset, underline: Reset, modifier: DIM,
         x: 0, y: 5, fg: Reset, bg: Reset, underline: Reset, modifier: BOLD,
         x: 1, y: 5, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+        x: 0, y: 6, fg: Reset, bg: Reset, underline: Reset, modifier: DIM,
+        x: 0, y: 7, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
     ]
 }

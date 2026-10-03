@@ -5,7 +5,7 @@ use crossterm::event::KeyModifiers;
 use pretty_assertions::assert_eq;
 
 #[test]
-fn first_screen_stage_ignores_notices_and_hides_instead_of_shrinking() {
+fn first_screen_stage_fits_between_notices_and_composer() {
     let mut animation = EmptyStateAnimation::default();
     animation.start_fresh();
     let screen = Rect::new(
@@ -29,14 +29,16 @@ fn first_screen_stage_ignores_notices_and_hides_instead_of_shrinking() {
             ),
             None
         );
-        assert_eq!(
-            animation.stage,
-            Some(Rect::new(
-                /*x*/ 17, /*y*/ 14, /*width*/ 60, /*height*/ 21
-            ))
-        );
+        let stage = animation
+            .stage
+            .expect("the welcome logo should remain visible");
+        assert_eq!(stage.intersection(free), stage);
+        assert_eq!(stage.width, 60);
+        assert_eq!(stage.height, 21);
+        assert_eq!(stage.x, 17);
+        assert_eq!(stage.y, free.y + (free.height - stage.height) / 2);
     }
-    // Content which reaches the center must win; it must not move the stage down.
+    // Notices own their rows, even when they extend beyond the screen's center.
     let free = Rect::new(screen.x, /*y*/ 20, screen.width, /*height*/ 24);
     animation.render_first_screen(
         free,
@@ -44,9 +46,15 @@ fn first_screen_stage_ignores_notices_and_hides_instead_of_shrinking() {
         Some(ComposerState::Empty),
         MotionMode::Animated,
     );
-    assert_eq!(animation.stage, None);
+    let stage = animation.stage.expect("there is room below the notices");
+    assert_eq!(stage.intersection(free), stage);
     // Both sides of the minimum size, and a terminal that is too short for the full logo.
-    for (width, height, expected) in [(44, 36, true), (43, 36, false), (80, 20, false)] {
+    for (width, height, expected) in [
+        (44, 36, true),
+        (43, 36, false),
+        (80, 20, true),
+        (80, 13, false),
+    ] {
         let screen = Rect::new(/*x*/ 7, /*y*/ 3, width, height);
         let mut buffer = Buffer::empty(screen);
         animation.render_first_screen(

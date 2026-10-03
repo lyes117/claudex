@@ -82,8 +82,12 @@ async fn owned_startup_hides_tip_in_transcript() -> Result<()> {
             .join("\n");
         assert!(text.contains("Pull up a prompt."));
         assert!(text.contains("Use /mcp"));
-        assert!(!text.contains("model:"));
-        assert!(!text.contains('╭'));
+        if mode == HistoryRenderMode::Raw {
+            assert!(text.contains("model:"));
+            assert!(!text.contains('╭'));
+        } else {
+            assert!(!text.contains("model:"));
+        }
     }
     app.transcript_view.begin_search();
     app.render_owned_transcript(&mut tui, Size::new(/*width*/ 80, /*height*/ 20))?;
@@ -162,7 +166,7 @@ async fn owned_startup_preserves_loading_until_resume_replay_is_applied() -> Res
         if has_answer {
             assert!(rendered.contains("Retained answer after resume."));
         } else {
-            assert!(rendered.contains("OpenAI Codex"));
+            assert!(rendered.contains("Claudex"));
         }
         tui.set_owned_screen(/*owned*/ false)?;
         app_server.shutdown().await?;

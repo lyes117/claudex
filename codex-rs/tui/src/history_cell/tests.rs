@@ -1863,6 +1863,27 @@ fn session_header_clamps_to_narrow_width() {
 }
 
 #[test]
+fn claudex_session_header_exposes_model_and_navigation() {
+    let cell = SessionHeaderHistoryCell::new(
+        "gpt-6.1-sol".to_string(),
+        Some(ReasoningEffortConfig::High),
+        PathBuf::from("project"),
+        "test",
+    );
+    let rendered = render_lines(&cell.display_lines(90)).join("\n");
+    assert!(rendered.contains("gpt-6.1-sol"));
+    assert!(rendered.contains("/tasks"));
+    insta::assert_snapshot!("claudex_session_banner", rendered);
+    for width in 0..90 {
+        assert!(
+            cell.display_lines(width)
+                .iter()
+                .all(|line| line_width(line) <= usize::from(width))
+        );
+    }
+}
+
+#[test]
 #[cfg_attr(
     target_os = "windows",
     ignore = "snapshot path rendering differs on Windows"

@@ -4,78 +4,90 @@ expression: "snapshots.join(\"\\n---\\n\")"
 ---
 resume lookup fallback:
 before:
-
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
   Resuming session…
-
+────────────────────────────────────────────────
 › draft while loading
-
+────────────────────────────────────────────────
 
 after:
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
+────────────────────────────────────────────────
 › draft while loading
-
+────────────────────────────────────────────────
 
 ---
 fork lookup fallback:
 before:
-
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
   Forking session…
-
+────────────────────────────────────────────────
 › draft while loading
-
+────────────────────────────────────────────────
 
 after:
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
+────────────────────────────────────────────────
 › draft while loading
-
+────────────────────────────────────────────────
 
 ---
 resume picker cancellation:
 before:
 hidden while picker owns input
 after:
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for
+────────────────────────────────────────────────
   ? for shortcuts
 ---
 fork picker cancellation:
 before:
 hidden while picker owns input
 after:
+╭──────────────────────────────────────────────╮
+│ ✻ Claudex (v<VERSION>)                         │
+│ Pull up a prompt.                            │
+│ loading · Codex engine                       │
+│ loading                                      │
+│ /help commands · /tasks agents               │
+╰──────────────────────────────────────────────╯
 
-  ✻ Claudex (v<VERSION>)
-     loading
-
-  Pull up a prompt.
-
-
-› Ask Codex to do anything
-
+────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for
+────────────────────────────────────────────────
   ? for shortcuts

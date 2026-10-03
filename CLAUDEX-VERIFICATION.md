@@ -5,10 +5,10 @@ Date : 3 octobre 2026. Ce rapport concerne un fork local fonctionnel, avec une c
 ## Provenance et installation
 
 - Dépôt : `C:\Users\lyesb\claudex`, branche `claudex/main`.
-- Base officielle : `openai/codex`, tag `rust-v0.160.0`, commit `79b1b666f2e8551f8abbbca34957227f67f3f553`. Aucun fork distant publié.
+- Base officielle : `openai/codex`, tag `rust-v0.160.0`, commit `a956835d020762cb2b570053af06f643a11c0ecc`. Aucun fork distant publié.
 - L'exécutable principal provient des sources modifiées du fork. Les auxiliaires inchangés proviennent du paquet officiel local 0.160.0 ; ce choix conserve le moteur Windows, le code-mode et les ressources existantes.
 - Installation : `%LOCALAPPDATA%\Programs\Claudex\bin\claudex.exe`. Répertoire ajouté au PATH utilisateur, sans remplacement de Codex ou Claude.
-- Reconstruction finale réussie avec MSVC, profil `dev-small` ; SHA-256 du binaire installé identique à celui compilé. Journal `.build-tools/build-shipping.log`.
+- Reconstruction initiale réussie avec MSVC, profil `dev-small` (`.build-tools/build-shipping.log`), puis reconstruction TUI/workflows réussie (`.build-tools/build-cycle6.log`). SHA-256 du binaire installé identique à celui compilé à chaque installation vérifiée.
 - Authentification officielle partagée avec Codex : `Logged in using ChatGPT`. Le mode ChatGPT est forcé par défaut dans le fork. Aucune clé API distincte requise pour les appels vérifiés.
 - Aucun dépôt existant migré. Aucun `CLAUDE.md`, `.claude`, `.mcp.json`, fichier de configuration global ou secret copié dans le fork.
 
@@ -30,8 +30,13 @@ Date : 3 octobre 2026. Ce rapport concerne un fork local fonctionnel, avec une c
 | Commande dans le terminal connecté | `/fixture-command "hello world" second` devient le contenu Markdown avec deux arguments correctement séparés ; réponse réelle `CLAUDEX_COMMAND_OK hello world second` |
 | Workflow avec inférence | `claudex workflow` appelle réellement le fork final avec schéma JSON et obtient `{ "ok": true }` ; reprise validée sans lancement d'agent, checkpoint et date de modification inchangés |
 | Workflow film existant | Le véritable `film.workflow.js` s'exécute avec `jobs: []`, sans agent ni production ; le contrat de chargement et les primitives sont exercés |
+| Contrôle réel des workflows | `scripts/workflow-live.test.mjs` : deux inférences structurées réelles, pause après l'agent actif, reprise, refus de `--run-id` doublé, deux résultats effectivement rejoués sans nouvelle inférence |
+| Arrêt réel | Processus enfant Codex démarré puis arrêté ; PID disparu, premier agent arrêté, second agent conservé en attente sans démarrage, verrou libéré. Cela ne prouve pas qu'un petit-enfant shell avait démarré avant l'arrêt |
+| Nouveaux panneaux installés | Pseudo-terminal : aide recherchable, catalogue des rôles, tâches de session et panneau workflows ouverts ; ce dernier affiche les deux exécutions réelles et leur état |
 
 Les fixtures et sorties sont dans `.verification/`, ignoré par Git. `scripts/verify-runtime.mjs`, avec `--tools` ou `--agent`, reproduit les contrôles réels sans révéler les sorties ordinaires de Codex. Ce script utilise uniquement son projet de test, un bac à sable `read-only` et des commandes sans effet externe. Les hooks de cette fixture sont explicitement approuvés pour ce test ; le moteur normal conserve sa revue de confiance.
+
+Le contrôle workflow supplémentaire est volontairement explicite : définir `CLAUDEX_LIVE_BIN` vers le fork installé puis lancer `node scripts/workflow-live.test.mjs`. Il utilise le compte ChatGPT déjà connecté ; ses artefacts sont dans `.build-tools/live-workflow-checks/2f149a44-ae16-4cb5-81e3-4ecbe8a6ccf3`. Résultat : réussite ; journal `.build-tools/workflow-live-cycle6.log`. Il ne lance pas le workflow marketing de production.
 
 La production complète du film, les appels métier de ses agents et l'interface interactive exacte Claude ne sont pas attestés par le simple test à jobs vides. L'expansion des arguments possède également des contrôles Rust dédiés ; les snapshots couvrent l'identité et les écrans du terminal.
 
@@ -40,6 +45,8 @@ La production complète du film, les appels métier de ses agents et l'interface
 - Formatage requis `just fmt` exécuté. Les changements de formatage Bazel sans rapport avec le fork ont été retirés.
 - `just fix` exécuté sur les crates touchées ; revue Rust puis revue JavaScript réalisées séquentiellement. Les problèmes relevés ont été corrigés : contexte des hooks, politiques natives, priorité des paramètres, restriction des métadonnées, mutation des checkpoints et verrous de workflow.
 - `node scripts/workflows.test.mjs` passe : contrôle de flux, validation de sortie structurée, reprise sans réexécution, verrou et attente des agents avant libération. Ces tests utilisent des réponses de fixture et ne sont pas présentés comme des inférences réelles.
+- `node scripts/workflow-control.test.mjs` : **8/8 réussis** ; modification de script, invalidation du suffixe, pause, reprise, arrêt, échec retournant `null`, horloge implicite refusée et erreurs de checkpoint propagées.
+- Cycle TUI/workflows : revues adversariales Rust et JavaScript séquentielles, correctifs puis `just fix -p codex-tui -p codex-cli --profile dev-small` réussi (`.build-tools/fix-cycle6.log`). Dernière suite TUI complète : **5 549 exécutés, 5 536 réussis, 11 échecs, 2 timeouts, 8 ignorés** (`.build-tools/tests-tui-cycle4.log`). Reprises ciblées : **64/66**, puis **12/12** après les deux corrections restantes (`.build-tools/tests-tui-targeted-cycle6.log`). Les snapshots intentionnels ont été examinés ; les snapshots de couleurs ANSI et de locale sans rapport n'ont pas été remplacés pour masquer les différences d'environnement. Les deux timeouts des tests de worktree restent à analyser. Ce n'est pas un statut vert de l'ensemble du TUI.
 - Suite finale `codex-config` : **355 tests exécutés, 355 réussis**. Elle inclut le contrôle du périmètre des plugins lorsque la configuration utilisateur est ignorée, avec et sans racine Git. Journal `.build-tools/tests-config-shipping.log`.
 - `just bazel-lock-update` a réussi après les changements de dépendances ; le verrou Bazel reste identique. La vérification du diff hors espaces de padding des snapshots passe.
 - Première suite de sept paquets : **6 702 tests exécutés, 6 667 réussis, 31 échecs, 4 timeouts, 10 ignorés**. Journal `.build-tools/tests.log`. Certaines erreurs ont conduit aux correctifs ultérieurs ; ce résultat initial n'est pas un statut final vert.
@@ -55,8 +62,8 @@ La suite complète du workspace n'a pas été déclarée verte ni exécutée : l
 2. Les métadonnées de sécurité Claude non applicables au moteur natif entraînent le rejet de l'agent ou du skill concerné, plutôt qu'une exécution avec des permissions fictives. Les règles `ask` bloquent ; certains refus de chemins bloquent conservativement l'outil entier.
 3. Les hooks gardent les payloads natifs Codex. Les hooks HTTP, prompt et agent, ainsi que les événements absents du moteur natif, ne sont pas pris en charge. Un script exigeant un payload Claude exact doit être adapté.
 4. Les plugins locaux activés sont lus depuis leur registre et leurs répertoires standards. Les chemins personnalisés de manifeste, téléchargements et marketplace Claude ne sont pas implémentés.
-5. Les workflows sont séquentiels, avec checkpoints et appels Codex réels. Il n'existe pas encore d'outil conversationnel natif `Workflow`, de workflows imbriqués, ni de pause ou reprise interactive équivalente à Claude. Le runtime JS exécute des programmes de confiance ; `node:vm` ne fournit pas une isolation de sécurité.
-6. Le terminal local utilise le serveur embarqué. La vue `agents` multi-sessions, le daemon partagé et ses files locales ne sont pas activés dans cette installation. Cela évite de remplacer le daemon Codex existant.
+5. Les workflows sont séquentiels, avec checkpoints, pause/reprise/arrêt depuis la CLI ou le panneau et appels Codex réels. L'outil conversationnel natif `Workflow`, les workflows imbriqués, la relance individuelle, la concurrence et la validation complète des schémas Claude restent ouverts. Le runtime JS exécute des programmes de confiance ; `node:vm` ne fournit pas une isolation de sécurité.
+6. Le terminal local utilise le serveur embarqué. `/agents` montre les rôles ; `/tasks` les sous-agents de la session. `/agent-center` conserve l'accès au tableau multi-sessions lorsque le serveur partagé est explicitement connecté ; le daemon et ses files locales ne sont pas activés dans cette installation. Cela évite de remplacer le daemon Codex existant.
 7. SSE MCP, imports Markdown globaux `~`, activation dynamique exacte des règles par chemins et `${CLAUDE_PROJECT_DIR}` dans les corps de commandes ne sont pas couverts.
 
 Les dépôts contenant ces cas restent directement ouvrables, mais chaque élément incompatible ne peut pas être annoncé comme fonctionnel. La matrice détaillée est dans [CLAUDEX.md](CLAUDEX.md).

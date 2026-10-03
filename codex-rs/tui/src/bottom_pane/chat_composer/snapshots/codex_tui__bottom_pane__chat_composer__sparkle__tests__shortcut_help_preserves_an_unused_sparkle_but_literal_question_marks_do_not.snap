@@ -21,9 +21,9 @@ shortcut help:
                                 shift+⌥, / shift+⌥.   Top / latest
 
   /keymap customize
-
+────────────────────────────────────────────────────────────────────────────────
 › Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
   ? / esc close
 
 after /model selects Astra:
@@ -33,13 +33,13 @@ after /model selects Astra:
   ? for shortcuts                                            100% context left
 
 literal pasted question mark:
-
+────────────────────────────────────────────────────────────────────────────────
 › ?
-
+────────────────────────────────────────────────────────────────────────────────
                                                              100% context left
 
 after clearing and selecting Astra:
-
+────────────────────────────────────────────────────────────────────────────────
 › Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
   ? for shortcuts                                            100% context left

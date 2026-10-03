@@ -4,8 +4,10 @@ expression: "snapshots.join(\"\\n\\n\")"
 ---
 untouched:
                             ⠈     ⢀     ⠁                 ⠂
-›⠁Ask Codex to do anything         ⠈      ⠁
+›⠁Try a task, /help for commands, or @path for files
        ⢀            ⠠     ⠄         ⠠          ⢀    ⠠     ⡀
 
 typed then erased:
-› Ask Codex to do anything
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────

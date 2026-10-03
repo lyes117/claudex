@@ -1,6 +1,5 @@
 ---
 source: tui/src/app/owned_transcript_tests.rs
-assertion_line: 350
 expression: "snapshots.join(\"\\n\\n\")"
 ---
 Latest
@@ -11,9 +10,9 @@ Transcript row 38
 Transcript row 39
 Transcript row 40
 
-
+────────────────────────────────────────────────────────────────────────────────
 › draft
-
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
 
 
@@ -25,9 +24,9 @@ Transcript row 33
 Transcript row 34
 Transcript row 35
                              ↓ Back to bottom · esc
-
+────────────────────────────────────────────────────────────────────────────────
 › draft
-
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   esc latest
 
@@ -37,18 +36,18 @@ Transcript row 31
 Transcript row 32
 Transcript row 33
          ↓ Back to bottom · esc
-
+────────────────────────────────────────
 › draft
   second line
   third line
-
+────────────────────────────────────────
   gpt-test default · /tmp/project
   esc latest
 
 Tiny terminal
-
+────────────────────────────────────────
 › draft
-
+────────────────────────────────────────
   gpt-test default · /tmp/project
   esc latest
 
@@ -60,7 +59,7 @@ Detailed
 
 
 
-
+────────────────────────────────────────────────────────────────────────────────
 › preserved draft
-
+────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project

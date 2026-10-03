@@ -68,6 +68,8 @@ pub(super) struct Sparkle {
     phase: Cell<Phase>,
     fresh: bool,
     terminal_focused: bool,
+    #[cfg(test)]
+    suppress_live_render: Cell<bool>,
 }
 
 impl Default for Sparkle {
@@ -79,7 +81,16 @@ impl Default for Sparkle {
             phase: Cell::new(Phase::Unarmed),
             fresh: false,
             terminal_focused: true,
+            #[cfg(test)]
+            suppress_live_render: Cell::new(false),
         }
+    }
+}
+
+impl Sparkle {
+    /// The native starfield owns the blank margins while its one-shot flourish is armed.
+    pub(super) fn needs_blank_margins(&self) -> bool {
+        matches!(self.phase.get(), Phase::Waiting | Phase::Visible(_))
     }
 }
 
@@ -338,6 +349,10 @@ impl ChatComposer {
         cursor: Option<(u16, u16)>,
         buf: &mut Buffer,
     ) {
+        #[cfg(test)]
+        if self.sparkle.suppress_live_render.get() {
+            return;
+        }
         self.render_sparkle_at(area, textarea, cursor, Instant::now(), buf);
     }
 

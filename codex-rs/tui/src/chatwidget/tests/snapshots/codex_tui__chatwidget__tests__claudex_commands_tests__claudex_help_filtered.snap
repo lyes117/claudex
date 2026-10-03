@@ -1,0 +1,14 @@
+---
+source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+expression: filtered
+---
+  Claudex help
+  / commands · @ files · $ skills · ! shell · ? shortcuts
+
+  task
+
+› /skills  use skills to improve how Codex performs specific tasks
+  /goal    set or view the goal for a long-running task
+  /tasks   view and switch between this session's running and completed subagents
+
+  enter select · esc back

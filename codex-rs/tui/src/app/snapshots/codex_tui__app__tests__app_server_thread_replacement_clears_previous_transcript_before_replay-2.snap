@@ -2,9 +2,12 @@
 source: tui/src/app/tests.rs
 expression: rendered
 ---
-
-  ✻ Claudex (v0.160.0)
-     <thread cwd>
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ ✻ Claudex (v0.160.0)                           │ /help commands              │
+│ Welcome to Claudex                             │ /agents roles               │
+│ gpt-test · Codex engine                        │ /tasks session agents       │
+│ C:\tmp\next                                    │ /workflows runs             │
+╰──────────────────────────────────────────────────────────────────────────────╯
 
 
 › Next thread prompt

@@ -2,6 +2,7 @@
 source: tui/src/chatwidget/tests/slash_commands.rs
 expression: "render_bottom_popup(&chat, 80)"
 ---
-› Ask Codex to do anything
-
+────────────────────────────────────────────────────────────────────────────────
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   Copied selection to clipboard

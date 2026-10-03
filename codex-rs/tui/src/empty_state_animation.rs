@@ -210,20 +210,24 @@ impl EmptyStateAnimation {
     ) -> Option<Duration> {
         const STAGE_ROWS: u16 = 21;
         const MIN_STAGE_ROWS: u16 = 14;
-        let screen = buffer.area;
-        let width = screen.width.saturating_sub(/*rhs*/ 4).min(MAX_COLUMNS);
+        let available = available.intersection(buffer.area);
+        let width = available
+            .width
+            .saturating_sub(/*rhs*/ 4)
+            .min(MAX_COLUMNS)
+            .min(available.height.saturating_mul(MAX_COLUMNS) / STAGE_ROWS);
         let height = width * STAGE_ROWS / MAX_COLUMNS;
         if motion == MotionMode::Reduced
             || composer != Some(ComposerState::Empty)
             || height < MIN_STAGE_ROWS
-            || height > screen.height
+            || height > available.height
         {
             self.cancel_replay();
             return None;
         }
         let stage = Rect::new(
-            screen.x + (screen.width - width) / 2,
-            screen.y + (screen.height - height) / 2,
+            available.x + (available.width - width) / 2,
+            available.y + (available.height - height) / 2,
             width,
             height,
         );

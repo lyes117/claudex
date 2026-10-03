@@ -1,0 +1,10 @@
+---
+source: tui/src/history_cell/tests.rs
+expression: rendered
+---
+╭────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✻ Claudex (vtest)                                        │ /help commands              │
+│ Welcome to Claudex                                       │ /agents roles               │
+│ gpt-6.1-sol · high · Codex engine                        │ /tasks session agents       │
+│ project                                                  │ /workflows runs             │
+╰────────────────────────────────────────────────────────────────────────────────────────╯

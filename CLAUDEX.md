@@ -1,6 +1,6 @@
 # Claudex
 
-Fork local de `openai/codex`, base `rust-v0.160.0` (`79b1b666f2e8551f8abbbca34957227f67f3f553`). Branche `claudex/main`, distant `upstream`. Le fork n'est pas publié sur GitHub. Licence Apache-2.0 du moteur Codex conservée. Aucun code propriétaire de Claude Code repris.
+Fork local de `openai/codex`, base `rust-v0.160.0` (commit `a956835d020762cb2b570053af06f643a11c0ecc`). Branche `claudex/main`, distant `upstream`. Le fork n'est pas publié sur GitHub. Licence Apache-2.0 du moteur Codex conservée. Aucun code propriétaire de Claude Code repris.
 
 ## Utilisation
 
@@ -10,6 +10,10 @@ claudex login status
 claudex exec "Explique ce dépôt"
 claudex compat .
 claudex workflow chemin/film.workflow.js --args '@arguments.json' --run-id mon-film
+claudex workflow list
+claudex workflow pause mon-film
+claudex workflow resume mon-film
+claudex workflow stop mon-film
 ```
 
 L'exécutable natif est installé dans `%LOCALAPPDATA%\Programs\Claudex\bin`, ajouté au PATH utilisateur. Ouvrir un nouveau terminal après installation. L'état d'authentification et la configuration Codex restent dans le dossier Codex officiel. L'authentification ChatGPT est le mode par défaut ; aucune clé API Anthropic n'est utilisée. Les limites et quotas du compte Codex s'appliquent.
@@ -28,9 +32,9 @@ L'exécutable natif est installé dans `%LOCALAPPDATA%\Programs\Claudex\bin`, aj
 | Hooks | Événements supportés vers le moteur de hooks natif ; contexte projet/plugin fourni | Revue de confiance native conservée ; hooks prompt, agent, HTTP et événements non supportés ne sont pas exécutés ; shell Windows natif, pas de traduction automatique Bash |
 | `.mcp.json`, MCP dans `.claude.json` | Configuration stdio et HTTP vers le gestionnaire MCP natif | SSE non supporté ; OAuth natif Codex, tokens Claude non importés ; autorisations interactives Claude non identiques |
 | Plugins installés explicitement activés | Répertoires skills, commands, agents, hooks et MCP standards | Aucun téléchargement ; chemins non standards dans le manifeste non résolus ; pas de marché Claude complet |
-| Workflows JS | `agent`, `parallel`, `pipeline`, `phase`, `log`, `args`, sortie structurée, journal et reprise | Agents séquentiels, processus Codex distincts ; pas d'outil natif `Workflow`, pas de pause/UI Claude, pas de workflows imbriqués |
+| Workflows JS | `agent`, `parallel`, `pipeline`, `phase`, `log`, `args`, sortie structurée, journal, pause/reprise/arrêt et reprise après modification | Agents séquentiels, processus Codex distincts ; pas d'outil natif `Workflow`, de workflows imbriqués, ni de relance individuelle depuis le panneau |
 
-L'interface demeure le TUI natif Codex, avec identité Claudex et commandes Markdown. Ce n'est pas une reproduction intégrale de l'interface Claude Code. Les outils, sous-agents, sessions et extensions natifs restent présents. Le terminal fonctionne en mode embarqué : serveur partagé, vue multi-sessions `agents` et files du daemon ne sont pas disponibles localement dans cette version, pour éviter de rejoindre ou remplacer votre serveur Codex officiel. Les restrictions Claude dont l'équivalence n'est pas établie ne constituent pas une garantie générale d'isolation.
+Le TUI possède un en-tête Claudex adapté aux terminaux larges et étroits, un compositeur délimité et cinq entrées : `/help` (aide recherchable), `/agents` (catalogue des rôles chargés, en lecture seule), `/tasks` (sous-agents de cette session), `/workflows` (exécutions locales, détails et contrôles) et `/agent-center` (tableau Codex partagé). Les outils, sous-agents, sessions et extensions natifs restent présents. Le terminal fonctionne en mode embarqué : `/agent-center` nécessite un serveur partagé explicitement connecté ; le daemon et ses files ne sont pas activés localement pour éviter de rejoindre ou remplacer votre serveur Codex officiel. Ce n'est pas encore une reproduction intégrale des écrans, raccourcis et gestionnaires Claude. Les restrictions Claude dont l'équivalence n'est pas établie ne constituent pas une garantie générale d'isolation.
 
 Les payloads de hooks gardent leurs noms et structures natifs Codex, avec les aliases de matching déjà fournis par Codex ; un hook qui exige exactement un payload Claude `Write`/`Edit` nécessite encore une adaptation. Les instructions Claude ont un budget de 32 Kio et peuvent être tronquées. `${CLAUDE_PROJECT_DIR}` dans un corps de commande est refusé jusqu'à l'ajout d'un contexte de session explicite.
 
@@ -40,7 +44,9 @@ Les fichiers de configuration sources ne sont ni migrés ni dupliqués. Les mess
 
 Le véritable `film.workflow.js` est dans `C:\Users\lyesb\Desktop\Studyshare\marketing\marketing studyshare\moteur\creation`. Il emploie le contrat JavaScript documenté (`agent`, `parallel`, phases et paramètres), initialement exécuté par le runtime propriétaire Claude. Le lanceur Codex déjà présent dans ce dépôt a été étudié ; ses modifications préexistantes sont préservées. Le nouveau runtime est une implémentation originale du contrat public, intégrée à la commande compilée du fork.
 
-Les scripts workflow sont des programmes de confiance : `node:vm` n'est pas un bac à sable de sécurité. Les agents sont appelés par l'exécutable Claudex et utilisent l'authentification officielle. Une reprise exige le même script, les mêmes arguments et le même répertoire. Le verrou OS protège les appels lancés par `claudex workflow`. Les résultats validés sont conservés dans `~/.claudex/workflow-runs/<run-id>`. Une panne après un effet externe mais avant le checkpoint peut nécessiter une revue humaine ; la reprise ne garantit pas une transaction distribuée.
+Les scripts workflow sont des programmes de confiance : `node:vm` n'est pas un bac à sable de sécurité. Les agents sont appelés par l'exécutable Claudex et utilisent l'authentification officielle. Une reprise exige les mêmes arguments et le même répertoire. Après modification du script, le préfixe d'appels identiques est rejoué ; le premier appel différent ou échoué invalide les résultats suivants. Un agent échoué retourne `null` au script et n'est pas mis en cache. L'horloge implicite et `Math.random` sont refusés pour préserver ce contrat ; une date explicitement fournie reste possible.
+
+La pause laisse finir l'agent actif puis bloque les suivants ; la reprise libère cette file. L'arrêt annule le processus enfant actif et conserve les checkpoints déjà enregistrés. Les verrous protègent contre une deuxième exécution du même identifiant. Le panneau `/workflows` se rafraîchit et affiche les phases, agents et états conservés dans `~/.claudex/workflow-runs/<run-id>`. Il ne lance pas encore de nouveau workflow. Une panne après un effet externe mais avant le checkpoint peut nécessiter une revue humaine ; la reprise ne garantit pas une transaction distribuée.
 
 ## Reconstruction
 

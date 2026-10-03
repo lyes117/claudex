@@ -3,48 +3,54 @@ source: tui/src/chatwidget/realtime/recording_controls_tests.rs
 expression: "states.join(\"\\n\\n\")"
 ---
 connecting:
+────────────────────────────────────────────────────────────────────────────────
  voice ◌ connecting                                                 /voice stop
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible
 
 listening:
+────────────────────────────────────────────────────────────────────────────────
  voice ● listening                                  ctrl+x mute     /voice stop
    mic ▁▁▁▁▁▁  codex ▁▁▁▁▁▁
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible
 
 speaking:
+────────────────────────────────────────────────────────────────────────────────
  voice ● speaking                                   ctrl+x mute     /voice stop
    mic ▁▁▇▇▇▇  codex ▁▁████
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible
 
 muted:
+────────────────────────────────────────────────────────────────────────────────
  voice ◌ muted                                      ctrl+x unmute   /voice stop
    mic ▁▁▁▁▁▁  codex ▁▁▇▇▇▇
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible
 
 transcript:
+────────────────────────────────────────────────────────────────────────────────
  voice ● speaking                                   ctrl+x mute     /voice stop
    mic ▁▁▄▄▄▄  codex ▁▁▄▄▄▄
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible
 
 interrupted:
+────────────────────────────────────────────────────────────────────────────────
  voice ● heard                                      ctrl+x mute     /voice stop
    mic ▁▁▄▄▄▄  codex ▁▁▄▄▄▄
 
-› Ask Codex to do anything
-
+› Try a task, /help for commands, or @path for files
+────────────────────────────────────────────────────────────────────────────────
   status line stays visible

@@ -187,7 +187,7 @@ fn terminal_app_ssh_fallback_renders_inline_startup() {
             buffer
                 .content
                 .iter()
-                .any(|cell| { cell.symbol() == ">" && cell.fg == crate::style::accent_color() })
+                .any(|cell| { cell.symbol() == "✻" && cell.fg == crate::style::accent_color() })
         );
         let frame = (0..height)
             .map(|y| {
@@ -314,7 +314,10 @@ async fn startup_draft_hydrates_its_header_without_moving_the_composer() {
         startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action)
             .desired_height(width);
 
-    assert_eq!(pump.header.raw_lines()[2].to_string().trim(), "loading");
+    assert_eq!(
+        pump.header.raw_lines()[2].to_string().trim(),
+        "directory: loading"
+    );
     pump.apply_config(&config);
     let expected_directory = crate::history_cell::SessionHeaderHistoryCell::format_directory_inner(
         config.cwd.as_path(),
@@ -322,7 +325,7 @@ async fn startup_draft_hydrates_its_header_without_moving_the_composer() {
     );
     assert_eq!(
         pump.header.raw_lines()[2].to_string().trim(),
-        expected_directory
+        format!("directory: {expected_directory}")
     );
     assert_eq!(
         startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action)

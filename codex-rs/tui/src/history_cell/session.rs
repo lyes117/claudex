@@ -354,44 +354,69 @@ impl SessionHeaderHistoryCell {
 impl HistoryCell for SessionHeaderHistoryCell {
     fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
         let width = usize::from(width);
-        let mut title = vec!["  ".into()];
-        title.extend(codex_title(self.version));
+        let inner_width = width.saturating_sub(/*rhs*/ 4).min(86);
+        let columns = inner_width >= 72;
+        let left_width = if columns {
+            inner_width - 30
+        } else {
+            inner_width
+        };
+        let model = self
+            .reasoning_label()
+            .map(|effort| format!("{} · {effort}", self.model))
+            .unwrap_or_else(|| self.model.clone());
         let mut lines = vec![
-            Line::default(),
-            Line::from(title),
-            Line::from(vec![
-                "     ".into(),
-                self.format_directory(Some(width.saturating_sub(/*rhs*/ 5)))
-                    .dim(),
-            ]),
+            Line::from(codex_title(self.version)),
+            Line::from(
+                self.greeting
+                    .get()
+                    .map(|greeting| greeting.phrase)
+                    .unwrap_or("Welcome to Claudex")
+                    .fg(accent_color()),
+            ),
+            Line::from(vec![model.into(), " · Codex engine".dim()]),
+            Line::from(self.format_directory(Some(left_width)).dim()),
         ];
+        if columns {
+            for (line, hint) in lines.iter_mut().zip([
+                "/help commands",
+                "/agents roles",
+                "/tasks session agents",
+                "/workflows runs",
+            ]) {
+                *line = truncate_line_with_ellipsis_if_overflow(line.clone(), left_width);
+                let padding = left_width.saturating_sub(line_width(line));
+                line.spans.push(" ".repeat(padding).into());
+                line.spans.push(" │ ".dim());
+                line.spans.push(hint.fg(accent_color()));
+            }
+        } else {
+            lines.push(Line::from(vec![
+                "/help".fg(accent_color()),
+                " commands · ".dim(),
+                "/tasks".fg(accent_color()),
+                " agents".dim(),
+            ]));
+        }
         if self.yolo_mode {
             lines.push(Line::from(vec![
-                "  permissions: ".dim(),
+                "permissions: ".dim(),
                 "YOLO mode".magenta().bold(),
             ]));
         }
-        if let Some(greeting) = self.greeting.get() {
-            // The tip/help that follows has its own normal composite separator.
-            lines.extend([
-                Line::default(),
-                Line::from(vec!["  ".into(), greeting.phrase.fg(accent_color())]),
-            ]);
-        }
-        lines
+        let content_width = if width >= 4 { inner_width } else { width };
+        lines = lines
             .into_iter()
-            .map(|line| truncate_line_with_ellipsis_if_overflow(line, width))
-            .collect()
+            .map(|line| truncate_line_with_ellipsis_if_overflow(line, content_width))
+            .collect();
+        if width >= 4 {
+            with_border_with_inner_width(lines, inner_width)
+        } else {
+            lines
+        }
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {
-        if self.greeting.get().is_some() {
-            return self
-                .display_lines(u16::MAX)
-                .into_iter()
-                .map(|line| Line::from(line.to_string()))
-                .collect();
-        }
         let mut lines = vec![
             Line::from(format!("Claudex (v{})", self.version)),
             Line::from(format!(
@@ -406,6 +431,9 @@ impl HistoryCell for SessionHeaderHistoryCell {
                 self.format_directory(/*max_width*/ None)
             )),
         ];
+        if let Some(greeting) = self.greeting.get() {
+            lines.insert(1, Line::from(greeting.phrase));
+        }
         if self.yolo_mode {
             lines.push(Line::from("permissions: YOLO mode"));
         }

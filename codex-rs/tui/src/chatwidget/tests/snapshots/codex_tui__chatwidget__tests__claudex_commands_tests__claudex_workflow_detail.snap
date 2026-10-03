@@ -1,0 +1,16 @@
+---
+source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+expression: rendered
+---
+  Workflows
+  fixture-run · running · Research
+
+
+› 1. Back to workflow runs
+  2. Pause after current agent
+  3. Resume queued agents
+  4. Stop run and retain checkpoint
+  5. Researcher                      running
+  6. Writer                          pending
+
+  enter select · esc back
