@@ -1,6 +1,6 @@
 # Restrictions natives des sous-agents : conception verifiee
 
-Etat : audit des sources et revue adversariale effectues ; aucune restriction Claude supplementaire implementee par ce document. Les profils qui portent des contraintes non prises en charge restent refuses.
+Etat : heritage parental a chaud implemente dans les sources et soumis a une revue adversariale ; restauration durable et contraintes des profils Claude encore ouvertes. Les profils qui portent des contraintes non prises en charge restent refuses. Le cycle a chaud n'est pas encore installe.
 
 ## Contrat de compatibilite
 
@@ -8,7 +8,7 @@ La [reference officielle des sous-agents Claude](https://code.claude.com/docs/en
 
 Ce sont des contraintes d'acces aux outils. Elles ne prouvent pas une isolation generale du systeme de fichiers : un shell autorise ou un outil composite peut disposer de plusieurs capacites. Les modeles Anthropic restent hors du moteur ChatGPT demande.
 
-## Points natifs et lacunes constatees
+## Points natifs et lacunes de l'audit initial
 
 - `ext/extension-api/src/tool_policy.rs` : plafond fourni avant le demarrage par `ExtensionDataInit`, avec allowlist exacte et exigences sandbox/unified-exec. Le contrat exige actuellement que l'appelant le fournisse de nouveau a la reprise.
 - `core/src/session/session.rs` : capture du plafond dans un `Arc<ToolPolicy>` immuable pour le runtime.
@@ -54,3 +54,15 @@ Deux controles sont indispensables :
 Pour un fork racine, la source immediate fournit l'autorite, et non son parent historique. Les tests de fork dont la source est dechargee pendant la preparation, de parent inline hors registre, de reprise active et de visibilite de l'init par MCP/lifecycle offrent les fixtures natives a etendre. Ajouter les chemins frais, full-fork, last-N et reprise arretee avec parent resident, en verifiant l'exposition et le dispatch effectifs, dont CodeMode.
 
 Cet etage ne suffit pas a un parent froid ou absent : tant que la restauration durable n'existe pas, aucune autorite parentale ne peut etre reconstruite dans ce cas. Les contraintes des profils Claude restent refusees jusqu'aux preuves du stage durable.
+
+## Verification du premier etage
+
+Les controles cibles passent : exposition et dispatch directs d'un enfant avec allowlist parentale vide ou limitee, exclusion des appels imbriques CodeMode avec execution d'un outil permis, delegation `/review`, immutabilite des captures malgre remplacement des attachments, reprise active refusee sous un plafond plus etroit et fork conservant le plafond de sa source immediate. Les chemins de fork Legacy, copie d'une source Paginated et Prepared sont controles pour cette autorite ; la copie Paginated de cette fixture utilise une histoire vide et ne prouve pas la copie de contenu.
+
+Deux courses deterministes verifient le fallback sender V2 : une publication compatible conserve le runtime concurrent ; une publication trop large est refusee. Le candidat provient volontairement d'un autre manager isole et est injecte sous le vrai lock apres une barriere de startup. Cela prouve le fallback face a la collision de publication, pas deux reloads ordinaires concurrents, leur acquisition de writer ni leur ownership inter-manager.
+
+Les tests utilisent des sessions natives et des reponses de modele de fixture, sans inference ChatGPT ni workflow marketing de production. L'API d'extensions passe 12/12 tests, dont 1600 compositions de plafonds. La suite core complete donne 4134 reussites, 111 echecs, 2 expirations et 77 ignores ; elle n'est pas verte. Les journaux `tests-hot-policy-core-cycle7.log`, `tests-hot-policy-core-races-cycle8.log`, `tests-hot-policy-api-all-cycle1.log` et `tests-hot-policy-core-all-cycle1.log` conservent ces limites.
+
+Apres construction du vrai serveur MCP de fixture et du helper CodeMode depuis les sources, une execution sous HOME/USERPROFILE isoles donne 147 reussites sur 149, un echec CLI et une expiration MCP. La matrice MCP de 64 combinaisons passe ensuite en 58,620 secondes avec deux workers et une limite bornee a 180 secondes. Huit des neuf fixtures CLI passent dans ce second cycle ; la fixture restante de creation/reprise passe seule apres correction de ses overrides mock. Ces reprises ciblees ne constituent pas une nouvelle suite complete verte. Journaux : `tests-hot-policy-source-helper-isolated-cycle1.log`, `tests-hot-policy-cli-mcp-isolated-cycle2.log`, `tests-hot-policy-cli-resume-mock-cycle4.log`.
+
+Le defaut ChatGPT de production reste dans `config/defaults.toml`. Les fixtures CLI API declarent explicitement leur mode mock ; aucune configuration ou authentification personnelle n'est modifiee. La fixture de reprise conserve les overrides globaux avant son sous-commande et borne aussi son endpoint par OPENAI_BASE_URL vers le serveur local. Elle ne prouve pas que des occurrences de `-c` reparties de part et d'autre d'une sous-commande se cumulent correctement.
