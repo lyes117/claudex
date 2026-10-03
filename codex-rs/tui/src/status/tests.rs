@@ -1066,6 +1066,11 @@ async fn status_snapshot_includes_monthly_limit() {
 
 #[tokio::test]
 async fn status_snapshot_includes_enterprise_monthly_credit_limit() {
+    let localized_usage = format!(
+        "{} of {}",
+        codex_protocol::num_format::format_with_separators(/*n*/ 8_000),
+        codex_protocol::num_format::format_with_separators(/*n*/ 25_000),
+    );
     let temp_home = TempDir::new().expect("temp home");
     let mut config = test_config(&temp_home).await;
     config.model = Some("gpt-5.1-codex-max".to_string());
@@ -1127,6 +1132,11 @@ async fn status_snapshot_includes_enterprise_monthly_credit_limit() {
         }
     }
     let sanitized = sanitize_directory(rendered_lines).join("\n");
+    assert!(
+        sanitized.contains(&localized_usage),
+        "localized amount missing: {sanitized}"
+    );
+    let sanitized = sanitized.replace(&localized_usage, "8,000 of 25,000");
     assert_snapshot!(sanitized);
 
     let mut rendered_lines = render_lines(&composite.display_lines(/*width*/ 46));
@@ -1136,6 +1146,11 @@ async fn status_snapshot_includes_enterprise_monthly_credit_limit() {
         }
     }
     let sanitized = sanitize_directory(rendered_lines).join("\n");
+    assert!(
+        sanitized.contains(&localized_usage),
+        "localized amount missing: {sanitized}"
+    );
+    let sanitized = sanitized.replace(&localized_usage, "8,000 of 25,000");
     assert_snapshot!(
         "status_snapshot_wraps_enterprise_monthly_credit_details_in_narrow_terminal",
         sanitized

@@ -98,7 +98,7 @@ impl SlashCommand {
                 "view and switch between this session's running and completed subagents"
             }
             SlashCommand::Workflows => "view and control local workflow runs",
-            SlashCommand::AgentCenter => "open the Codex shared agent command center",
+            SlashCommand::AgentCenter => "open the Claudex agent command center",
             SlashCommand::Feedback => "send logs to maintainers",
             SlashCommand::New => "start a new chat during a conversation",
             SlashCommand::Init => "create an AGENTS.md file with instructions for Codex",

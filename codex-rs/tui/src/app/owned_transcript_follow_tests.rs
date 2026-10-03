@@ -14,6 +14,18 @@ async fn follow_control_click_preserves_draft_caret_and_composer_geometry() -> R
     let mut server = Box::pin(crate::start_embedded_app_server_for_picker(&app.config)).await?;
     let mut tui = crate::tui::test_support::make_test_tui()?;
     tui.set_owned_screen(/*owned*/ true)?;
+    // BottomPane captures animation settings when its widget is constructed.
+    let init = app.chatwidget_init_for_forked_or_resumed_thread(
+        &mut tui,
+        app.config.clone(),
+        /*initial_user_message*/ None,
+    );
+    app.replace_chat_widget(ChatWidget::new_with_app_event(init));
+    // This fixture supplies its own transcript, without the constructor's welcome cell.
+    crate::chatwidget::tests::helpers::set_active_cell(
+        &mut app.chat_widget,
+        Box::new(PlainHistoryCell::new(Vec::new())),
+    );
     app.chat_widget
         .apply_external_edit("draft stays here".to_string());
     app.transcript_cells = vec![Arc::new(PlainHistoryCell::new(
@@ -49,6 +61,11 @@ async fn follow_control_click_preserves_draft_caret_and_composer_geometry() -> R
         let cursor = tui.terminal.last_known_cursor_pos;
         if running {
             let buffer = crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal);
+            assert!(
+                super::tests::buffer_text(buffer)
+                    .lines()
+                    .any(|line| line.trim_start().starts_with("Working ("))
+            );
             insta::assert_snapshot!(
                 "running_without_composer_hint",
                 crate::chatwidget::tests::helpers::normalize_snapshot_paths(

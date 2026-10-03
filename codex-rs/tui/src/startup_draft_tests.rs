@@ -315,8 +315,13 @@ async fn startup_draft_hydrates_its_header_without_moving_the_composer() {
             .desired_height(width);
 
     assert_eq!(
-        pump.header.raw_lines()[2].to_string().trim(),
-        "directory: loading"
+        pump.header
+            .raw_lines()
+            .iter()
+            .map(|line| line.to_string().trim().to_owned())
+            .filter(|line| line.starts_with("directory:"))
+            .collect::<Vec<_>>(),
+        vec!["directory: loading".to_owned()]
     );
     pump.apply_config(&config);
     let expected_directory = crate::history_cell::SessionHeaderHistoryCell::format_directory_inner(
@@ -324,8 +329,13 @@ async fn startup_draft_hydrates_its_header_without_moving_the_composer() {
         /*max_width*/ None,
     );
     assert_eq!(
-        pump.header.raw_lines()[2].to_string().trim(),
-        format!("directory: {expected_directory}")
+        pump.header
+            .raw_lines()
+            .iter()
+            .map(|line| line.to_string().trim().to_owned())
+            .filter(|line| line.starts_with("directory:"))
+            .collect::<Vec<_>>(),
+        vec![format!("directory: {expected_directory}")]
     );
     assert_eq!(
         startup_draft_renderable(&pump.header, &pump.bottom_pane, pump.session_action)
