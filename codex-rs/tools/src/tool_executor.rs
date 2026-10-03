@@ -109,6 +109,12 @@ pub trait ToolExecutor<Invocation>: Send + Sync {
 
     fn spec(&self) -> ToolSpec;
 
+    /// Omits this extension fallback when a client explicitly declares the same
+    /// canonical tool name. Existing runtimes retain their registration priority.
+    fn yields_to_client_tools(&self) -> bool {
+        false
+    }
+
     /// The preferred exposure before the host applies step-specific policy.
     fn exposure(&self) -> ToolExposure {
         ToolExposure::Direct

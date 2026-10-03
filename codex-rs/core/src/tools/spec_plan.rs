@@ -1486,6 +1486,22 @@ fn append_extension_tool_executors(
 
     for executor in executors {
         let tool_name = executor.tool_name();
+        if executor.yields_to_client_tools()
+            && turn_context.dynamic_tools.iter().any(|spec| match spec {
+                DynamicToolSpec::Function(tool) => {
+                    tool_name.clone().with_default_namespace()
+                        == ToolName::plain(&tool.name).with_default_namespace()
+                }
+                DynamicToolSpec::Namespace(namespace) => namespace.tools.iter().any(|tool| {
+                    let DynamicToolNamespaceTool::Function(tool) = tool;
+                    tool_name.clone().with_default_namespace()
+                        == ToolName::namespaced(&namespace.name, &tool.name)
+                            .with_default_namespace()
+                }),
+            })
+        {
+            continue;
+        }
         let is_standalone_web_search = tool_name == ToolName::namespaced("web", "run");
         if is_standalone_web_search && (!standalone_web_search_enabled || !web_search_mode_on) {
             continue;
