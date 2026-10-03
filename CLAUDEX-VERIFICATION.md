@@ -73,6 +73,12 @@ La production complète du film, les appels métier de ses agents et l'interface
 
 La suite complète du workspace n'a pas été déclarée verte ni exécutée : les suites de paquets conservent des échecs et des timeouts à analyser. Le fork est livré avec des vérifications fonctionnelles réelles ; la validation exhaustive multi-plateforme reste ouverte. Les journaux locaux détaillent les tentatives intermédiaires, sans être versionnés.
 
+## Conservation des paramètres CLI entre les sous-commandes
+
+Le parser du fork collecte désormais les occurrences de `-c` et `--config` à chaque niveau de la commande, avec Clap, puis les transmet une seule fois dans leur ordre initial. Les arguments littéraux après `--` restent des arguments du prompt ou du serveur MCP. Les options générées au niveau général sont insérées avant les paramètres descendants, afin qu'un `sandbox_mode="read-only"` explicite après `resume` conserve sa priorité face à `--approve-for-me`.
+
+Deux tests ont d'abord reproduit la perte d'options ; deux autres ont reproduit l'inversion de priorité relevée par la revue adversariale. Après correction, les **314 tests du binaire CLI passent**, avec un test ignoré (`tests-global-config-args-cli-bin-cycle3.log`). La suite du paquet CLI exécutée avant le second correctif donne **460 réussites, huit échecs, deux expirations et deux tests ignorés** (`tests-global-config-args-cli-package-cycle1.log`). Elle n'est pas verte : les chemins du daemon, du tableau d'agents, du worktree, de l'exec-server et deux fixtures distantes restent à analyser. Le seul échec de l'aide du binaire a été corrigé pour le nom `claudex`, puis revérifié dans les 314 tests. Les autres options globales à valeurs multiples et les parsers autonomes restent hors de ce correctif.
+
 ## Limites matérielles de compatibilité
 
 1. Le TUI demeure celui de Codex, adapté pour Claudex. Les écrans et raccourcis Claude Code ne sont pas reproduits intégralement.

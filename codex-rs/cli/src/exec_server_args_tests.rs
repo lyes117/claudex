@@ -5,7 +5,7 @@ use super::*;
 use crate::exec_server_command::ExecServerRemoteTransport;
 
 fn exec_server_from_args(args: &[&str]) -> ExecServerCommand {
-    let cli = MultitoolCli::try_parse_from(
+    let cli = config_args::try_parse_from(
         ["codex", "exec-server"]
             .into_iter()
             .chain(args.iter().copied()),
@@ -19,7 +19,7 @@ fn exec_server_from_args(args: &[&str]) -> ExecServerCommand {
 
 #[test]
 fn exec_server_help_documents_remote_options() {
-    let command = MultitoolCli::command()
+    let command = config_args::command()
         .term_width(80)
         .mut_subcommand("exec-server", |command| {
             command
@@ -153,7 +153,7 @@ fn exec_server_rejects_missing_or_conflicting_remote_options() {
             ErrorKind::InvalidValue,
         ),
     ] {
-        let error = MultitoolCli::try_parse_from(
+        let error = crate::config_args::try_parse_from(
             [
                 "codex",
                 "exec-server",
@@ -185,7 +185,7 @@ fn exec_server_transport_and_aws_options_require_registration_arguments() {
         ],
     ] {
         let error =
-            MultitoolCli::try_parse_from(["codex", "exec-server"].into_iter().chain(options))
+            crate::config_args::try_parse_from(["codex", "exec-server"].into_iter().chain(options))
                 .expect_err("require remote URL and environment ID");
         assert_eq!(error.kind(), ErrorKind::MissingRequiredArgument);
     }

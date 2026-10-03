@@ -1,5 +1,4 @@
 use clap::Args;
-use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::Shell;
 use clap_complete::generate;
@@ -54,6 +53,10 @@ static ALLOCATOR: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 mod app_cmd;
 mod claudex;
 mod cloud_config;
+mod config_args;
+#[cfg(test)]
+#[path = "config_args_tests.rs"]
+mod config_args_tests;
 mod daemon_install;
 mod daemon_telemetry;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -127,6 +130,10 @@ use codex_terminal_detection::TerminalName;
 struct MultitoolCli {
     #[clap(flatten)]
     pub config_overrides: CliConfigOverrides,
+
+    /// Insertion point for root-generated options before descendant overrides.
+    #[clap(skip)]
+    root_config_override_count: usize,
 
     #[clap(flatten)]
     pub feature_toggles: FeatureToggles,
@@ -1029,13 +1036,16 @@ async fn cli_main(
     arg0_paths: Arg0DispatchPaths,
     remote_control_disabled: bool,
 ) -> anyhow::Result<()> {
+    let mut cli = config_args::parse();
+    config_args::apply_root_overrides(&mut cli)?;
     let MultitoolCli {
         config_overrides: mut root_config_overrides,
-        feature_toggles,
+        feature_toggles: _,
+        root_config_override_count: _,
         remote,
         mut interactive,
         subcommand,
-    } = MultitoolCli::parse();
+    } = cli;
     // Retain the launch target through TUI exit, even if a launcher changes selection.
     let daemon_cli_executable = arg0_paths
         .codex_self_exe
@@ -1045,9 +1055,6 @@ async fn cli_main(
         .clone()
         .and_then(|path| AbsolutePathBuf::from_absolute_path(path).ok());
     reject_unsupported_worktree_for_subcommand(interactive.shared.worktree, &subcommand)?;
-    // Fold --enable/--disable into config overrides so they flow to all subcommands.
-    let toggle_overrides = feature_toggles.to_overrides()?;
-    root_config_overrides.raw_overrides.extend(toggle_overrides);
     let agents_options = match &subcommand {
         Some(Subcommand::Agents(options)) => Some(options),
         _ => None,
@@ -1075,9 +1082,6 @@ async fn cli_main(
         interactive.no_daemon = true;
     }
     let root_strict_config = interactive.strict_config;
-    interactive
-        .shared
-        .take_auto_review_config_overrides(&mut root_config_overrides);
     reject_root_strict_config_for_subcommand(root_strict_config, &subcommand)?;
     if let Some(subcommand) = subcommand.as_ref() {
         profile_v2_for_subcommand(&interactive, subcommand)?;
@@ -2699,8 +2703,8 @@ fn merge_interactive_cli_flags(interactive: &mut TuiCli, subcommand_cli: TuiCli)
 }
 
 fn print_completion(cmd: CompletionCommand) {
-    let mut app = MultitoolCli::command();
-    let name = "codex";
+    let mut app = config_args::command();
+    let name = "claudex";
     generate(cmd.shell, &mut app, name, &mut std::io::stdout());
 }
 
@@ -2860,18 +2864,17 @@ mod tests {
         );
     }
 
-    fn finalize_resume_from_args(args: &[&str]) -> TuiCli {
-        let cli = MultitoolCli::try_parse_from(args).expect("parse");
+    pub(super) fn finalize_resume_from_args(args: &[&str]) -> TuiCli {
+        let mut cli = config_args::try_parse_from(args).expect("parse");
+        config_args::apply_root_overrides(&mut cli).expect("root configuration");
         let MultitoolCli {
-            mut interactive,
-            config_overrides: mut root_overrides,
+            interactive,
+            config_overrides: root_overrides,
             subcommand,
             feature_toggles: _,
+            root_config_override_count: _,
             remote: _,
         } = cli;
-        interactive
-            .shared
-            .take_auto_review_config_overrides(&mut root_overrides);
 
         let Subcommand::Resume(ResumeCommand {
             session_id,
@@ -2898,17 +2901,16 @@ mod tests {
     }
 
     fn finalize_fork_from_args(args: &[&str]) -> TuiCli {
-        let cli = MultitoolCli::try_parse_from(args).expect("parse");
+        let mut cli = config_args::try_parse_from(args).expect("parse");
+        config_args::apply_root_overrides(&mut cli).expect("root configuration");
         let MultitoolCli {
-            mut interactive,
-            config_overrides: mut root_overrides,
+            interactive,
+            config_overrides: root_overrides,
             subcommand,
             feature_toggles: _,
+            root_config_override_count: _,
             remote: _,
         } = cli;
-        interactive
-            .shared
-            .take_auto_review_config_overrides(&mut root_overrides);
 
         let Subcommand::Fork(ForkCommand {
             session_id,
@@ -2926,10 +2928,8 @@ mod tests {
     }
 
     fn finalize_exec_from_args(args: &[&str]) -> ExecCli {
-        let mut cli = MultitoolCli::try_parse_from(args).expect("parse");
-        cli.interactive
-            .shared
-            .take_auto_review_config_overrides(&mut cli.config_overrides);
+        let mut cli = config_args::try_parse_from(args).expect("parse");
+        config_args::apply_root_overrides(&mut cli).expect("root configuration");
         let Some(Subcommand::Exec(mut exec)) = cli.subcommand else {
             panic!("expected exec subcommand");
         };
@@ -2942,12 +2942,14 @@ mod tests {
     }
 
     fn finalize_archive_from_args(args: &[&str]) -> (String, TuiCli, InteractiveRemoteOptions) {
-        let cli = MultitoolCli::try_parse_from(args).expect("parse");
+        let mut cli = config_args::try_parse_from(args).expect("parse");
+        config_args::apply_root_overrides(&mut cli).expect("root configuration");
         let MultitoolCli {
             interactive,
             config_overrides: root_overrides,
             subcommand,
             feature_toggles: _,
+            root_config_override_count: _,
             remote: _,
         } = cli;
 
@@ -2968,7 +2970,7 @@ mod tests {
     }
 
     fn profile_v2_for_args(args: &[&str]) -> anyhow::Result<Option<String>> {
-        let cli = MultitoolCli::try_parse_from(args).expect("parse");
+        let cli = config_args::try_parse_from(args).expect("parse");
         let Some(subcommand) = cli.subcommand.as_ref() else {
             return Ok(cli
                 .interactive
@@ -3030,7 +3032,7 @@ mod tests {
 
     #[test]
     fn import_remains_an_interactive_prompt() {
-        let cli = MultitoolCli::try_parse_from(["codex", "import"]).expect("parse");
+        let cli = config_args::try_parse_from(["codex", "import"]).expect("parse");
 
         assert!(cli.subcommand.is_none());
         assert_eq!(cli.interactive.prompt.as_deref(), Some("import"));
@@ -3039,7 +3041,7 @@ mod tests {
     #[test]
     fn profile_v2_rejects_non_plain_names_at_parse_time() {
         assert!(
-            MultitoolCli::try_parse_from(["codex", "--profile", "nested/work", "resume"]).is_err()
+            config_args::try_parse_from(["codex", "--profile", "nested/work", "resume"]).is_err()
         );
     }
 
@@ -3066,7 +3068,7 @@ mod tests {
         ];
 
         for arguments in arguments {
-            let cli = MultitoolCli::try_parse_from(&arguments).expect("parse worktree command");
+            let cli = config_args::try_parse_from(&arguments).expect("parse worktree command");
             assert!(
                 reject_unsupported_worktree_for_subcommand(
                     cli.interactive.shared.worktree,
@@ -3101,7 +3103,7 @@ mod tests {
 
         let mut errors = Vec::new();
         for arguments in arguments {
-            let cli = MultitoolCli::try_parse_from(&arguments).expect("parse shared worktree flag");
+            let cli = config_args::try_parse_from(&arguments).expect("parse shared worktree flag");
             let error = reject_unsupported_worktree_for_subcommand(
                 cli.interactive.shared.worktree,
                 &cli.subcommand,
@@ -3115,7 +3117,7 @@ mod tests {
     #[test]
     fn exec_resume_last_accepts_prompt_positional() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "exec", "--json", "resume", "--last", "2+2"])
+            config_args::try_parse_from(["codex", "exec", "--json", "resume", "--last", "2+2"])
                 .expect("parse should succeed");
 
         let Some(Subcommand::Exec(exec)) = cli.subcommand else {
@@ -3132,7 +3134,7 @@ mod tests {
 
     #[test]
     fn exec_resume_accepts_output_flags_after_subcommand() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "exec",
             "resume",
@@ -3166,7 +3168,7 @@ mod tests {
 
     #[test]
     fn dangerous_bypass_conflicts_with_approval_policy() {
-        let err = MultitoolCli::try_parse_from([
+        let err = config_args::try_parse_from([
             "codex",
             "--dangerously-bypass-approvals-and-sandbox",
             "--ask-for-approval",
@@ -3180,7 +3182,7 @@ mod tests {
     #[test]
     fn approve_for_me_configures_interactive_mode() {
         for flag in ["--approve-for-me", "--not-so-yolo"] {
-            let mut cli = MultitoolCli::try_parse_from(["codex", flag]).expect("parse flag");
+            let mut cli = config_args::try_parse_from(["codex", flag]).expect("parse flag");
 
             assert!(cli.interactive.auto_review);
             cli.interactive
@@ -3323,13 +3325,13 @@ mod tests {
             args.extend(conflicting_args);
 
             let error =
-                MultitoolCli::try_parse_from(args).expect_err("permission flags should conflict");
+                config_args::try_parse_from(args).expect_err("permission flags should conflict");
             assert_eq!(error.kind(), clap::error::ErrorKind::ArgumentConflict);
         }
     }
 
     fn app_server_from_args(args: &[&str]) -> AppServerCommand {
-        let cli = MultitoolCli::try_parse_from(args).expect("parse");
+        let cli = config_args::try_parse_from(args).expect("parse");
         let Subcommand::AppServer(app_server) = cli.subcommand.expect("app-server present") else {
             unreachable!()
         };
@@ -3344,7 +3346,7 @@ mod tests {
 
     #[test]
     fn debug_prompt_input_parses_prompt_and_images() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "debug",
             "prompt-input",
@@ -3371,7 +3373,7 @@ mod tests {
     #[test]
     fn debug_models_parses_bundled_flag() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "debug", "models", "--bundled"]).expect("parse");
+            config_args::try_parse_from(["codex", "debug", "models", "--bundled"]).expect("parse");
 
         let Some(Subcommand::Debug(DebugCommand {
             subcommand: DebugSubcommand::Models(cmd),
@@ -3385,7 +3387,7 @@ mod tests {
 
     #[test]
     fn responses_subcommand_is_not_registered() {
-        let command = MultitoolCli::command();
+        let command = config_args::command();
         assert!(
             command
                 .get_subcommands()
@@ -3394,7 +3396,7 @@ mod tests {
     }
 
     fn help_from_args(args: &[&str]) -> String {
-        let err = MultitoolCli::try_parse_from(args).expect_err("help should short-circuit");
+        let err = config_args::try_parse_from(args).expect_err("help should short-circuit");
         assert_eq!(err.kind(), clap::error::ErrorKind::DisplayHelp);
         err.to_string()
     }
@@ -3412,7 +3414,7 @@ mod tests {
         ] {
             assert!(help.contains(option), "{help}");
         }
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "tcp-tunnel",
             "--proxy-url",
@@ -3433,15 +3435,15 @@ mod tests {
     fn plugin_marketplace_help_uses_plugin_namespace() {
         let help = help_from_args(&["codex", "plugin", "marketplace", "--help"]);
         assert!(
-            help.contains("Usage: codex plugin marketplace [OPTIONS] <COMMAND>"),
+            help.contains("Usage: claudex plugin marketplace [OPTIONS] <COMMAND>"),
             "{help}"
         );
 
         for (subcommand, usage) in [
-            ("add", "Usage: codex plugin marketplace add"),
-            ("list", "Usage: codex plugin marketplace list"),
-            ("upgrade", "Usage: codex plugin marketplace upgrade"),
-            ("remove", "Usage: codex plugin marketplace remove"),
+            ("add", "Usage: claudex plugin marketplace add"),
+            ("list", "Usage: claudex plugin marketplace list"),
+            ("upgrade", "Usage: claudex plugin marketplace upgrade"),
+            ("remove", "Usage: claudex plugin marketplace remove"),
         ] {
             let help = help_from_args(&["codex", "plugin", "marketplace", subcommand, "--help"]);
             assert!(help.contains(usage), "{help}");
@@ -3451,7 +3453,7 @@ mod tests {
     #[test]
     fn plugin_marketplace_add_parses_under_plugin() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "plugin", "marketplace", "add", "owner/repo"])
+            config_args::try_parse_from(["codex", "plugin", "marketplace", "add", "owner/repo"])
                 .expect("parse");
 
         assert!(matches!(cli.subcommand, Some(Subcommand::Plugin(_))));
@@ -3460,7 +3462,7 @@ mod tests {
     #[test]
     fn plugin_marketplace_upgrade_parses_under_plugin() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "plugin", "marketplace", "upgrade", "debug"])
+            config_args::try_parse_from(["codex", "plugin", "marketplace", "upgrade", "debug"])
                 .expect("parse");
 
         assert!(matches!(cli.subcommand, Some(Subcommand::Plugin(_))));
@@ -3468,7 +3470,7 @@ mod tests {
 
     #[test]
     fn plugin_add_parses_under_plugin() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "plugin",
             "add",
@@ -3484,7 +3486,7 @@ mod tests {
     #[test]
     fn plugin_list_parses_under_plugin() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "plugin", "list", "--marketplace", "debug"])
+            config_args::try_parse_from(["codex", "plugin", "list", "--marketplace", "debug"])
                 .expect("parse");
 
         assert!(matches!(cli.subcommand, Some(Subcommand::Plugin(_))));
@@ -3492,7 +3494,7 @@ mod tests {
 
     #[test]
     fn plugin_remove_parses_under_plugin() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "plugin",
             "remove",
@@ -3507,7 +3509,7 @@ mod tests {
 
     #[test]
     fn update_parses_as_update_subcommand() {
-        let cli = MultitoolCli::try_parse_from(["codex", "update"]).expect("parse");
+        let cli = config_args::try_parse_from(["codex", "update"]).expect("parse");
         assert!(matches!(cli.subcommand, Some(Subcommand::Update)));
     }
 
@@ -3561,7 +3563,7 @@ mod tests {
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     #[test]
     fn sandbox_parses_permission_profile() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "sandbox",
             "--permission-profile",
@@ -3582,7 +3584,7 @@ mod tests {
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     #[test]
     fn sandbox_parses_legacy_permissions_profile_alias() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "sandbox",
             "--permissions-profile",
@@ -3612,7 +3614,7 @@ mod tests {
     #[test]
     fn sandbox_parses_permissions_profile_short_alias() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "sandbox", "-P", ":workspace", "--", "echo"])
+            config_args::try_parse_from(["codex", "sandbox", "-P", ":workspace", "--", "echo"])
                 .expect("parse");
 
         let Some(Subcommand::Sandbox(command)) = cli.subcommand else {
@@ -3627,7 +3629,7 @@ mod tests {
     #[test]
     fn sandbox_parses_config_profile() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "sandbox", "--profile", "work", "--", "echo"])
+            config_args::try_parse_from(["codex", "sandbox", "--profile", "work", "--", "echo"])
                 .expect("parse");
 
         let Some(Subcommand::Sandbox(command)) = cli.subcommand else {
@@ -3641,7 +3643,7 @@ mod tests {
     #[cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))]
     #[test]
     fn sandbox_rejects_explicit_profile_controls_without_profile() {
-        let err = MultitoolCli::try_parse_from(["codex", "sandbox", "-C", "/tmp"])
+        let err = config_args::try_parse_from(["codex", "sandbox", "-C", "/tmp"])
             .expect_err("parse should fail");
 
         assert_eq!(err.kind(), clap::error::ErrorKind::MissingRequiredArgument);
@@ -3650,7 +3652,7 @@ mod tests {
     #[test]
     fn plugin_marketplace_remove_parses_under_plugin() {
         let cli =
-            MultitoolCli::try_parse_from(["codex", "plugin", "marketplace", "remove", "debug"])
+            config_args::try_parse_from(["codex", "plugin", "marketplace", "remove", "debug"])
                 .expect("parse");
 
         assert!(matches!(cli.subcommand, Some(Subcommand::Plugin(_))));
@@ -3658,16 +3660,15 @@ mod tests {
 
     #[test]
     fn marketplace_no_longer_parses_at_top_level() {
-        let add_result =
-            MultitoolCli::try_parse_from(["codex", "marketplace", "add", "owner/repo"]);
+        let add_result = config_args::try_parse_from(["codex", "marketplace", "add", "owner/repo"]);
         assert!(add_result.is_err());
 
         let upgrade_result =
-            MultitoolCli::try_parse_from(["codex", "marketplace", "upgrade", "debug"]);
+            config_args::try_parse_from(["codex", "marketplace", "upgrade", "debug"]);
         assert!(upgrade_result.is_err());
 
         let remove_result =
-            MultitoolCli::try_parse_from(["codex", "marketplace", "remove", "debug"]);
+            config_args::try_parse_from(["codex", "marketplace", "remove", "debug"]);
         assert!(remove_result.is_err());
     }
 
@@ -3942,7 +3943,7 @@ mod tests {
     #[test]
     fn resume_last_rejects_explicit_session_and_prompt() {
         let err =
-            MultitoolCli::try_parse_from(["codex", "resume", "--last", "1234", "continue here"])
+            config_args::try_parse_from(["codex", "resume", "--last", "1234", "continue here"])
                 .expect_err("--last with an explicit session and prompt should be rejected");
 
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
@@ -4103,9 +4104,8 @@ mod tests {
 
     #[test]
     fn fork_last_rejects_explicit_session_and_prompt() {
-        let err =
-            MultitoolCli::try_parse_from(["codex", "fork", "--last", "1234", "continue here"])
-                .expect_err("--last with an explicit session and prompt should be rejected");
+        let err = config_args::try_parse_from(["codex", "fork", "--last", "1234", "continue here"])
+            .expect_err("--last with an explicit session and prompt should be rejected");
 
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
@@ -4163,11 +4163,11 @@ mod tests {
 
     #[test]
     fn strict_config_parses_for_supported_commands() {
-        let cli = MultitoolCli::try_parse_from(["codex", "--strict-config"]).expect("parse");
+        let cli = config_args::try_parse_from(["codex", "--strict-config"]).expect("parse");
         assert!(cli.interactive.strict_config);
 
         let cli =
-            MultitoolCli::try_parse_from(["codex", "review", "--strict-config", "--uncommitted"])
+            config_args::try_parse_from(["codex", "review", "--strict-config", "--uncommitted"])
                 .expect("parse");
         assert_matches!(
             cli.subcommand,
@@ -4177,7 +4177,7 @@ mod tests {
             }))
         );
 
-        let cli = MultitoolCli::try_parse_from(["codex", "exec-server", "--strict-config"])
+        let cli = config_args::try_parse_from(["codex", "exec-server", "--strict-config"])
             .expect("parse");
         assert_matches!(
             cli.subcommand,
@@ -4190,7 +4190,7 @@ mod tests {
 
     #[test]
     fn exec_server_forward_parses_shared_remote_options() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "exec-server",
             "forward",
@@ -4239,7 +4239,7 @@ mod tests {
             ],
         ] {
             assert!(
-                MultitoolCli::try_parse_from(["codex", "exec-server"].into_iter().chain(args))
+                config_args::try_parse_from(["codex", "exec-server"].into_iter().chain(args))
                     .is_err()
             );
         }
@@ -4247,7 +4247,7 @@ mod tests {
 
     #[test]
     fn root_strict_config_is_supported_for_exec_server() {
-        let cli = MultitoolCli::try_parse_from(["codex", "--strict-config", "exec-server"])
+        let cli = config_args::try_parse_from(["codex", "--strict-config", "exec-server"])
             .expect("parse");
 
         reject_root_strict_config_for_subcommand(cli.interactive.strict_config, &cli.subcommand)
@@ -4256,7 +4256,7 @@ mod tests {
 
     #[test]
     fn root_strict_config_is_rejected_for_unsupported_subcommands() {
-        let cli = MultitoolCli::try_parse_from(["codex", "--strict-config", "mcp", "list"])
+        let cli = config_args::try_parse_from(["codex", "--strict-config", "mcp", "list"])
             .expect("parse");
         let err = reject_root_strict_config_for_subcommand(
             cli.interactive.strict_config,
@@ -4269,7 +4269,7 @@ mod tests {
             "`--strict-config` is not supported for `codex mcp`"
         );
 
-        let cli = MultitoolCli::try_parse_from(["codex", "--strict-config", "remote-control"])
+        let cli = config_args::try_parse_from(["codex", "--strict-config", "remote-control"])
             .expect("parse");
         let err = reject_root_strict_config_for_subcommand(
             cli.interactive.strict_config,
@@ -4301,7 +4301,7 @@ mod tests {
 
     #[test]
     fn reject_remote_flag_for_remote_control() {
-        let cli = MultitoolCli::try_parse_from(["codex", "--remote", "unix://", "remote-control"])
+        let cli = config_args::try_parse_from(["codex", "--remote", "unix://", "remote-control"])
             .expect("parse");
         let Some(Subcommand::RemoteControl(remote_control)) = &cli.subcommand else {
             panic!("expected remote-control subcommand");
@@ -4320,7 +4320,7 @@ mod tests {
 
     #[test]
     fn remote_control_pair_parses() {
-        let cli = MultitoolCli::try_parse_from(["codex", "remote-control", "pair"]).expect("parse");
+        let cli = config_args::try_parse_from(["codex", "remote-control", "pair"]).expect("parse");
         let Some(Subcommand::RemoteControl(remote_control)) = &cli.subcommand else {
             panic!("expected remote-control subcommand");
         };
@@ -4329,14 +4329,14 @@ mod tests {
 
     #[test]
     fn remote_flag_parses_for_interactive_root() {
-        let cli = MultitoolCli::try_parse_from(["codex", "--remote", "unix://codex.sock"])
-            .expect("parse");
+        let cli =
+            config_args::try_parse_from(["codex", "--remote", "unix://codex.sock"]).expect("parse");
         assert_eq!(cli.remote.remote.as_deref(), Some("unix://codex.sock"));
     }
 
     #[test]
     fn remote_auth_token_env_flag_parses_for_interactive_root() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "--remote-auth-token-env",
             "CODEX_REMOTE_AUTH_TOKEN",
@@ -4352,9 +4352,8 @@ mod tests {
 
     #[test]
     fn remote_flag_parses_for_resume_subcommand() {
-        let cli =
-            MultitoolCli::try_parse_from(["codex", "resume", "--remote", "unix://codex.sock"])
-                .expect("parse");
+        let cli = config_args::try_parse_from(["codex", "resume", "--remote", "unix://codex.sock"])
+            .expect("parse");
         let Subcommand::Resume(ResumeCommand { remote, .. }) =
             cli.subcommand.expect("resume present")
         else {
@@ -4365,7 +4364,7 @@ mod tests {
 
     #[test]
     fn agents_subcommand_accepts_remote_session_options() {
-        let cli = MultitoolCli::try_parse_from([
+        let cli = config_args::try_parse_from([
             "codex",
             "agents",
             "--remote",
@@ -4505,7 +4504,7 @@ mod tests {
             "http://example.test/?token=secret",
         ] {
             let error =
-                MultitoolCli::try_parse_from(["codex", "app-server", "--code-mode-host", endpoint])
+                config_args::try_parse_from(["codex", "app-server", "--code-mode-host", endpoint])
                     .expect_err("invalid code-mode host endpoint should fail argument parsing");
 
             assert_eq!(error.kind(), clap::error::ErrorKind::ValueValidation);
@@ -4546,14 +4545,9 @@ mod tests {
 
     #[test]
     fn app_server_stdio_flag_conflicts_with_listen() {
-        let err = MultitoolCli::try_parse_from([
-            "codex",
-            "app-server",
-            "--stdio",
-            "--listen",
-            "stdio://",
-        ])
-        .expect_err("--stdio and --listen should be rejected together");
+        let err =
+            config_args::try_parse_from(["codex", "app-server", "--stdio", "--listen", "stdio://"])
+                .expect_err("--stdio and --listen should be rejected together");
         assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 
@@ -4592,7 +4586,7 @@ mod tests {
     #[test]
     fn app_server_listen_invalid_url_fails_to_parse() {
         let parse_result =
-            MultitoolCli::try_parse_from(["codex", "app-server", "--listen", "http://foo"]);
+            config_args::try_parse_from(["codex", "app-server", "--listen", "http://foo"]);
         assert!(parse_result.is_err());
     }
 
@@ -4770,7 +4764,7 @@ mod tests {
 
     #[test]
     fn app_server_rejects_removed_insecure_non_loopback_flag() {
-        let parse_result = MultitoolCli::try_parse_from([
+        let parse_result = config_args::try_parse_from([
             "codex",
             "app-server",
             "--allow-unauthenticated-non-loopback-ws",
@@ -4780,7 +4774,7 @@ mod tests {
 
     #[test]
     fn features_enable_parses_feature_name() {
-        let cli = MultitoolCli::try_parse_from(["codex", "features", "enable", "unified_exec"])
+        let cli = config_args::try_parse_from(["codex", "features", "enable", "unified_exec"])
             .expect("parse should succeed");
         let Some(Subcommand::Features(FeaturesCli { sub })) = cli.subcommand else {
             panic!("expected features subcommand");
@@ -4793,7 +4787,7 @@ mod tests {
 
     #[test]
     fn features_disable_parses_feature_name() {
-        let cli = MultitoolCli::try_parse_from(["codex", "features", "disable", "shell_tool"])
+        let cli = config_args::try_parse_from(["codex", "features", "disable", "shell_tool"])
             .expect("parse should succeed");
         let Some(Subcommand::Features(FeaturesCli { sub })) = cli.subcommand else {
             panic!("expected features subcommand");
@@ -4905,7 +4899,7 @@ mod tests {
         let cli_args = std::iter::once("codex")
             .chain(std::iter::once("--strict-config"))
             .chain(args.iter().copied());
-        let cli = MultitoolCli::try_parse_from(cli_args).expect("parse should succeed");
+        let cli = config_args::try_parse_from(cli_args).expect("parse should succeed");
         assert!(cli.interactive.strict_config);
         cli.feature_toggles
             .to_overrides()
