@@ -76,6 +76,37 @@ const [visuel, voix] = await parallel([
 
 Reprise déterministe : après modification du script, le préfixe d'appels identiques est rejoué depuis le cache ; un agent échoué retourne `null` et n'est pas mis en cache. L'état des exécutions est conservé dans `~/.claudex/workflow-runs/<run-id>`.
 
+## Routage des modèles & GLM
+
+Claudex intègre un routage multi-fournisseurs : le **superviseur reste sur Codex (ChatGPT)**, et des tâches bornées peuvent être déléguées à **GLM via l'abonnement Z.ai** — jamais vers une API payante.
+
+### Cibles de modèles
+
+| Route | Modèle | Accès |
+|---|---|---|
+| Parent (défaut) | Modèles Codex via **ChatGPT** | Abonnement ChatGPT |
+| Enfant routé | **`glm-5.3`**, raisonnement `low` (`high`/`max` documentés) | Coding Plan Z.ai |
+| Enfant alternatif | **GLM-5.3-Flash** | Coding Plan Z.ai |
+
+Mapping officiel Z.ai : les anciens identifiants GLM-5.2/5.1 sont remappés vers 5.3, GLM-4.7 vers Flash ; FlashX est exclu du Coding Plan. Les crédits se calculent sur les tokens pondérés (input/cache/output) divisés par 10 000 — multiplicateurs 5.3 = 6.9/1.7/24, Flash = 2.3/0.56/8.
+
+### Deux intégrations
+
+1. **Transport Chat Completions direct** — endpoint Coding épinglé (`api.z.ai/api/coding/paas/v4`, validé caractère par caractère, redirections refusées), clé **Coding Plan dédiée** (une clé API générale est refusée), requêtes DTO immuables et décodeur SSE borné (EOF sans fin reconnue = erreur, jamais un succès simulé).
+2. **Pont ZCode local** (`zcode-bridge`) — Claudex spawn le CLI officiel `zcode app-server --stdio` et pilote la session en JSON-RPC (`session/create`, `usage`...). Les credentials restent **dans** le processus ZCode (`~/.zcode` chiffré) : Claudex ne stocke aucun secret Z.ai, ne lit aucun store, ne lance ni ne modifie l'app desktop.
+
+### Garde-fous du routage
+
+Une tâche ne quitte Codex que si **toutes** les preuves sont réunies — sinon elle reste sur le parent, sans bascule silencieuse :
+
+- Mode `off` / `auto` / demande explicite Z.ai ; une demande explicite ne contourne aucune porte
+- Catégories admissibles : documentation, recherche de dépôt, transformation bornée, rédaction de tests — architecture, sécurité, tâches inconnues restent sur Codex
+- Contexte enfant **frais et borné** (jamais l'historique complet), texte seul, budget mesuré ≤ **8 192 tokens**, outils en lecture seule, isolation vérifiée
+- Enrollment Coding Plan vérifié, quota frais, concurrence accordée (une tâche Z.ai à la fois au départ), circuit fermé
+- Tokens/headers OpenAI exclus des requêtes GLM ; échec de quota → reprise Codex explicite, jamais de redirection vers une API facturée
+
+> **État** : noyau de routage, admission, transport et pont sont implémentés et testés sur fixtures ; le dispatch GLM de bout en bout n'est pas encore activé — le binaire reste sur ChatGPT par défaut. Détails et preuves dans [`CLAUDEX-ROUTING-PLAN.md`](CLAUDEX-ROUTING-PLAN.md) et [`CLAUDEX-PONT-ZCODE-PLAN.md`](CLAUDEX-PONT-ZCODE-PLAN.md).
+
 ## Installation
 
 > **Plateforme :** Windows x64 (MSVC) pour l'instant.
@@ -115,7 +146,8 @@ Fork du dépôt `openai/codex` (moteur Rust), extensions Claudex réparties dans
 | `codex-rs/config` | Expansion des commandes Claude, mémoire native, sélection de plugins |
 | `codex-rs/hooks` | Arguments de commandes, construction des hooks |
 | `codex-rs/cli` | Sous-commandes `workflow`, mémoire Claudex |
-| `codex-rs/codex-api` | Routage `claudex_chat`, pont ZCode |
+| `codex-rs/model-provider-info` | Noyau de routage multi-fournisseurs, admission GLM |
+| `codex-rs/codex-api` | Transport GLM Chat Completions, pont ZCode |
 | `codex-rs/code-mode-*` | Hôte et protocole d'exécution des workflows |
 | `scripts/` | Build Windows, mémoire Claude (hook, requête, proxy), tests Node |
 
