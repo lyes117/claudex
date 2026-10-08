@@ -2,6 +2,6 @@
 source: tui/src/chatwidget/tests/completion_styling_tests.rs
 expression: text
 ---
-• The change is ready.
+● The change is ready.
 
   Worked for [duration] • [completion time]

@@ -95,7 +95,7 @@ use codex_network_proxy::normalize_host;
 use codex_otel::current_span_trace_id;
 use codex_otel::current_span_w3c_trace_context;
 use codex_otel::set_parent_from_w3c_trace_context;
-use codex_prompts::render_model_instructions;
+use codex_prompts::claude_base_instructions;
 use codex_protocol::ResponseUsageMetadata;
 use codex_protocol::SessionId;
 use codex_protocol::ThreadId;
@@ -745,7 +745,10 @@ impl Session {
             .base_instructions
             .clone()
             .or_else(|| conversation_history.get_base_instructions().map(|s| s.text))
-            .unwrap_or_else(|| render_model_instructions(&model_info));
+            // ponytail: every session is born with the Claude Code prompt + ponytail
+            // contract; the model template (and the old Codex default) stays reachable
+            // via the `base_instructions` / `model_instructions_file` config keys.
+            .unwrap_or_else(claude_base_instructions);
 
         // Dynamic tools are defined at thread start and persisted in rollout session metadata.
         let dynamic_tools = if dynamic_tools.is_empty() {
@@ -2425,6 +2428,11 @@ impl Session {
             }
         };
         if !is_final(&status) {
+            return;
+        }
+
+        if self.completion_reporting == crate::agent::control::CompletionReporting::SupervisorOwned
+        {
             return;
         }
 
@@ -5203,6 +5211,7 @@ async fn build_hooks_config(
         config_layer_stack: Some(config.config_layer_stack.clone()),
         plugin_hook_sources,
         plugin_hook_load_warnings,
+        legacy_plugin_selection: config.claude_plugin_selection(&plugin_outcome),
         shell_program: hook_shell_program,
         shell_args: hook_shell_argv,
     }

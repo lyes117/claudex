@@ -11,7 +11,7 @@ Transcript row 39
 Transcript row 40
 
 ────────────────────────────────────────────────────────────────────────────────
-› draft
+❯ draft
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
 
@@ -25,7 +25,7 @@ Transcript row 34
 Transcript row 35
                              ↓ Back to bottom · esc
 ────────────────────────────────────────────────────────────────────────────────
-› draft
+❯ draft
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   esc latest
@@ -37,7 +37,7 @@ Transcript row 32
 Transcript row 33
          ↓ Back to bottom · esc
 ────────────────────────────────────────
-› draft
+❯ draft
   second line
   third line
 ────────────────────────────────────────
@@ -46,7 +46,7 @@ Transcript row 33
 
 Tiny terminal
 ────────────────────────────────────────
-› draft
+❯ draft
 ────────────────────────────────────────
   gpt-test default · /tmp/project
   esc latest
@@ -60,6 +60,6 @@ Detailed
 
 
 ────────────────────────────────────────────────────────────────────────────────
-› preserved draft
+❯ preserved draft
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project

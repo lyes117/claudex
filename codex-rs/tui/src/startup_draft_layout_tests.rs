@@ -34,6 +34,64 @@ fn owned_startup_keeps_the_live_bottom_geometry() {
 }
 
 #[test]
+fn short_startup_compacts_the_banner_without_changing_the_composer() {
+    let draft = "first café 研究\nsecond line";
+    for unrestricted in [false, true] {
+        let mut pump = crate::startup_draft::tests::quiet_startup_test_pump();
+        pump.header = Box::new(
+            crate::history_cell::SessionHeaderHistoryCell::new(
+                "gpt-6.1-sol".into(),
+                /*reasoning_effort*/ None,
+                std::path::PathBuf::from("compact-project"),
+                "test",
+            )
+            .with_yolo_mode(unrestricted),
+        );
+        pump.bottom_pane.set_status_line_enabled(/*enabled*/ true);
+        pump.bottom_pane
+            .set_composer_text(draft.into(), Vec::new(), Vec::new());
+        pump.bottom_pane.set_footer_hint_override(Some(vec![
+            ("Waiting for startup".into(), String::new()),
+            ("esc".into(), "cancel".into()),
+        ]));
+        let layout = OwnedStartupLayout::new(&pump);
+        for height in [16, 12] {
+            let area = Rect::new(/*x*/ 0, /*y*/ 0, /*width*/ 48, height);
+            let bottom = layout.bottom_area(area);
+            let cursor = layout.cursor_pos(area).expect("startup composer cursor");
+            let metadata = pump.header.raw_lines();
+            let mut expected = Buffer::empty(area);
+            layout.bottom.render(bottom, &mut expected);
+            let mut actual = Buffer::empty(area);
+            layout.render(area, &mut actual);
+            for y in bottom.y..bottom.bottom() {
+                for x in bottom.x..bottom.right() {
+                    assert_eq!(actual[(x, y)], expected[(x, y)]);
+                }
+            }
+            assert_eq!(layout.cursor_pos(area), Some(cursor));
+            assert!((area.x..area.right()).contains(&cursor.0));
+            assert!((area.y..area.bottom()).contains(&cursor.1));
+            assert_eq!(pump.bottom_pane.composer_text_with_pending(), draft);
+            assert_eq!(pump.header.raw_lines(), metadata);
+            let header = (area.y..bottom.y)
+                .map(|y| {
+                    (area.x..area.right())
+                        .map(|x| actual[(x, y)].symbol())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>();
+            assert!(header.first().unwrap().contains("Claudex vtest"));
+            let text = header.join("\n");
+            assert!(text.contains("gpt-6.1-sol"));
+            assert!(text.contains("compact-project"));
+            assert!(text.contains("/help"));
+            assert_eq!(text.contains("YOLO mode"), unrestricted);
+        }
+    }
+}
+
+#[test]
 fn new_startup_decoration_tracks_draft_and_session_action() {
     let mut pump = crate::startup_draft::tests::quiet_startup_test_pump();
     let area = Rect::new(

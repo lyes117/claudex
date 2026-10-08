@@ -1,6 +1,5 @@
 ---
 source: core/tests/suite/skills_extension.rs
-assertion_line: 3190
 expression: "context_snapshot::format_request_history_snapshot(\"Cloud skills rebalance once to retain every executor skill. Post-turn compaction and resume restore the same cloud allocation before the executor reconnects; both catalogs are fully reinjected once into the new history.\",\n&requests,\n&ContextSnapshotOptions::default().rewrite_known_segments().include_request_settings(),)"
 ---
 Scenario: Cloud skills rebalance once to retain every executor skill. Post-turn compaction and resume restore the same cloud allocation before the executor reconnects; both catalogs are fully reinjected once into the new history.
@@ -17,7 +16,8 @@ Settings:
   stream: true
   text: {"verbosity":"low"}
   tool_choice: "auto"
-  tools (5; hash=fb9143ee40054f2b):
+  tools (6; hash=57d701e03c02e20e):
+    - function/Workflow: When the user requests a repository workflow, execute its ORIGINAL .claude/workflows script using...; args=[args, runId, scriptPath]; hash=3fa5308d38b83faa
     - function/wait_for_environment: Wait for the selected environment.; args=[environment_id]; hash=aac8552da86b3b20
     - function/request_user_input: Request user input for one to three short questions and wait for the response. This tool is only ...; args=[questions]; hash=64a729b25c424fc6
     - namespace/skills: Tools in the skills namespace.; hash=998a720eb0f017bc
@@ -44,9 +44,12 @@ Settings:
 
 ## Window 2 (after request 1)
 Settings: relative to window 1
-  tools (9; hash=1df9146cc32e8188):
+  tools (13; hash=e66bdf813f7e3416):
     + function/exec_command: Runs a command in a PTY, returning output or a session ID for ongoing interaction.; args=[cmd, justification, login, max_output_tokens, prefix_rule, sandbox_permissions, shell, tty, workdir, yield_time_ms]; hash=c04108e51a8548c5
     + function/write_stdin: Writes characters to an existing unified exec session and returns recent output.; args=[chars, max_output_tokens, session_id, yield_time_ms]; hash=7fb62d8a3e2df4e2
+    + function/list_mcp_resources: Lists resources provided by MCP servers. Resources allow servers to share data that provides cont...; args=[cursor, server]; hash=6792edaff13561bd
+    + function/list_mcp_resource_templates: Lists resource templates provided by MCP servers. Parameterized resource templates allow servers ...; args=[cursor, server]; hash=60f17c90ef7a4ebb
+    + function/read_mcp_resource: Read a specific resource from an MCP server given the server name and resource URI.; args=[server, uri]; hash=24246896b39008ae
     + custom/apply_patch: The `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the pat...; hash=dea9f12b0111a4ba
     + function/view_image: View a local image file from the filesystem when visual inspection is needed. Use this for images...; args=[detail, path]; hash=3b766d5bdec5d50e
 -- request 2 (turn) --
@@ -82,6 +85,10 @@ Settings: relative to window 2
   tools (0; hash=09612b07b5ecb5a5):
     - removed function/exec_command
     - removed function/write_stdin
+    - removed function/list_mcp_resources
+    - removed function/list_mcp_resource_templates
+    - removed function/read_mcp_resource
+    - removed function/Workflow
     - removed function/wait_for_environment
     - removed function/request_user_input
     - removed custom/apply_patch

@@ -31,27 +31,33 @@ pub(crate) async fn resolve_skill_roots(
     cwd: &AbsolutePathBuf,
     plugin_skill_roots: Vec<PluginSkillRoot>,
     extra_skill_roots: Vec<AbsolutePathBuf>,
+    legacy_plugin_selection: codex_config::claude::LegacyPluginSelection,
+    #[cfg(test)] home_dir_override: Option<&AbsolutePathBuf>,
 ) -> Vec<HostSkillRoot> {
     let home_dir =
         home_dir().and_then(|path| AbsolutePathBuf::from_absolute_path_checked(path).ok());
-    resolve_skill_roots_with_home_dir(
+    #[cfg(test)]
+    let home_dir = home_dir_override.cloned().or(home_dir);
+    resolve_skill_roots_with_home_dir_and_selection(
         repository_file_system,
         config_layer_stack,
         cwd,
         home_dir.as_ref(),
         plugin_skill_roots,
         extra_skill_roots,
+        legacy_plugin_selection,
     )
     .await
 }
 
-async fn resolve_skill_roots_with_home_dir(
+async fn resolve_skill_roots_with_home_dir_and_selection(
     repository_file_system: Option<Arc<dyn ExecutorFileSystem>>,
     config_layer_stack: &ConfigLayerStack,
     cwd: &AbsolutePathBuf,
     home_dir: Option<&AbsolutePathBuf>,
     plugin_skill_roots: Vec<PluginSkillRoot>,
     extra_skill_roots: Vec<AbsolutePathBuf>,
+    legacy_plugin_selection: codex_config::claude::LegacyPluginSelection,
 ) -> Vec<HostSkillRoot> {
     let mut roots =
         roots_from_layer_stack(config_layer_stack, home_dir, repository_file_system.clone());
@@ -96,7 +102,10 @@ async fn resolve_skill_roots_with_home_dir(
                     ),
                 )
             {
-                for (_, root) in plugins {
+                for (plugin_id, root) in plugins {
+                    if !legacy_plugin_selection.retains(&plugin_id) {
+                        continue;
+                    }
                     if let Ok(path) = AbsolutePathBuf::from_absolute_path(root.join("skills")) {
                         roots.push(local_root(path, scope));
                     }
@@ -109,6 +118,27 @@ async fn resolve_skill_roots_with_home_dir(
     }
     dedupe_skill_roots_by_path(&mut roots);
     roots
+}
+
+#[cfg(test)]
+async fn resolve_skill_roots_with_home_dir(
+    repository_file_system: Option<Arc<dyn ExecutorFileSystem>>,
+    config_layer_stack: &ConfigLayerStack,
+    cwd: &AbsolutePathBuf,
+    home_dir: Option<&AbsolutePathBuf>,
+    plugin_skill_roots: Vec<PluginSkillRoot>,
+    extra_skill_roots: Vec<AbsolutePathBuf>,
+) -> Vec<HostSkillRoot> {
+    resolve_skill_roots_with_home_dir_and_selection(
+        repository_file_system,
+        config_layer_stack,
+        cwd,
+        home_dir,
+        plugin_skill_roots,
+        extra_skill_roots,
+        Default::default(),
+    )
+    .await
 }
 
 fn roots_from_layer_stack(

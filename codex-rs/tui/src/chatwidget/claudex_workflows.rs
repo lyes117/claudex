@@ -1,6 +1,11 @@
 //! Bounded local workflow status and control. The panel never launches inference itself.
 
 use super::*;
+use crate::bottom_pane::BottomPaneView;
+use crate::bottom_pane::CancellationEvent;
+use crate::bottom_pane::ListSelectionView;
+use crate::bottom_pane::ViewCompletion;
+use crate::render::renderable::Renderable;
 use serde::Deserialize;
 use std::io::Read;
 
@@ -20,9 +25,131 @@ pub(crate) struct WorkflowRun {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct WorkflowAgent {
     label: String,
     status: String,
+    #[serde(default)]
+    thread_id: Option<String>,
+}
+
+/// Horizontal navigation belongs to this panel, leaving composer editing intact.
+struct WorkflowNavigationView {
+    list: ListSelectionView,
+    is_detail: bool,
+    inspectable: Vec<bool>,
+    tx: AppEventSender,
+    keymap: crate::keymap::ListKeymap,
+}
+
+impl WorkflowNavigationView {
+    fn for_agent_picker(
+        mut params: SelectionViewParams,
+        tx: AppEventSender,
+        keymap: crate::keymap::ListKeymap,
+    ) -> Self {
+        if params.footer_hint.is_none()
+            || params.footer_hint.as_ref()
+                == Some(&crate::bottom_pane::popup_consts::standard_popup_hint_line())
+        {
+            params.footer_hint =
+                Some(crate::bottom_pane::popup_consts::picker_hint_line_for_keymap(&keymap));
+        }
+        let inspectable = params
+            .items
+            .iter()
+            .map(|item| !item.actions.is_empty())
+            .collect();
+        Self {
+            list: ListSelectionView::new(params, tx.clone(), keymap.clone()),
+            is_detail: false,
+            inspectable,
+            tx,
+            keymap,
+        }
+    }
+}
+
+impl BottomPaneView for WorkflowNavigationView {
+    fn handle_key_event(&mut self, key: KeyEvent) {
+        if key.kind == KeyEventKind::Release {
+            return;
+        }
+        if self.keymap.move_left.is_pressed(key) {
+            if self.is_detail {
+                self.tx.send(AppEvent::OpenClaudexWorkflow(None));
+            }
+            self.list.on_ctrl_c();
+        } else if self.keymap.move_right.is_pressed(key) {
+            // Moving right never pauses, resumes or stops a run.
+            if self
+                .list
+                .selected_index()
+                .is_some_and(|index| self.inspectable.get(index).copied().unwrap_or(false))
+                && let Some(binding) = self.keymap.accept.first()
+            {
+                let (code, modifiers) = binding.parts();
+                self.list.handle_key_event(KeyEvent::new(code, modifiers));
+            }
+        } else {
+            self.list.handle_key_event(key);
+        }
+    }
+
+    fn keymap_contexts(&self) -> crate::keymap::KeymapContextSet {
+        self.list.keymap_contexts()
+    }
+
+    fn is_complete(&self) -> bool {
+        self.list.is_complete()
+    }
+
+    fn completion(&self) -> Option<ViewCompletion> {
+        self.list.completion()
+    }
+
+    fn dismiss_after_child_accept(&self) -> bool {
+        self.list.dismiss_after_child_accept()
+    }
+
+    fn clear_dismiss_after_child_accept(&mut self) {
+        self.list.clear_dismiss_after_child_accept();
+    }
+
+    fn view_id(&self) -> Option<&'static str> {
+        self.list.view_id()
+    }
+
+    fn selected_index(&self) -> Option<usize> {
+        self.list.selected_index()
+    }
+
+    fn prefer_esc_to_handle_key_event(&self) -> bool {
+        true
+    }
+
+    fn on_ctrl_c(&mut self) -> CancellationEvent {
+        self.list.on_ctrl_c()
+    }
+}
+
+impl Renderable for WorkflowNavigationView {
+    fn render(&self, area: Rect, buffer: &mut ratatui::buffer::Buffer) {
+        self.list.render(area, buffer);
+    }
+
+    fn desired_height(&self, width: u16) -> u16 {
+        self.list.desired_height(width)
+    }
+
+    fn render_scrolled(
+        &self,
+        area: Rect,
+        buffer: &mut ratatui::buffer::Buffer,
+        offset: u16,
+    ) -> bool {
+        self.list.render_scrolled(area, buffer, offset)
+    }
 }
 
 fn label(value: &str) -> String {
@@ -81,6 +208,44 @@ fn load_runs() -> Result<Vec<WorkflowRun>, String> {
 }
 
 impl ChatWidget {
+    /// Keep native subagent picker discovery and liveness owned by `App`.
+    pub(crate) fn show_claudex_agent_picker_navigation(&mut self, params: SelectionViewParams) {
+        let Some(view_id) = params.view_id else {
+            self.bottom_pane.show_selection_view(params);
+            return;
+        };
+        let is_present = self
+            .bottom_pane
+            .selected_index_for_present_view(view_id)
+            .is_some();
+        let keymap = self.bottom_pane.list_keymap();
+        let view =
+            WorkflowNavigationView::for_agent_picker(params, self.app_event_tx.clone(), keymap);
+        if is_present {
+            self.bottom_pane
+                .replace_view_if_present(view_id, Box::new(view));
+        } else {
+            self.bottom_pane.show_view(Box::new(view));
+        }
+    }
+
+    /// Background refresh updates only an existing picker, including below a modal.
+    pub(crate) fn replace_claudex_agent_picker_navigation(
+        &mut self,
+        params: SelectionViewParams,
+    ) -> bool {
+        let Some(view_id) = params.view_id else {
+            return false;
+        };
+        let view = WorkflowNavigationView::for_agent_picker(
+            params,
+            self.app_event_tx.clone(),
+            self.bottom_pane.list_keymap(),
+        );
+        self.bottom_pane
+            .replace_view_if_present(view_id, Box::new(view))
+    }
+
     pub(crate) fn open_claudex_workflows(&mut self, selection: Option<String>) {
         self.claudex_workflow_generation = self.claudex_workflow_generation.wrapping_add(1);
         self.claudex_workflow_selection = selection;
@@ -128,12 +293,20 @@ impl ChatWidget {
         {
             return;
         }
-        let mut selected_index = self.bottom_pane.selected_index_for_present_view(VIEW_ID);
+        let selected_index = self.bottom_pane.selected_index_for_present_view(VIEW_ID);
+        let selected_row = selected_index
+            .and_then(|index| self.claudex_workflow_rows.get(index))
+            .cloned();
         let mut items = Vec::new();
+        let mut row_ids = Vec::new();
+        let is_detail = selection.is_some();
+        let mut inspectable = Vec::new();
         let subtitle = match result {
             Err(error) => error,
             Ok(runs) => {
                 if let Some(id) = selection {
+                    row_ids.push("back".to_string());
+                    inspectable.push(false);
                     items.push(SelectionItem {
                         name: "Back to workflow runs".to_string(),
                         actions: vec![Box::new(|tx| tx.send(AppEvent::OpenClaudexWorkflow(None)))],
@@ -145,6 +318,8 @@ impl ChatWidget {
                             ("Resume queued agents", "resume"),
                             ("Stop run and retain checkpoint", "stop"),
                         ] {
+                            row_ids.push(action.to_string());
+                            inspectable.push(false);
                             let run_id = run.run_id.clone();
                             let action = action.to_string();
                             items.push(SelectionItem {
@@ -162,10 +337,30 @@ impl ChatWidget {
                                 ..Default::default()
                             });
                         }
-                        for agent in &run.agents {
+                        for (index, agent) in run.agents.iter().enumerate() {
+                            let thread_id = agent
+                                .thread_id
+                                .as_deref()
+                                .filter(|value| value.len() <= 128)
+                                .and_then(|value| ThreadId::from_string(value).ok());
+                            row_ids.push(thread_id.map_or_else(
+                                || format!("agent:{index}"),
+                                |id| format!("thread:{id}"),
+                            ));
+                            inspectable.push(thread_id.is_some());
                             items.push(SelectionItem {
                                 name: label(&agent.label),
                                 description: Some(label(&agent.status)),
+                                actions: thread_id
+                                    .map(|id| {
+                                        let action: crate::bottom_pane::SelectionAction =
+                                            Box::new(move |tx| {
+                                                tx.send(AppEvent::SelectAgentThread(id));
+                                            });
+                                        vec![action]
+                                    })
+                                    .unwrap_or_default(),
+                                dismiss_on_select: thread_id.is_some(),
                                 ..Default::default()
                             });
                         }
@@ -179,13 +374,9 @@ impl ChatWidget {
                         "Run no longer available".to_string()
                     }
                 } else {
-                    let selected_id =
-                        selected_index.and_then(|index| self.claudex_workflow_rows.get(index));
-                    selected_index =
-                        selected_id.and_then(|id| runs.iter().position(|run| &run.run_id == id));
-                    self.claudex_workflow_rows =
-                        runs.iter().map(|run| run.run_id.clone()).collect();
                     for run in runs {
+                        row_ids.push(run.run_id.clone());
+                        inspectable.push(true);
                         let run_id = run.run_id.clone();
                         let completed = run
                             .agents
@@ -211,6 +402,7 @@ impl ChatWidget {
             }
         };
         if items.is_empty() {
+            inspectable.push(false);
             items.push(SelectionItem {
                 name: "No workflow runs".to_string(),
                 is_disabled: true,
@@ -218,17 +410,32 @@ impl ChatWidget {
                 ..Default::default()
             });
         }
-        if self.bottom_pane.replace_selection_view_if_present(
-            VIEW_ID,
-            SelectionViewParams {
-                view_id: Some(VIEW_ID),
-                title: Some("Workflows".to_string()),
-                subtitle: Some(subtitle),
-                items,
-                initial_selected_idx: selected_index,
-                ..SelectionViewParams::picker()
-            },
-        ) {
+        let selected_index =
+            selected_row.and_then(|id| row_ids.iter().position(|candidate| candidate == &id));
+        let params = SelectionViewParams {
+            view_id: Some(VIEW_ID),
+            title: Some("Workflows".to_string()),
+            subtitle: Some(subtitle),
+            footer_hint: Some(Line::from(
+                "↑/↓ navigate · → inspect agent/run · ← back · enter control · esc close",
+            )),
+            items,
+            initial_selected_idx: selected_index,
+            ..SelectionViewParams::picker()
+        };
+        let keymap = self.bottom_pane.list_keymap();
+        let view = WorkflowNavigationView {
+            list: ListSelectionView::new(params, self.app_event_tx.clone(), keymap.clone()),
+            is_detail,
+            inspectable,
+            tx: self.app_event_tx.clone(),
+            keymap,
+        };
+        if self
+            .bottom_pane
+            .replace_view_if_present(VIEW_ID, Box::new(view))
+        {
+            self.claudex_workflow_rows = row_ids;
             self.refresh_claudex_workflows(Duration::from_secs(1));
         }
     }

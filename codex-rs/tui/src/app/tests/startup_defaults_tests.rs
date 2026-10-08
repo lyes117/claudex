@@ -37,6 +37,7 @@ async fn run_startup_for_test(
         crate::startup_draft::tests::quiet_startup_test_pump(),
         /*managed_worktree*/ None,
         /*daemon_cli_executable*/ None,
+        /*native_workflow*/ None,
     )
     .await
 }
@@ -402,7 +403,7 @@ async fn fresh_startup_reads_destination_and_cleared_model_uses_catalog() -> Res
             );
             insta::assert_snapshot!(rendered, @"
             ────────────────────────────────────────────────────────────────────────────────
-            › Try a task, /help for commands, or @path for files
+            ❯ Try a task, /help for commands, or @path for files
             ────────────────────────────────────────────────────────────────────────────────
               GPT-6.1-Sol high · <PROJECT>
             ");

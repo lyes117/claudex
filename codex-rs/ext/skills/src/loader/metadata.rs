@@ -171,6 +171,7 @@ pub(super) fn resolve_dependencies(
 
 pub(super) fn resolve_policy(policy: Option<Policy>) -> Option<SkillPolicy> {
     policy.map(|policy| SkillPolicy {
+        claude_command: None,
         allow_implicit_invocation: policy.allow_implicit_invocation,
         products: policy.products,
     })

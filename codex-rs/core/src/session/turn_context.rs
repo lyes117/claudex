@@ -1220,6 +1220,9 @@ impl Session {
                 .plugin_skill_snapshots_for_config(&plugins_input);
             let skills_input =
                 skills_load_input_from_config(&per_turn_config, effective_skill_roots)
+                    .with_legacy_plugin_selection(
+                        per_turn_config.claude_plugin_selection(&plugin_outcome),
+                    )
                     .with_plugin_skill_snapshots(plugin_skill_snapshots);
             let fs = primary_turn_environment
                 .map(|turn_environment| turn_environment.environment.get_filesystem());

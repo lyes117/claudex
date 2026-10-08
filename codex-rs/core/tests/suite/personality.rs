@@ -137,9 +137,13 @@ async fn config_personality_none_strips_baked_personality_section(
 
     wait_for_event(&test.codex, |ev| matches!(ev, EventMsg::TurnComplete(_))).await;
 
+    // ponytail: the session base is now the shared Claude Code default, so the
+    // baked-personality strip on the model template no longer reaches the request;
+    // what remains verified here is that personality=none injects no personality
+    // message and leaves the default base untouched.
     assert_eq!(
         resp_mock.single_request().instructions_text(),
-        "Base instructions\n# General\nGeneral instructions"
+        codex_prompts::claude_base_instructions()
     );
 
     Ok(())
@@ -214,10 +218,9 @@ async fn default_instructions_are_friendly_without_config_toml() -> anyhow::Resu
 
     let request = resp_mock.single_request();
     let instructions_text = request.instructions_text();
-    assert!(
-        instructions_text.contains(BUNDLED_FRIENDLY_TEMPLATE),
-        "expected default friendly template, got: {instructions_text:?}"
-    );
+    // ponytail: the session base is now the shared Claude Code default, which no
+    // longer carries the bundled friendly personality template.
+    assert_eq!(instructions_text, codex_prompts::claude_base_instructions());
     assert!(!request.body_contains_text("<personality_spec>"));
 
     Ok(())
@@ -252,10 +255,11 @@ async fn fixed_friendly_personality_ignores_pragmatic_update() -> anyhow::Result
 
     let requests = responses.requests();
     assert_eq!(requests.len(), 2);
-    assert!(
-        requests[0]
-            .instructions_text()
-            .contains(BUNDLED_FRIENDLY_TEMPLATE)
+    // ponytail: the session base is the shared Claude Code default and must not
+    // change when the legacy pragmatic personality arrives mid-session.
+    assert_eq!(
+        requests[0].instructions_text(),
+        codex_prompts::claude_base_instructions()
     );
     assert_eq!(
         requests[1].instructions_text(),

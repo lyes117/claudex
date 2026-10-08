@@ -331,7 +331,7 @@ async fn assert_transcript_close_repaints_inline_draft(mut app: Box<App>) -> Res
     app.handle_tui_event(
         &mut tui,
         &mut app_server,
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL)),
+        TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
     )
     .await?;
     assert_eq!(tui.terminal.viewport_area, inline_viewport);

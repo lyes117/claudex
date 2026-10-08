@@ -11,7 +11,7 @@
 //! loss cancels the pending paste; a late clipboard result cannot overwrite newer input.
 //! The live voice strip renders after effort ignition, followed by the Astra sparkle when eligible.
 //! Owned transcripts keep persistent status below the composer and hints on a separate final row.
-//! Claude Markdown commands expand on submission from the existing skill catalog, after built-in
+//! Claude Markdown commands resolve asynchronously on the owning server, after built-in
 //! slash-command precedence. Shell quoting and argument placeholders are expanded in memory;
 //! unsupported execution restrictions and dynamic shell injection are rejected.
 //! Claudex draws separators in the existing blank input margins. Active native visual effects
@@ -29,6 +29,9 @@
 //!
 //! # Mention Menus
 //!
+//! `/` lists native commands first, then enabled user-invocable skills from the server catalogue.
+//! Enter prepares a bounded server expansion; submission/queue acknowledgement preserves slash
+//! history and cancels stale drafts. Collisions use qualified skill names instead of shadowing.
 //! By default, `@` lists plugins, filesystem entries, and skills. Skills are hidden when their
 //! owning plugin is listed. `$` lists individual skills and apps, but not plugins.
 //! Disabling `mentions_v2` restores file-only `@` search and adds plugins back to `$`.
@@ -382,6 +385,7 @@ use codex_protocol::user_input::TextElement;
 
 mod agents_navigation;
 mod attachment_state;
+pub(crate) mod claude_submission;
 mod completion_target;
 mod composer_layout;
 mod draft_state;
@@ -485,6 +489,8 @@ pub enum InputResult {
     /// command-history entry still represents the original command invocation that should be
     /// committed only if dispatch accepts it.
     CommandWithArgs(SlashCommand, String, Vec<TextElement>),
+    /// Explicit Markdown command awaiting server-side catalog and source validation.
+    ClaudeCommand(claude_submission::ClaudeCommandRequest),
     /// Agent-directed input was attempted while viewing a parent-owned spawned child thread.
     ParentOwnedInputBlocked,
     None,
@@ -633,6 +639,8 @@ pub(crate) struct ChatComposer {
     /// prepare their argument text without also double-recording the full command invocation.
     pending_slash_command_history: Option<HistoryEntry>,
     skills: Option<Vec<SkillMetadata>>,
+    claude_commands: Vec<super::claude_slash_catalog::ClaudeSlashCommand>,
+    pending_claude_command: Option<claude_submission::PendingClaudeCommand>,
     plugins: Option<Vec<PluginCapabilitySummary>>,
     task_mentions: Option<Vec<crate::task_mentions::TaskMention>>,
     connectors_snapshot: Option<ConnectorsSnapshot>,
@@ -700,6 +708,7 @@ impl ChatComposer {
             self.builtin_command_flags(),
             &self.service_tier_commands,
         )
+        .with_claude_commands(&self.claude_commands)
     }
 
     pub fn new(
@@ -805,6 +814,8 @@ impl ChatComposer {
             queue_submissions: false,
             pending_slash_command_history: None,
             skills: None,
+            claude_commands: Vec::new(),
+            pending_claude_command: None,
             plugins: None,
             task_mentions: None,
             connectors_snapshot: None,
@@ -893,7 +904,15 @@ impl ChatComposer {
     }
 
     pub fn set_skill_mentions(&mut self, skills: Option<Vec<SkillMetadata>>) {
+        self.cancel_claude_command();
+        self.claude_commands = super::claude_slash_catalog::commands(
+            skills.as_deref().unwrap_or_default(),
+            &self.service_tier_commands,
+        );
         self.skills = skills;
+        if matches!(self.popups.active, ActivePopup::Command(_)) {
+            self.popups.active = ActivePopup::None;
+        }
         self.refresh_mentions_v2_popup_candidates();
         self.sync_popups();
     }
@@ -1016,7 +1035,15 @@ impl ChatComposer {
     }
 
     pub fn set_service_tier_commands(&mut self, commands: Vec<ServiceTierCommand>) {
+        self.cancel_claude_command();
         self.service_tier_commands = commands;
+        self.claude_commands = super::claude_slash_catalog::commands(
+            self.skills.as_deref().unwrap_or_default(),
+            &self.service_tier_commands,
+        );
+        if matches!(self.popups.active, ActivePopup::Command(_)) {
+            self.popups.active = ActivePopup::None;
+        }
         self.sync_popups();
     }
 
@@ -1488,6 +1515,7 @@ impl ChatComposer {
     }
 
     pub(crate) fn set_remote_image_urls(&mut self, urls: Vec<String>) {
+        self.cancel_claude_command();
         if !self.sparkle.history_preview && !urls.is_empty() {
             self.dismiss_sparkle();
         }
@@ -1541,6 +1569,7 @@ impl ChatComposer {
         local_image_paths: Vec<PathBuf>,
         mention_bindings: Vec<MentionBinding>,
     ) {
+        self.cancel_claude_command();
         if !self.sparkle.history_preview {
             if local_image_paths.is_empty() {
                 self.note_sparkle_replaced_text(&text);
@@ -1591,6 +1620,7 @@ impl ChatComposer {
     }
 
     pub(crate) fn set_current_cursor(&mut self, cursor: usize) {
+        self.cancel_claude_command();
         let visible_cursor = if self.draft.is_bash_mode {
             cursor.saturating_sub(1)
         } else {
@@ -1661,6 +1691,7 @@ impl ChatComposer {
     }
 
     pub(crate) fn set_parent_owned_thread(&mut self) {
+        self.cancel_claude_command();
         self.blocks_direct_input = true;
         self.placeholder_text = "Viewing sub-agent — direct input is disabled".to_string();
     }
@@ -1961,6 +1992,12 @@ impl ChatComposer {
 
     /// Handle a key event coming from the main UI.
     pub fn handle_key_event(&mut self, key_event: KeyEvent) -> (InputResult, bool) {
+        if key_event.kind != KeyEventKind::Release
+            && !self.submit_keys.is_pressed(key_event)
+            && !self.queue_keys.is_pressed(key_event)
+        {
+            self.cancel_claude_command();
+        }
         if !self.draft.input_enabled {
             return (InputResult::None, false);
         }
@@ -3037,48 +3074,6 @@ impl ChatComposer {
             text_elements = Self::trim_text_elements(&expanded_input, &text, text_elements);
         }
 
-        // Claude commands and skills remain in their original Markdown files.
-        // Built-in Codex slash commands retain precedence.
-        if let Some((name, arguments, _)) = parse_slash_name(&text)
-            && self.slash_input().command(name).is_none()
-            && let Some(skill) = self.skills.as_ref().and_then(|skills| {
-                skills.iter().find(|skill| {
-                    skill.name == name && codex_config::claude::is_markdown_source(&skill.path)
-                })
-            })
-        {
-            let arguments = arguments.to_owned();
-            match std::fs::read_to_string(&skill.path)
-                .and_then(|contents| codex_config::claude::markdown(&contents))
-                .and_then(|(metadata, body)| {
-                    let tokens = shlex::split(&arguments).ok_or_else(|| {
-                        std::io::Error::new(
-                            std::io::ErrorKind::InvalidInput,
-                            "Unterminated command argument quote",
-                        )
-                    })?;
-                    codex_config::claude::expand_command(
-                        &metadata,
-                        &body,
-                        &arguments,
-                        &tokens,
-                        &skill.path,
-                    )
-                }) {
-                Ok(body) => {
-                    text = body;
-                    text_elements.clear();
-                }
-                Err(error) => {
-                    self.app_event_tx.send(AppEvent::InsertHistoryCell(Box::new(
-                        history_cell::new_error_event(format!(
-                            "Could not read Claude command: {error}"
-                        )),
-                    )));
-                    return None;
-                }
-            }
-        }
         if slash_validation == SlashValidation::Immediate
             && let SubmissionValidation::UnknownCommand(name) = self
                 .slash_input()
@@ -3214,6 +3209,12 @@ impl ChatComposer {
 
         if let Some(result) = self.handle_parent_owned_submission() {
             return result;
+        }
+        if let Some(pasted) = self.draft.paste_burst.flush_before_modified_input() {
+            self.apply_paste(pasted);
+        }
+        if let Some(result) = self.try_prepare_claude_command(should_queue) {
+            return (result, true);
         }
         if should_queue {
             if let Some(pasted) = self.draft.paste_burst.flush_before_modified_input() {
@@ -7015,6 +7016,7 @@ mod tests {
             path: test_path_buf(&format!("/tmp/{name}/SKILL.md")).abs(),
             scope: crate::test_support::skill_scope_user(),
             enabled: true,
+            claude_command: None,
             plugin_id: None,
         }
     }
@@ -7667,6 +7669,7 @@ mod tests {
             path: skill_path.clone(),
             scope: crate::test_support::skill_scope_user(),
             enabled: true,
+            claude_command: None,
             plugin_id: None,
         }]));
 
@@ -7712,6 +7715,7 @@ mod tests {
             path: skill_path.clone(),
             scope: crate::test_support::skill_scope_repo(),
             enabled: true,
+            claude_command: None,
             plugin_id: Some("google-calendar@debug".to_string()),
         }]));
         composer.set_plugin_mentions(Some(vec![PluginCapabilitySummary {
@@ -8047,6 +8051,7 @@ mod tests {
                     path: test_path_buf("/tmp/repo/google-calendar/SKILL.md").abs(),
                     scope: crate::test_support::skill_scope_repo(),
                     enabled: true,
+                    claude_command: None,
                     plugin_id: None,
                 }]));
                 composer.set_plugin_mentions(Some(vec![PluginCapabilitySummary {
@@ -9519,6 +9524,9 @@ mod tests {
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected model command, got service tier {command:?}")
                 }
+                Some(CommandItem::ClaudeSkill(command)) => {
+                    panic!("unexpected Claude command {command:?}")
+                }
                 None => panic!("no selected command for '/mo'"),
             },
             _ => panic!("slash popup not active after typing '/mo'"),
@@ -9601,6 +9609,9 @@ mod tests {
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected resume command, got service tier {command:?}")
                 }
+                Some(CommandItem::ClaudeSkill(command)) => {
+                    panic!("unexpected Claude command {command:?}")
+                }
                 None => panic!("no selected command for '/res'"),
             },
             _ => panic!("slash popup not active after typing '/res'"),
@@ -9654,6 +9665,9 @@ mod tests {
                 }
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected pets command, got service tier {command:?}")
+                }
+                Some(CommandItem::ClaudeSkill(command)) => {
+                    panic!("unexpected Claude command {command:?}")
                 }
                 None => panic!("no selected command for '/pet'"),
             },
@@ -9709,6 +9723,9 @@ mod tests {
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected btw command, got service tier {command:?}")
                 }
+                Some(CommandItem::ClaudeSkill(command)) => {
+                    panic!("unexpected Claude command {command:?}")
+                }
                 None => panic!("no selected command for '/bt'"),
             },
             _ => panic!("slash popup not active after typing '/bt'"),
@@ -9762,6 +9779,9 @@ mod tests {
                 }
                 Some(CommandItem::ServiceTier(command)) => {
                     panic!("expected side command, got service tier {command:?}")
+                }
+                Some(CommandItem::ClaudeSkill(command)) => {
+                    panic!("unexpected Claude command {command:?}")
                 }
                 None => panic!("no selected command for '/si'"),
             },
@@ -9867,7 +9887,7 @@ mod tests {
             InputResult::Queued { .. } => {
                 panic!("expected command dispatch, but composer queued literal text")
             }
-            InputResult::ParentOwnedInputBlocked => {
+            InputResult::ParentOwnedInputBlocked | InputResult::ClaudeCommand(_) => {
                 panic!("expected command dispatch, but parent-owned input was blocked")
             }
             InputResult::None => panic!("expected Command result for '/init'"),
@@ -10377,7 +10397,7 @@ mod tests {
             InputResult::Queued { .. } => {
                 panic!("expected command dispatch after Tab completion, got literal queue")
             }
-            InputResult::ParentOwnedInputBlocked => {
+            InputResult::ParentOwnedInputBlocked | InputResult::ClaudeCommand(_) => {
                 panic!("expected command dispatch, but parent-owned input was blocked")
             }
             InputResult::None => panic!("expected Command result for '/diff'"),
@@ -10577,7 +10597,7 @@ mod tests {
             InputResult::Queued { .. } => {
                 panic!("expected command dispatch, but composer queued literal text")
             }
-            InputResult::ParentOwnedInputBlocked => {
+            InputResult::ParentOwnedInputBlocked | InputResult::ClaudeCommand(_) => {
                 panic!("expected command dispatch, but parent-owned input was blocked")
             }
             InputResult::None => panic!("expected Command result for '/mention'"),

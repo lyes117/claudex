@@ -1,0 +1,10 @@
+---
+source: tui/src/chatwidget/rendering_tests.rs
+expression: "header.replace(&cwd, \"/tmp/project\")"
+---
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   /tmp/project
+
+Welcome to Claudex
+/help commands · /tasks agents

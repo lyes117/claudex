@@ -407,27 +407,24 @@ async fn initial_session_header_starts_at_the_top_of_the_viewport() {
 
     let cwd = crate::history_cell::SessionHeaderHistoryCell::format_directory_inner(
         widget.config.cwd.as_path(),
-        Some(44),
+        /*max_width*/ Some(37),
     );
-    assert!(header.starts_with('╭'));
+    assert!(
+        header
+            .lines()
+            .next()
+            .expect("header title")
+            .contains("Claudex v<VERSION>")
+    );
     assert!(
         header.contains(&cwd),
         "the whole header, including its directory, must be rendered"
     );
 
-    insta::assert_snapshot!(header.replace(&cwd, "/tmp/project"), @"
-    ╭ Claudex v<VERSION> ────────────────────────────╮
-    │ Welcome to Claudex                           │
-    │                                              │
-    │      ▄████▄                                  │
-    │     ██  ▄▄▄                                  │
-    │      ▀████▀                                  │
-    │                                              │
-    │ loading · Codex engine                       │
-    │ /tmp/project                               │
-    │ /help commands · /tasks agents               │
-    ╰──────────────────────────────────────────────╯
-    ");
+    insta::assert_snapshot!(
+        "initial_session_header_at_top",
+        header.replace(&cwd, "/tmp/project")
+    );
 }
 
 #[tokio::test]

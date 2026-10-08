@@ -9,6 +9,10 @@ use codex_utils_cli::SharedCliOptions;
 #[derive(Parser, Clone, Debug)]
 #[command(version)]
 pub struct Cli {
+    /// Internal: deterministically dispatch a workflow after its native thread is ready.
+    #[clap(skip)]
+    pub native_workflow: Option<codex_protocol::protocol::WorkflowRunRequest>,
+
     /// Internal: launching CLI that handles daemon updates after the TUI exits.
     #[clap(skip)]
     pub daemon_cli_executable: Option<AbsolutePathBuf>,

@@ -3,18 +3,18 @@ source: tui/src/app/owned_transcript_tests.rs
 expression: "normalize_snapshot_paths(buffer_text(crate::custom_terminal::test_support::last_rendered_buffer(&tui.terminal)))"
 ---
 
-› first question
+❯ first question
 
 
 
-› second question
+❯ second question
 
 
 
-› third question
+❯ third question
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
-  Browsing · ↑↓/jk scroll · ←→/hl prompts · ctrl+t details · ↵ rewind · esc back
+  Browsing · ↑↓/jk scroll · ←→/hl prompts · ctrl+o details · ↵ rewind · esc back

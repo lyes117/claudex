@@ -48,6 +48,7 @@ pub(super) struct SlashInput<'a> {
     is_bash_mode: bool,
     command_flags: BuiltinCommandFlags,
     service_tier_commands: &'a [ServiceTierCommand],
+    claude_commands: &'a [crate::bottom_pane::claude_slash_catalog::ClaudeSlashCommand],
 }
 
 impl<'a> SlashInput<'a> {
@@ -62,7 +63,16 @@ impl<'a> SlashInput<'a> {
             is_bash_mode,
             command_flags,
             service_tier_commands,
+            claude_commands: &[],
         }
+    }
+
+    pub(super) fn with_claude_commands(
+        mut self,
+        commands: &'a [crate::bottom_pane::claude_slash_catalog::ClaudeSlashCommand],
+    ) -> Self {
+        self.claude_commands = commands;
+        self
     }
 
     pub(super) fn validate_submission(
@@ -166,10 +176,17 @@ impl<'a> SlashInput<'a> {
         }
 
         has_slash_command_prefix(name, self.command_flags, self.service_tier_commands)
+            || self.claude_commands.iter().any(|command| {
+                command.name.starts_with(name)
+                    || command
+                        .name
+                        .rsplit_once(':')
+                        .is_some_and(|(_, bare)| bare.starts_with(name))
+            })
     }
 
     pub(super) fn command_popup(&self, filter_text: &str) -> CommandPopup {
-        let mut command_popup = CommandPopup::new(
+        let command_popup = CommandPopup::new(
             CommandPopupFlags {
                 collaboration_modes_enabled: self.command_flags.collaboration_modes_enabled,
                 connectors_enabled: self.command_flags.connectors_enabled,
@@ -184,6 +201,7 @@ impl<'a> SlashInput<'a> {
             },
             self.service_tier_commands.to_vec(),
         );
+        let mut command_popup = command_popup.with_claude_commands(self.claude_commands.to_vec());
         command_popup.on_composer_text_change(filter_text.to_string());
         command_popup
     }
@@ -377,7 +395,7 @@ impl ChatComposer {
                                     |(_, args, _)| parent_owned_command_is_allowed(*cmd, args),
                                 )
                             }
-                            CommandItem::ServiceTier(_) => false,
+                            CommandItem::ServiceTier(_) | CommandItem::ClaudeSkill(_) => false,
                         };
                         if !command_is_allowed {
                             return (InputResult::ParentOwnedInputBlocked, true);
@@ -392,6 +410,10 @@ impl ChatComposer {
                         return (result, true);
                     }
 
+                    if let CommandItem::ClaudeSkill(command) = &sel {
+                        self.complete_claude_command_token(&command.name);
+                        return self.handle_submission(/*should_queue*/ false);
+                    }
                     self.stage_selected_slash_command_history(&sel);
                     if !matches!(sel, CommandItem::Builtin(cmd) if cmd.requires_dispatch_validation())
                     {
@@ -404,6 +426,9 @@ impl ChatComposer {
                             CommandItem::ServiceTier(command) => {
                                 InputResult::ServiceTierCommand(command)
                             }
+                            CommandItem::ClaudeSkill(_) => {
+                                unreachable!("Claude submission handled above")
+                            }
                         },
                         true,
                     );
@@ -415,10 +440,26 @@ impl ChatComposer {
         }
     }
 
+    fn complete_claude_command_token(&mut self, name: &str) {
+        let text = self.draft.textarea.text();
+        let end = text.find(char::is_whitespace).unwrap_or(text.len());
+        let replacement = if end == text.len() {
+            format!("/{name} ")
+        } else {
+            format!("/{name}")
+        };
+        self.draft.textarea.replace_range(0..end, &replacement);
+        self.draft.is_bash_mode = false;
+    }
+
     fn complete_selected_slash_command_preserving_existing_draft_tail_as_inline_args(
         &mut self,
         selected_cmd: &CommandItem,
     ) -> bool {
+        if let CommandItem::ClaudeSkill(command) = selected_cmd {
+            self.complete_claude_command_token(&command.name);
+            return true;
+        }
         let CommandItem::Builtin(cmd) = selected_cmd else {
             return false;
         };

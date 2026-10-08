@@ -119,6 +119,8 @@ pub struct ConfigLayerEntry {
     pub version: String,
     pub disabled_reason: Option<String>,
     pub(crate) claude_config_enabled: bool,
+    /// Legacy plugin contributions retained independently until native authority is resolved.
+    pub(crate) claude_plugin_mcp_configs: Vec<crate::claude::ClaudePluginMcpConfig>,
     raw_toml: Option<RawTomlLayer>,
     hooks_config_folder_override: Option<AbsolutePathBuf>,
 }
@@ -138,6 +140,7 @@ impl ConfigLayerEntry {
             version,
             disabled_reason: None,
             claude_config_enabled: true,
+            claude_plugin_mcp_configs: Vec::new(),
             raw_toml: None,
             hooks_config_folder_override: None,
         }
@@ -156,6 +159,7 @@ impl ConfigLayerEntry {
             version,
             disabled_reason: None,
             claude_config_enabled: true,
+            claude_plugin_mcp_configs: Vec::new(),
             raw_toml: Some(RawTomlLayer {
                 contents: raw_toml,
                 base_dir: raw_toml_base_dir,
@@ -176,6 +180,7 @@ impl ConfigLayerEntry {
             version,
             disabled_reason: Some(disabled_reason.into()),
             claude_config_enabled: true,
+            claude_plugin_mcp_configs: Vec::new(),
             raw_toml: None,
             hooks_config_folder_override: None,
         }
@@ -183,6 +188,19 @@ impl ConfigLayerEntry {
 
     pub fn is_disabled(&self) -> bool {
         self.disabled_reason.is_some()
+    }
+
+    /// Attach in-memory compatibility provenance without adding persisted TOML settings.
+    pub fn with_claude_plugin_mcp_configs(
+        mut self,
+        configs: Vec<crate::claude::ClaudePluginMcpConfig>,
+    ) -> Self {
+        self.claude_plugin_mcp_configs = configs;
+        self.version = version_for_toml(&crate::claude::layer_config_with_plugins(
+            &self,
+            crate::claude::LegacyPluginSelection::KeepAll,
+        ));
+        self
     }
 
     pub fn raw_toml(&self) -> Option<&str> {
@@ -360,7 +378,13 @@ impl ConfigLayerStack {
 
         let mut merged = TomlValue::Table(toml::map::Map::new());
         for layer in user_layers {
-            merge_toml_values(&mut merged, &layer.config);
+            merge_toml_values(
+                &mut merged,
+                &crate::claude::layer_config_with_plugins(
+                    layer,
+                    crate::claude::LegacyPluginSelection::KeepAll,
+                ),
+            );
         }
         Some(merged)
     }
@@ -479,7 +503,13 @@ impl ConfigLayerStack {
     pub fn effective_config(&self) -> TomlValue {
         let mut merged = TomlValue::Table(toml::map::Map::new());
         for layer in self.layers_low_to_high() {
-            merge_toml_values(&mut merged, &layer.config);
+            merge_toml_values(
+                &mut merged,
+                &crate::claude::layer_config_with_plugins(
+                    layer,
+                    crate::claude::LegacyPluginSelection::KeepAll,
+                ),
+            );
         }
         if let Some(requirements) = &self.model_provider_requirements {
             crate::model_provider_requirements::apply(&mut merged, requirements);
@@ -510,7 +540,10 @@ impl ConfigLayerStack {
         let mut provider_paths = vec!["features.network_proxy.credentials.".to_string()];
 
         for layer in self.layers_low_to_high() {
-            let config = normalize_key_aliases(&layer.config);
+            let config = normalize_key_aliases(&crate::claude::layer_config_with_plugins(
+                layer,
+                crate::claude::LegacyPluginSelection::KeepAll,
+            ));
             if let Some(profiles) = config.get("profiles").and_then(TomlValue::as_table) {
                 provider_paths.extend(
                     profiles

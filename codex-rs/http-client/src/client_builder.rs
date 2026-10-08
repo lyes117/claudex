@@ -37,6 +37,7 @@ pub struct HttpClientBuilder {
     http2_prior_knowledge: bool,
     pub(crate) default_headers: Option<HeaderMap>,
     follow_redirects: bool,
+    protocol_retry_policy: ProtocolRetryPolicy,
     pub(crate) redirect_observed: Option<Arc<AtomicBool>>,
     connect_timeout: Option<Duration>,
     chatgpt_cloudflare_cookie_store: bool,
@@ -51,6 +52,16 @@ enum TlsBackend {
     #[default]
     TransportDefault,
     Rustls,
+}
+
+/// Controls retries performed internally by the HTTP protocol client, independently of
+/// application-level retries. Existing clients retain the transport's defaults.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ProtocolRetryPolicy {
+    #[default]
+    TransportDefault,
+    /// Never replay a request, including protocol NACKs the transport considers safe.
+    Never,
 }
 
 impl HttpClientFactory {
@@ -116,6 +127,12 @@ impl HttpClientBuilder {
 
     pub fn without_redirects(mut self) -> Self {
         self.follow_redirects = false;
+        self
+    }
+
+    /// Sets the underlying transport's protocol retry policy without changing route policy.
+    pub fn protocol_retry_policy(mut self, protocol_retry_policy: ProtocolRetryPolicy) -> Self {
+        self.protocol_retry_policy = protocol_retry_policy;
         self
     }
 
@@ -356,6 +373,9 @@ impl HttpClientBuilder {
 
     fn base_reqwest_builder(self) -> reqwest::ClientBuilder {
         let mut builder = reqwest::Client::builder();
+        if self.protocol_retry_policy == ProtocolRetryPolicy::Never {
+            builder = builder.retry(reqwest::retry::never());
+        }
         if self.http2_prior_knowledge {
             builder = builder.http2_prior_knowledge();
         }
@@ -398,6 +418,7 @@ impl Default for HttpClientBuilder {
             http2_prior_knowledge: false,
             default_headers: None,
             follow_redirects: true,
+            protocol_retry_policy: ProtocolRetryPolicy::TransportDefault,
             redirect_observed: None,
             connect_timeout: None,
             chatgpt_cloudflare_cookie_store: false,

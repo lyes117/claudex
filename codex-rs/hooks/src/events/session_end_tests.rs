@@ -70,6 +70,7 @@ fn handler(matcher: Option<&str>) -> ConfiguredHandler {
         source: HookSource::User,
         display_order: 0,
         kind: crate::engine::ConfiguredHandlerKind::Command {
+            args: None,
             command: "echo hook".to_string(),
             r#async: false,
             env: HashMap::new(),

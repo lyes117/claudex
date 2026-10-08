@@ -52,6 +52,26 @@ use crate::events::stop::StopRequest;
 use crate::mcp::HookMcpCall;
 use crate::mcp::HookMcpExecutor;
 
+#[test]
+fn hook_reconfiguration_tracks_legacy_selection_without_native_hook_sources() {
+    let selected = crate::HooksConfig {
+        legacy_plugin_selection: codex_config::claude::LegacyPluginSelection::NativeMemory,
+        ..Default::default()
+    };
+    let (hooks, _) = crate::Hooks::new(selected, ThreadId::new(), mcp_executor()).unwrap();
+    assert!(hooks.matches_plugin_hooks(std::iter::empty(), std::iter::empty()));
+    assert!(
+        !hooks
+            .matches_legacy_plugin_selection(codex_config::claude::LegacyPluginSelection::KeepAll)
+    );
+    let refreshed = hooks.reconfigured(crate::HooksConfig::default());
+    assert!(refreshed.matches_plugin_hooks(std::iter::empty(), std::iter::empty()));
+    assert!(
+        refreshed
+            .matches_legacy_plugin_selection(codex_config::claude::LegacyPluginSelection::KeepAll)
+    );
+}
+
 fn cwd() -> AbsolutePathBuf {
     AbsolutePathBuf::current_dir().expect("current dir")
 }
@@ -100,6 +120,7 @@ fn permission_request_timeout_only_counts_synchronous_handlers() {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.to_string(),
             r#async: false,
             env: HashMap::new(),
@@ -108,6 +129,7 @@ fn permission_request_timeout_only_counts_synchronous_handlers() {
     let asynchronous_handler = ConfiguredHandler {
         timeout_sec: 600,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.to_string(),
             r#async: true,
             env: HashMap::new(),
@@ -150,6 +172,7 @@ fn pre_tool_use_hook_events(command: impl Into<String>) -> HookEventsToml {
         pre_tool_use: vec![MatcherGroup {
             matcher: Some("^Bash$".to_string()),
             hooks: vec![HookHandlerConfig::Command {
+                args: None,
                 command: command.into(),
                 command_windows: None,
                 timeout_sec: Some(10),
@@ -578,6 +601,7 @@ with Path(r"{log_path}").open("a", encoding="utf-8") as handle:
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: format!("python3 {}", script_path.display()),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -633,6 +657,7 @@ with Path(r"{log_path}").open("a", encoding="utf-8") as handle:
         plugin_hook_load_warnings: Vec::new(),
         shell_program: None,
         shell_args: Vec::new(),
+        legacy_plugin_selection: Default::default(),
     });
     assert!(listed.hooks[0].is_managed);
     let cwd = cwd();
@@ -686,6 +711,7 @@ async fn requirements_managed_hooks_execute_windows_command_override() {
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "exit 17".to_string(),
                     command_windows: Some("exit /B 19".to_string()),
                     timeout_sec: Some(10),
@@ -767,6 +793,7 @@ fn unknown_requirement_source_hooks_stay_managed() {
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "python3 /tmp/managed.py".to_string(),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -837,6 +864,7 @@ fn user_disablement_filters_non_managed_hooks_but_not_managed_hooks() {
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "python3 /tmp/managed.py".to_string(),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -1081,6 +1109,7 @@ fn requirements_managed_hooks_load_when_managed_dir_is_missing() {
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "echo hi".to_string(),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -1140,6 +1169,7 @@ fn requirements_managed_hooks_load_when_managed_dir_is_missing() {
     assert_eq!(
         engine.handlers[0].kind,
         ConfiguredHandlerKind::Command {
+            args: None,
             command: "echo hi".to_string(),
             r#async: false,
             env: HashMap::new(),
@@ -1200,6 +1230,7 @@ fn allow_managed_hooks_only_false_keeps_unmanaged_hooks() {
     assert_eq!(
         discovered.hook_entries[0].handler,
         HookListEntryHandler::Command {
+            args: None,
             command: "python3 /tmp/user-hook.py".to_string(),
             r#async: false,
         }
@@ -1258,6 +1289,7 @@ fn allow_managed_hooks_only_in_config_toml_does_not_enable_policy() {
     assert_eq!(
         discovered.hook_entries[0].handler,
         HookListEntryHandler::Command {
+            args: None,
             command: "python3 /tmp/user-hook.py".to_string(),
             r#async: false,
         }
@@ -1806,6 +1838,7 @@ fn bundled_cleanup_trust_does_not_extend_to_other_handlers() {
             status_message: None,
         },
         HookHandlerConfig::Command {
+            args: None,
             command: "echo cleanup".to_string(),
             command_windows: None,
             timeout_sec: None,
@@ -1968,6 +2001,7 @@ fn builtin_cleanup_ignores_disablement_but_preserves_managed_only_policy() {
 fn disabled_hooks_feature_keeps_builtin_cleanup_but_not_trusted_plugin_hooks() {
     let mut source = bundled_cleanup_source("browser@openai-bundled", "node_repl", "Stop");
     source.hooks.stop[0].hooks.push(HookHandlerConfig::Command {
+        args: None,
         command: "echo ordinary hook".to_string(),
         command_windows: None,
         timeout_sec: None,
@@ -2033,6 +2067,7 @@ print(json.dumps({
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("Bash".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: format!("python3 {}", script_path.display()),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -2086,6 +2121,7 @@ print(json.dumps({
         plugin_hook_load_warnings: Vec::new(),
         shell_program: None,
         shell_args: Vec::new(),
+        legacy_plugin_selection: Default::default(),
     });
     assert_eq!(
         listed.hooks[0].plugin_id.as_deref(),
@@ -2155,6 +2191,7 @@ fn plugin_hook_sources_expand_plugin_placeholders() {
                     command:
                         "run ${PLUGIN_ROOT} ${CLAUDE_PLUGIN_ROOT} ${PLUGIN_DATA} ${CLAUDE_PLUGIN_DATA}"
                             .to_string(),
+                    args: None,
                     command_windows: None,
                     timeout_sec: Some(5),
                     r#async: false,
@@ -2185,6 +2222,7 @@ fn plugin_hook_sources_expand_plugin_placeholders() {
     assert_eq!(
         engine.handlers[0].kind,
         ConfiguredHandlerKind::Command {
+            args: None,
             command: format!(
                 "run {} {} {} {}",
                 plugin_root.display(),

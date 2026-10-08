@@ -84,7 +84,7 @@ async fn warning_notice_keeps_details_in_transcript_and_preserves_draft() -> Res
     assert!(detailed.contains("Sample runtime warning"));
     assert!(app.handle_owned_backtrack_event(
         &mut tui,
-        &TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL))
+        &TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL))
     )?);
     app.render_owned_transcript(&mut tui, size)?;
     assert_eq!(screen(&tui), live);

@@ -702,6 +702,7 @@ mod tests {
             source: codex_protocol::protocol::HookSource::User,
             display_order: 0,
             kind: crate::engine::ConfiguredHandlerKind::Command {
+                args: None,
                 command: "echo hook".to_string(),
                 r#async,
                 env: std::collections::HashMap::new(),

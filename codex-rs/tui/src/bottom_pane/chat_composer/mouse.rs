@@ -90,6 +90,7 @@ impl ChatComposer {
             .textarea
             .handle_mouse(event, *self.draft.textarea_state.borrow());
         if handled {
+            self.cancel_claude_command();
             self.attachments.clear_remote_image_selection();
             self.sync_popups();
         }

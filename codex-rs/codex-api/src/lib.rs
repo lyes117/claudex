@@ -1,5 +1,6 @@
 pub(crate) mod api_bridge;
 pub(crate) mod auth;
+mod claudex_chat_request;
 pub(crate) mod common;
 pub(crate) mod endpoint;
 pub(crate) mod error;
@@ -13,6 +14,11 @@ pub(crate) mod safety_buffering;
 pub(crate) mod search;
 pub(crate) mod sse;
 pub(crate) mod telemetry;
+mod zcode_bridge;
+
+#[cfg(test)]
+#[path = "zcode_bridge_tests.rs"]
+mod zcode_bridge_tests;
 
 pub use crate::requests::headers::build_session_headers;
 pub use codex_client::RequestTelemetry;
@@ -28,6 +34,8 @@ pub use crate::auth::AuthProvider;
 pub use crate::auth::AuthProviderFuture;
 pub use crate::auth::SharedAuthProvider;
 pub use crate::auth::auth_header_telemetry;
+pub use crate::claudex_chat_request::ClaudexChatRequest;
+pub use crate::claudex_chat_request::ClaudexChatRequestError;
 pub use crate::common::AccessPrograms;
 pub use crate::common::MemorySummarizeInput;
 pub use crate::common::MemorySummarizeOutput;
@@ -73,6 +81,7 @@ pub use crate::endpoint::ResponsesWebsocketClose;
 pub use crate::endpoint::ResponsesWebsocketConnection;
 pub use crate::endpoint::ResponsesWebsocketProbe;
 pub use crate::endpoint::SearchClient;
+pub use crate::endpoint::claudex_chat::ClaudexChatClient;
 pub use crate::endpoint::session_update_session_json;
 pub use crate::error::ApiError;
 pub use crate::files::HostedFileUploadContext;
@@ -115,7 +124,13 @@ pub use crate::search::SportsOperation;
 pub use crate::search::SportsToolName;
 pub use crate::search::TimeOperation;
 pub use crate::search::WeatherOperation;
+pub use crate::sse::claudex_chat::ClaudexChatDecoder;
+pub use crate::sse::claudex_chat_stream::ChatStreamLimits as ClaudexChatStreamLimits;
 pub use crate::telemetry::SseTelemetry;
 pub use crate::telemetry::WebsocketTelemetry;
+pub use crate::zcode_bridge::Exchange;
+pub use crate::zcode_bridge::Outcome;
+pub use crate::zcode_bridge::SessionCreated;
+pub use crate::zcode_bridge::ZcodeBridge;
 pub use codex_protocol::protocol::RealtimeAudioFrame;
 pub use codex_protocol::protocol::RealtimeEvent;

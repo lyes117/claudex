@@ -256,7 +256,7 @@ async fn turn_tip_placements_and_completion_barrier() -> Result<()> {
         );
         let shown = screen.contains("└ Tip:");
         if shown && !working {
-            assert!(screen.contains("• Done."), "{screen}");
+            assert!(screen.contains("● Done."), "{screen}");
         }
         assert_eq!(app.turn_tips.current.as_ref().unwrap().shown, shown);
         assert_eq!(
@@ -289,7 +289,7 @@ async fn turn_tip_placements_and_completion_barrier() -> Result<()> {
             );
             let response_row = screen
                 .lines()
-                .position(|line| line.contains("• Done."))
+                .position(|line| line.contains("● Done."))
                 .unwrap() as u16;
             for (kind, column, row) in [
                 (

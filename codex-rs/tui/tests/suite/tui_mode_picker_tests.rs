@@ -49,7 +49,7 @@ fn tui_mode_picker_applies_only_after_restart() -> Result<()> {
         terminal.write_input(if current { b"\x1b[A" } else { b"\x1b[B" })?;
         terminal.write_input(b"\r")?;
         terminal.wait_for_screen(if current {
-            "Saved TUI mode: Scrollback"
+            "Saved TUI mode: Classic"
         } else {
             "Saved TUI mode: Fullscreen"
         })?;

@@ -2021,6 +2021,13 @@
               "minimum": 0.0,
               "type": "integer"
             },
+            "args": {
+              "description": "When present, `command` is an executable and arguments are passed directly. Omission retains the legacy shell command; an empty list still uses direct execution.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
             "async": {
               "default": false,
               "type": "boolean"
@@ -4513,6 +4520,7 @@
               "queue": null,
               "submit": null,
               "toggle_fast_mode": null,
+              "toggle_plan_checklist": null,
               "toggle_raw_output": null,
               "toggle_shortcuts": null,
               "toggle_side_conversation": null,
@@ -5335,6 +5343,14 @@
           ],
           "description": "Toggle Fast mode."
         },
+        "toggle_plan_checklist": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/KeybindingsSpec"
+            }
+          ],
+          "description": "Show or hide the latest native plan checklist above the composer."
+        },
         "toggle_raw_output": {
           "allOf": [
             {
@@ -5486,6 +5502,7 @@
             "queue": null,
             "submit": null,
             "toggle_fast_mode": null,
+            "toggle_plan_checklist": null,
             "toggle_raw_output": null,
             "toggle_shortcuts": null,
             "toggle_side_conversation": null,

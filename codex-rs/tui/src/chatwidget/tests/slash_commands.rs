@@ -2228,7 +2228,7 @@ async fn keymap_capture_can_capture_current_copy_shortcut() {
         &runtime_keymap,
     );
 
-    chat.handle_key_event(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL));
+    chat.handle_key_event(KeyEvent::from(KeyCode::F(6)));
 
     let AppEvent::KeymapCaptured {
         context,
@@ -2241,7 +2241,7 @@ async fn keymap_capture_can_capture_current_copy_shortcut() {
     };
     assert_eq!(context, "composer");
     assert_eq!(action, "submit");
-    assert_eq!(key, "ctrl-o");
+    assert_eq!(key, "f6");
     assert_eq!(intent, crate::app_event::KeymapEditIntent::ReplaceAll);
     assert!(
         drain_insert_history(&mut rx).is_empty(),
@@ -2307,7 +2307,7 @@ async fn slash_keymap_debug_can_inspect_app_shortcuts() {
     chat.dispatch_command_with_args(SlashCommand::Keymap, "debug".to_string(), Vec::new());
 
     for (key, expected_action) in [
-        ('t', "global.open_transcript (Open Transcript)"),
+        ('o', "global.open_transcript (Open Transcript)"),
         ('l', "global.clear_terminal (Clear Terminal)"),
         ('g', "global.open_external_editor (Open External Editor)"),
     ] {
@@ -2364,7 +2364,7 @@ async fn copy_shortcut_can_be_remapped() {
         crate::keymap::RuntimeKeymap::from_config(&keymap_config).expect("valid copy remap");
     chat.apply_keymap_update(keymap_config, &runtime_keymap);
 
-    chat.handle_key_event(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL));
+    chat.handle_key_event(KeyEvent::from(KeyCode::F(6)));
     assert!(
         drain_insert_history(&mut rx).is_empty(),
         "old copy shortcut should no longer copy"
@@ -2388,7 +2388,7 @@ async fn copy_shortcut_submits_markdown_and_reports_completion_once() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
     chat.transcript.last_agent_markdown = Some("copy me".to_string());
     assert_matches!(
-        chat.handle_key_event(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
+        chat.handle_key_event(KeyEvent::from(KeyCode::F(6))),
         crate::chatwidget::KeyEventAction::CopyLastResponse(text) if &*text == "copy me"
     );
     assert_matches!(rx.try_recv(), Ok(AppEvent::FollowTranscript));

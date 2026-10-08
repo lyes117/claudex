@@ -707,6 +707,7 @@ fn map_hook_handler_to_api(handler: CoreHookHandlerConfig) -> ConfiguredHookHand
     match handler {
         CoreHookHandlerConfig::Command {
             command,
+            args,
             command_windows,
             timeout_sec,
             r#async,
@@ -714,6 +715,7 @@ fn map_hook_handler_to_api(handler: CoreHookHandlerConfig) -> ConfiguredHookHand
             additional_context_limit,
         } => ConfiguredHookHandler::Command {
             command,
+            args,
             command_windows,
             timeout_sec,
             r#async,

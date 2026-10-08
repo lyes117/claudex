@@ -2750,6 +2750,7 @@ dependencies = [
  "codex-otel-trace-websocket",
  "codex-protocol",
  "codex-utils-cargo-bin",
+ "codex-utils-pty",
  "futures",
  "pretty_assertions",
  "prost",
@@ -2793,10 +2794,13 @@ dependencies = [
  "futures",
  "opentelemetry",
  "pretty_assertions",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-util",
  "tracing",
+ "tree-sitter",
+ "tree-sitter-javascript",
  "v8",
 ]
 
@@ -16105,6 +16109,16 @@ name = "tree-sitter-bash"
 version = "0.25.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5ec769279cc91b561d3df0d8a5deb26b0ad40d183127f409494d6d8fc53062"
+dependencies = [
+ "cc",
+ "tree-sitter-language",
+]
+
+[[package]]
+name = "tree-sitter-javascript"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68204f2abc0627a90bdf06e605f5c470aa26fdcb2081ea553a04bdad756693f5"
 dependencies = [
  "cc",
  "tree-sitter-language",

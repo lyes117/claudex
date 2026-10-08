@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "description": "Queue a native workflow on an existing thread, preserving that thread's authority.",
+  "properties": {
+    "args": true,
+    "runId": {
+      "type": "string"
+    },
+    "scriptPath": {
+      "type": "string"
+    },
+    "threadId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "args",
+    "runId",
+    "scriptPath",
+    "threadId"
+  ],
+  "title": "WorkflowStartParams",
+  "type": "object"
+}

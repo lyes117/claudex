@@ -11,6 +11,7 @@ use crate::agent::types::SpawnAgentForkMode;
 use crate::agent::types::SpawnAgentOptions;
 use crate::agents_md_manager::SessionInstructions;
 use crate::codex_thread::CodexThread;
+#[cfg(test)]
 use crate::codex_thread::ThreadConfigSnapshot;
 use crate::config::PermissionProfileSnapshot;
 use crate::context::ContextualUserFragment;
@@ -43,6 +44,7 @@ struct SpawnAgentThreadInheritance {
     environments: Option<TurnEnvironmentSnapshot>,
     exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
     tool_policy: Option<crate::thread_manager::CapturedToolPolicy>,
+    reporting: CompletionReporting,
 }
 
 struct SpawnedThreadResult {
@@ -651,7 +653,8 @@ impl LocalAgentControl {
             Err(err) => {
                 // A policy rejection must never become success through the race fallback.
                 if matches!(err.details(), CodexErrorDetails::InvalidRequest(message)
-                    if message == crate::thread_manager::LIVE_THREAD_TOOL_POLICY_MISMATCH)
+                    if message == crate::thread_manager::LIVE_THREAD_TOOL_POLICY_MISMATCH
+                        || message == super::LIVE_THREAD_REPORTING_MISMATCH)
                 {
                     return Err(err);
                 }
@@ -684,6 +687,7 @@ impl LocalAgentControl {
         }
     }
 
+    #[cfg(test)]
     pub(super) async fn spawn_agent_internal(
         &self,
         config: Config,
@@ -691,6 +695,48 @@ impl LocalAgentControl {
         session_source: Option<SessionSource>,
         options: SpawnAgentOptions,
     ) -> CodexResult<(LiveAgent, ThreadConfigSnapshot)> {
+        let admitted =
+            Box::pin(self.spawn_agent_retained(config, initial_input, session_source, options))
+                .await?;
+        Ok((admitted.agent, admitted.config))
+    }
+
+    #[cfg(test)]
+    pub(super) async fn spawn_agent_retained(
+        &self,
+        config: Config,
+        initial_input: SpawnInitialInput,
+        session_source: Option<SessionSource>,
+        options: SpawnAgentOptions,
+    ) -> CodexResult<super::spawn_admission::AdmittedAgent> {
+        Box::pin(self.spawn_agent_retained_with_reporting(
+            config,
+            initial_input,
+            session_source,
+            options,
+            CompletionReporting::Automatic,
+        ))
+        .await
+    }
+
+    pub(super) async fn spawn_agent_retained_with_reporting(
+        &self,
+        config: Config,
+        initial_input: SpawnInitialInput,
+        session_source: Option<SessionSource>,
+        options: SpawnAgentOptions,
+        reporting: CompletionReporting,
+    ) -> CodexResult<super::spawn_admission::AdmittedAgent> {
+        if reporting == CompletionReporting::SupervisorOwned
+            && !matches!(
+                session_source,
+                Some(SessionSource::SubAgent(SubAgentSource::ThreadSpawn { .. }))
+            )
+        {
+            return Err(CodexErr::InvalidRequest(
+                "supervised admission requires a native child source".into(),
+            ));
+        }
         let spawn_started_at = Instant::now();
         let state = self.runtime.upgrade()?;
         let inherited_tool_policy = state
@@ -740,6 +786,7 @@ impl LocalAgentControl {
             .registry
             .reserve_spawn_slot(reservation_max_threads)?;
         let inheritance = SpawnAgentThreadInheritance {
+            reporting,
             tool_policy: inherited_tool_policy,
             environments: match &options.environments {
                 Some(environments) => Some(environments.clone()),
@@ -809,6 +856,8 @@ impl LocalAgentControl {
                     .as_ref()
                     .map(TurnEnvironmentSnapshot::inheritable_selections);
                 let child_create_started_at = Instant::now();
+                let mut thread_extension_init = ExtensionDataInit::new();
+                thread_extension_init.insert(reporting);
                 let new_thread = Box::pin(state.spawn_new_thread_with_source(
                     config.clone(),
                     self.clone(),
@@ -822,6 +871,7 @@ impl LocalAgentControl {
                     inheritance.exec_policy,
                     environments,
                     inheritance.tool_policy,
+                    thread_extension_init,
                 ))
                 .await?;
                 SpawnedThreadResult {
@@ -842,7 +892,11 @@ impl LocalAgentControl {
             }
         };
         agent_metadata.agent_id = Some(new_thread.thread_id);
-        let mut pending_spawn = PendingSpawn::new(Arc::clone(&state), new_thread.thread_id);
+        let mut pending_spawn = PendingSpawn::new(
+            Arc::clone(&state),
+            Arc::clone(&new_thread.thread),
+            self.clone(),
+        );
 
         if let Some(SessionSource::SubAgent(
             subagent_source @ SubAgentSource::ThreadSpawn {
@@ -913,34 +967,21 @@ impl LocalAgentControl {
             ..Default::default()
         };
         let input_admission_started_at = Instant::now();
-        match initial_input {
-            SpawnInitialInput::UserInput(input) => {
-                self.send_input(new_thread.thread_id, input, start_options)
-                    .await?;
-            }
-            SpawnInitialInput::InterAgentCommunication(communication, context) => {
-                self.send_inter_agent_communication_after_capacity_check(
-                    new_thread.thread_id,
-                    &state,
-                    communication,
-                    context,
-                    start_options,
-                )
-                .await?;
-            }
-        }
+        self.admit_input_to_thread(&new_thread.thread, &state, initial_input, start_options)
+            .await?;
         let input_admission = input_admission_started_at.elapsed();
         reservation.commit(agent_metadata.clone());
         if let Some(residency_slot) = residency_slot {
             residency_slot.commit(new_thread.thread_id);
         }
-        pending_spawn.disarm();
 
         // Notify a new thread has been created. This notification will be processed by clients
         // to subscribe or drain this newly created thread.
         // TODO(jif) add helper for drain
         state.notify_thread_created(new_thread.thread_id);
-        if multi_agent_version != MultiAgentVersion::V2 {
+        if multi_agent_version != MultiAgentVersion::V2
+            && reporting == CompletionReporting::Automatic
+        {
             let child_reference = agent_metadata
                 .agent_path
                 .as_ref()
@@ -957,7 +998,7 @@ impl LocalAgentControl {
         let agent = LiveAgent {
             thread_id: new_thread.thread_id,
             metadata: agent_metadata,
-            status: self.get_status(new_thread.thread_id).await,
+            status: new_thread.thread.agent_status().await,
         };
         let config = new_thread.thread.config_snapshot().await;
         let session_telemetry = new_thread
@@ -978,7 +1019,13 @@ impl LocalAgentControl {
                 total: spawn_started_at.elapsed(),
             },
         );
-        Ok((agent, config))
+        // Keep exact ownership armed through every awaited admission operation.
+        pending_spawn.disarm();
+        Ok(super::spawn_admission::AdmittedAgent {
+            agent,
+            config,
+            thread: new_thread.thread,
+        })
     }
 
     async fn spawn_forked_thread(
@@ -994,6 +1041,7 @@ impl LocalAgentControl {
             environments: inherited_environments,
             exec_policy: inherited_exec_policy,
             tool_policy: inherited_tool_policy,
+            reporting,
         } = inheritance;
         if options.fork_parent_spawn_call_id.is_none() {
             return Err(CodexErr::Fatal(
@@ -1290,6 +1338,7 @@ impl LocalAgentControl {
         }
         let mut thread_extension_init = ExtensionDataInit::new();
         thread_extension_init.insert(selected_capability_roots);
+        thread_extension_init.insert(reporting);
 
         let fork_context = fork_context_started_at.elapsed();
         let child_create_started_at = Instant::now();

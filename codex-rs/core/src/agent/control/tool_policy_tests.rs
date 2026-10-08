@@ -122,6 +122,7 @@ async fn check_concurrent_reload(restrict_parent: bool) {
             /*inherited_exec_policy*/ None,
             Some(Vec::new()),
             /*inherited_tool_policy*/ None,
+            codex_extension_api::ExtensionDataInit::new(),
         )
         .await
         .expect("create original child");

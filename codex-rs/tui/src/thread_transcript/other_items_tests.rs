@@ -178,7 +178,7 @@ fn tool_and_notice_projection_uses_normal_transcript_presentation() {
 
     insta::assert_snapshot!(rendered, @"
     >> Code review started: current changes <<
-    • Searched for 'pagination' in https://example.com
+    ● Searched for 'pagination' in https://example.com
     • Viewed image diagram.png
     • Generated Image:
       └ A diagram of the history pages

@@ -1153,6 +1153,10 @@ fn add_core_utility_tools(context: &CoreToolPlanContext<'_>, registry: &mut Tool
     if turn_context.config.update_plan_enabled {
         registry.add(PlanHandler);
     }
+    #[cfg(windows)]
+    if turn_context.config.agents_enabled {
+        registry.add(crate::tools::handlers::workflow::WorkflowHandler);
+    }
 
     if features.enabled(Feature::DeferredExecutor) {
         registry.add(

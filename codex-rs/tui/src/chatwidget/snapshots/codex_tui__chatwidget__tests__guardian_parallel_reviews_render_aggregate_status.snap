@@ -2,11 +2,11 @@
 source: tui/src/chatwidget/tests/guardian.rs
 expression: normalize_snapshot_paths(rendered)
 ---
-• Reviewing 2 approval requests (0s • esc to interrupt)
+● Reviewing 2 approval requests (0s • esc to interrupt)
   └ • rm -rf '/tmp/guardian target 1'
     • rm -rf '/tmp/guardian target 2'
 
 ────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project

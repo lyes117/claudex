@@ -172,7 +172,7 @@ async fn refreshed_active_reasoning_accepts_later_deltas_and_complete_summary() 
             .collect::<String>();
         insta::allow_duplicates! {
             insta::assert_snapshot!(transcript, @"
-            • Original analysis paragraph
+            ● Original analysis paragraph
               Running checks
               Final paragraph
             ");
@@ -597,9 +597,7 @@ async fn buffered_replay_renders_completed_text_without_streaming_again() {
         .map(ToString::to_string)
         .collect::<Vec<_>>()
         .join("\n");
-    insta::assert_snapshot!(text.trim(), @"
-    • Final answer
-    ");
+    insta::assert_snapshot!(text.trim(), @"● Final answer");
 }
 
 #[test]

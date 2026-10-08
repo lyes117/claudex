@@ -60,7 +60,7 @@ async fn blocked_copy_allows_overlay_exit_rejects_backlog_and_wakes_completion()
     app.handle_tui_event(
         &mut tui,
         &mut app_server,
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
+        TuiEvent::Key(KeyCode::F(6).into()),
     )
     .await
     .unwrap();
@@ -86,7 +86,7 @@ async fn blocked_copy_allows_overlay_exit_rejects_backlog_and_wakes_completion()
     overlay
         .handle_event(
             &mut tui,
-            TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL)),
+            TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
         )
         .unwrap();
     assert!(overlay.is_done());

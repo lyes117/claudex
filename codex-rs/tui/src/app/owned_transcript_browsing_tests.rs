@@ -49,11 +49,11 @@ async fn escape_restores_reading_origin_after_details_navigation_and_resize() ->
         for (key, expected_details) in [
             (KeyEvent::from(KeyCode::Left), false),
             (
-                KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
                 true,
             ),
             (
-                KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
                 false,
             ),
         ] {
@@ -211,7 +211,7 @@ async fn inline_browsing_is_compact_and_escape_restores_the_existing_overlay() -
     for (key, expected_details, browsing) in [
         (KeyEvent::from(KeyCode::Esc), false, true),
         (
-            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
             true,
             true,
         ),

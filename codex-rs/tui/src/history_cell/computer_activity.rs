@@ -241,7 +241,7 @@ impl HistoryCell for ComputerActivityCell {
         }
         if hidden > 0 && active.is_none() {
             let summary = preview(
-                &format!("{hidden} more · ctrl+t"),
+                &format!("{hidden} more · ctrl+o"),
                 usize::from(width).saturating_sub(4),
             );
             lines.push(vec!["  └ ".dim(), summary.dim()].into());

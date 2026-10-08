@@ -108,6 +108,7 @@ fn handler() -> ConfiguredHandler {
         source: codex_protocol::protocol::HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: "echo hook".to_string(),
             r#async: false,
             env: std::collections::HashMap::new(),

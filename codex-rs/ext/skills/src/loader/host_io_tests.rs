@@ -87,6 +87,7 @@ async fn host_loading_reuses_walk_inventory_for_symlinked_skill_pack() {
                 interface: None,
                 dependencies: None,
                 policy: Some(SkillPolicy {
+                    claude_command: None,
                     allow_implicit_invocation: Some(false),
                     products: Vec::new(),
                 }),

@@ -4,10 +4,10 @@ expression: "snapshots.join(\"\\n\\n\")"
 ---
 default no-op:
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
 
 default changes model:
                             ⠈     ⢀     ⠁                 ⠂
-›⠁Try a task, /help for commands, or @path for files
+❯⠁Try a task, /help for commands, or @path for files
        ⢀            ⠠     ⠄         ⠠          ⢀    ⠠     ⡀

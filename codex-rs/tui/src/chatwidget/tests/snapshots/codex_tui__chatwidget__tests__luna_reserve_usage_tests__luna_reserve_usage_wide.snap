@@ -3,6 +3,6 @@ source: tui/src/chatwidget/tests/luna_reserve_usage_tests.rs
 expression: rendered
 ---
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   Luna Reserve default · /tmp/project

@@ -55,6 +55,16 @@ pub use win::JobObject;
 #[cfg(windows)]
 pub use win::PsuedoCon;
 #[cfg(windows)]
+pub use win::WORKFLOW_HOST_MEMORY_BYTES;
+#[cfg(windows)]
+pub use win::WorkflowHostCompletion;
+#[cfg(windows)]
+pub use win::WorkflowHostLaunchCompletion;
+#[cfg(windows)]
+pub use win::WorkflowHostMode;
+#[cfg(windows)]
+pub use win::WorkflowHostProcess;
+#[cfg(windows)]
 pub use win::conpty::RawConPty;
 #[cfg(windows)]
 pub use windows_input::WindowsTtyInputNormalizer;

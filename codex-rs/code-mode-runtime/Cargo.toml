@@ -19,10 +19,13 @@ codex-protocol = { workspace = true }
 deno_core_icudata = { workspace = true }
 futures = { workspace = true }
 opentelemetry = { workspace = true }
-serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["raw_value", "arbitrary_precision"] }
 tokio = { workspace = true, features = ["macros", "rt", "sync", "time"] }
 tokio-util = { workspace = true, features = ["rt"] }
 tracing = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-javascript = { workspace = true }
 v8 = { workspace = true, features = ["v8_enable_sandbox"] }
 
 [dev-dependencies]

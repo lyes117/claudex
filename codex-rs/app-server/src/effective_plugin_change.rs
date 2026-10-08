@@ -119,12 +119,14 @@ pub(crate) async fn trust_materialized_plugin_hooks(
         .plugins_manager()
         .plugins_for_config(&config.plugins_config_input())
         .await;
+    let legacy_plugin_selection = config.claude_plugin_selection(&plugin_outcome);
     let hooks = codex_hooks::list_hooks(codex_hooks::HooksConfig {
         feature_enabled: true,
         bypass_hook_trust: config.bypass_hook_trust,
         config_layer_stack: Some(config.config_layer_stack),
         plugin_hook_sources: plugin_outcome.effective_plugin_hook_sources(),
         plugin_hook_load_warnings: plugin_outcome.effective_plugin_hook_warnings(),
+        legacy_plugin_selection,
         ..Default::default()
     });
     if !hooks.warnings.is_empty() {

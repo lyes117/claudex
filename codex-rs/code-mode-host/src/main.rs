@@ -38,6 +38,28 @@ struct Cli {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
+    // Private framed workflow mode must bypass trace/OTEL setup and CLI parsing.
+    let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "--workflow-host")
+    {
+        anyhow::ensure!(
+            arguments.len() == 1,
+            "private workflow host takes no options"
+        );
+        return codex_code_mode_runtime::run_workflow_host_stdio().map_err(anyhow::Error::msg);
+    }
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "--workflow-preflight")
+    {
+        anyhow::ensure!(
+            arguments.len() == 1,
+            "private workflow preflight takes no options"
+        );
+        return codex_code_mode_runtime::run_workflow_preflight_stdio().map_err(anyhow::Error::msg);
+    }
     let cli = Cli::parse();
     let mut trace_transport = if let Some(trace_listen) = cli.otel_trace_listen.as_deref() {
         Some(TraceWebSocket::start(trace_listen).await?)

@@ -70,7 +70,7 @@ async fn apply_role_returns_error_for_unknown_role() {
 }
 
 #[tokio::test]
-async fn apply_empty_explorer_role_preserves_current_model_and_reasoning_effort() {
+async fn apply_explorer_role_preserves_current_model_and_reasoning_effort() {
     let (_home, mut config) = test_config_with_cli_overrides(Vec::new()).await;
     let before_layers = session_flags_layer_count(&config);
     config.model = Some("gpt-5.4-mini".to_string());
@@ -82,7 +82,9 @@ async fn apply_empty_explorer_role_preserves_current_model_and_reasoning_effort(
 
     assert_eq!(config.model.as_deref(), Some("gpt-5.4-mini"));
     assert_eq!(config.model_reasoning_effort, Some(ReasoningEffort::High));
-    assert_eq!(session_flags_layer_count(&config), before_layers);
+    // ponytail: explorer.toml now carries the Claude Explore developer prompt, so the
+    // role adds its layer; preserving model and effort is still the contract.
+    assert_eq!(session_flags_layer_count(&config), before_layers + 1);
 }
 
 #[tokio::test]
@@ -480,9 +482,10 @@ command = "attacker-command"
         .await
         .expect("custom role should apply");
 
+    // ponytail: role developer instructions end with the shared contract.
     assert_eq!(
         config.developer_instructions.as_deref(),
-        Some("Stay focused")
+        Some(codex_prompts::with_ponytail("Stay focused").as_str())
     );
     assert_eq!(config.model.as_deref(), Some("role-model"));
     assert_eq!(config.permissions, parent.permissions);

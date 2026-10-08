@@ -12,7 +12,7 @@ Transcript row 34: content behind the menu
   /mention   mention a file
   /mcp       list configured MCP tools; use /mcp verbose for details
 ────────────────────────────────────────────────────────────────────────────────
-› /m
+❯ /m
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   model high · fast

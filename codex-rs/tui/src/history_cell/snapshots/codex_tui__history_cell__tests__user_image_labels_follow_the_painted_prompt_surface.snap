@@ -1,6 +1,5 @@
 ---
 source: tui/src/history_cell/tests.rs
-assertion_line: 2425
 expression: "snapshots.join(\"\\n\")"
 ---
 (255, 255, 255): Buffer {
@@ -9,7 +8,7 @@ expression: "snapshots.join(\"\\n\")"
         "                                ",
         "  [Image #2]                    ",
         "                                ",
-        "› [Image #1] describe these     ",
+        "❯ [Image #1] describe these     ",
         "                                ",
     ],
     styles: [
@@ -28,7 +27,7 @@ expression: "snapshots.join(\"\\n\")"
         "                                ",
         "  [Image #2]                    ",
         "                                ",
-        "› [Image #1] describe these     ",
+        "❯ [Image #1] describe these     ",
         "                                ",
     ],
     styles: [
@@ -47,7 +46,7 @@ expression: "snapshots.join(\"\\n\")"
         "                                ",
         "  [Image #2]                    ",
         "                                ",
-        "› [Image #1] describe these     ",
+        "❯ [Image #1] describe these     ",
         "                                ",
     ],
     styles: [

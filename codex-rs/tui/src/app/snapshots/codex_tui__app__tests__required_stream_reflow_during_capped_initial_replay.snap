@@ -4,7 +4,7 @@ expression: "rendered.lines.iter().map(rendered_line_text).collect::<Vec<_>>().j
 ---
 latest user question
 
-• Final answer:
+● Final answer:
 
    Pattern       Outcome
   ━━━━━━━━━━━━  ━━━━━━━━━━━

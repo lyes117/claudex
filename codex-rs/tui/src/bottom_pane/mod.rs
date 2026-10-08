@@ -135,6 +135,7 @@ pub(crate) struct MentionBinding {
 }
 mod chat_composer;
 mod chat_composer_history;
+mod claude_slash_catalog;
 mod command_popup;
 pub(crate) mod custom_prompt_view;
 mod effort_status_line;
@@ -250,6 +251,8 @@ pub(crate) use chat_composer::ComposerDraftSnapshot;
 pub(crate) use chat_composer::InputResult;
 pub(crate) use chat_composer::QueuedInputAction;
 pub(crate) use chat_composer::RestrictedInputMode;
+pub(crate) use chat_composer::claude_submission::ClaudeCommandRequest;
+pub(crate) use chat_composer::claude_submission::ResolvedClaudeSubmission;
 pub(crate) use chat_composer_history::HistoryEntry;
 pub(crate) use textarea::KillBufferSnapshot;
 
@@ -395,6 +398,26 @@ impl BottomPane {
             context_window_used_tokens: None,
             keymap,
         }
+    }
+
+    pub(crate) fn cancel_claude_command(&mut self) {
+        self.composer.cancel_claude_command();
+    }
+    pub(crate) fn resolve_claude_command(
+        &mut self,
+        id: uuid::Uuid,
+        result: Result<String, String>,
+    ) -> Option<ResolvedClaudeSubmission> {
+        self.composer.resolve_claude_command(id, result)
+    }
+    pub(crate) fn acknowledge_claude_command(
+        &mut self,
+        submission: ResolvedClaudeSubmission,
+        accepted: bool,
+    ) {
+        self.composer
+            .acknowledge_claude_command(submission, accepted);
+        self.request_redraw();
     }
 
     pub fn set_skills(&mut self, skills: Option<Vec<SkillMetadata>>) {
@@ -1497,7 +1520,7 @@ impl BottomPane {
         &mut self,
         view_id: &'static str,
         view: Box<dyn BottomPaneView>,
-    ) {
+    ) -> bool {
         if let Some(index) = self
             .view_stack
             .iter()
@@ -1505,7 +1528,9 @@ impl BottomPane {
         {
             self.view_stack[index] = view;
             self.request_redraw();
+            return true;
         }
+        false
     }
 
     pub(crate) fn list_keymap(&self) -> crate::keymap::ListKeymap {
@@ -3200,7 +3225,7 @@ mod tests {
         pane.render(area, &mut buf);
 
         let bufs = snapshot_buffer(&buf);
-        assert!(bufs.contains("• Working"), "expected Working header");
+        assert!(bufs.contains("● Working"), "expected Working header");
 
         pane.reset_status_timer(Duration::from_secs(/*secs*/ 42));
         pane.hide_status_indicator();
@@ -3515,6 +3540,7 @@ mod tests {
                 path: test_path_buf("/tmp/test-skill/SKILL.md").abs(),
                 scope: crate::test_support::skill_scope_user(),
                 enabled: true,
+                claude_command: None,
                 plugin_id: None,
             }]),
         });

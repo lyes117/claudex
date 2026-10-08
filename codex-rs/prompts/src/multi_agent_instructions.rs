@@ -1,6 +1,7 @@
 //! Assembles multi-agent role instructions from selected text and runtime capabilities.
 //! The segment owns rendering and attribution; consumers select and capture its inputs.
 
+use crate::with_ponytail;
 use crate::without_update_plan_instructions;
 use codex_context_fragments::ContextualUserFragment;
 use codex_protocol::models::ContentItemKind;
@@ -30,6 +31,31 @@ pub enum MultiAgentRoleInstructions {
         wait_agent_enabled: bool,
         expose_model_overrides: bool,
     },
+}
+
+impl MultiAgentRoleInstructions {
+    /// ponytail: subagent/workflow hints end with the shared contract, from the
+    /// single source in `claude_base` — no copy of the text here.
+    pub fn with_ponytail(self) -> Self {
+        match self {
+            Self::Configured(text) => Self::Configured(with_ponytail(&text)),
+            Self::Composed {
+                base,
+                marked,
+                omit_update_plan_instructions,
+                max_concurrency,
+                wait_agent_enabled,
+                expose_model_overrides,
+            } => Self::Composed {
+                base: with_ponytail(&base),
+                marked,
+                omit_update_plan_instructions,
+                max_concurrency,
+                wait_agent_enabled,
+                expose_model_overrides,
+            },
+        }
+    }
 }
 
 impl ContextualUserFragment for MultiAgentRoleInstructions {

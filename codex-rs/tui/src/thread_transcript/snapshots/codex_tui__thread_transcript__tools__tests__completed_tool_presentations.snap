@@ -3,11 +3,11 @@ source: tui/src/thread_transcript/tools_tests.rs
 expression: rendered
 ---
 Command: compact
-• Ran cargo check
-  └ output line 1
+● Ran cargo check
+  ⎿ output line 1
     output line 2
     output line 3
-    +9 lines (ctrl+t to view transcript)
+    +9 lines (ctrl+o to view transcript)
 
 Command: detailed
 $ cargo check
@@ -26,9 +26,9 @@ output line 12
 ✓ • 0ms
 
 MCP: compact
-• Called example.js({"title":"Inspect page mcp","code":"await cua.getState()"})
-  └ Full result for mcp
+● Called example.js({"title":"Inspect page mcp","code":"await cua.getState()"})
+  ⎿ Full result for mcp
 
 MCP: detailed
-• Called example.js({"title":"Inspect page mcp","code":"await cua.getState()"})
-  └ Full result for mcp
+● Called example.js({"title":"Inspect page mcp","code":"await cua.getState()"})
+  ⎿ Full result for mcp

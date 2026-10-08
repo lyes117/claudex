@@ -5,6 +5,25 @@
       "description": "A path that is guaranteed to be absolute and normalized (though it is not guaranteed to be canonicalized or exist on the filesystem).\n\nIMPORTANT: When deserializing an `AbsolutePathBuf`, a base path must be set using [AbsolutePathBufGuard::new]. If no base path is set, the deserialization will fail unless the path being deserialized is already absolute.",
       "type": "string"
     },
+    "ClaudeCommandMetadata": {
+      "description": "Claude Markdown invocation metadata. An absent value keeps older catalogs compatible.",
+      "properties": {
+        "argumentHint": {
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "userInvocable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "userInvocable"
+      ],
+      "type": "object"
+    },
     "SkillDependencies": {
       "properties": {
         "tools": {
@@ -99,6 +118,17 @@
     },
     "SkillMetadata": {
       "properties": {
+        "claudeCommand": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/ClaudeCommandMetadata"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "dependencies": {
           "anyOf": [
             {

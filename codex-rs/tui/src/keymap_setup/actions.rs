@@ -86,6 +86,7 @@ impl KeymapActionDescriptor {
 pub(super) const KEYMAP_ACTIONS: &[KeymapActionDescriptor] = &[
     action("global", "Global", "open_agents", "Open the shared agent-session overview."),
     action("global", "Global", "open_transcript", "Open the transcript overlay."),
+    action("global", "Global", "toggle_plan_checklist", "Show or hide the latest native plan checklist."),
     action("global", "Global", "find_transcript", "Find text in the full transcript."),
     // Keep the new warnings action out of shared-config writes until older strict readers
     // accept it. Its built-in shortcuts remain available.
@@ -273,6 +274,7 @@ pub(super) fn binding_slot<'a>(
     match (context, action) {
         ("global", "open_agents") => Some(&mut keymap.global.open_agents),
         ("global", "open_transcript") => Some(&mut keymap.global.open_transcript),
+        ("global", "toggle_plan_checklist") => Some(&mut keymap.global.toggle_plan_checklist),
         ("global", "find_transcript") => Some(&mut keymap.global.find_transcript),
         ("global", "focus_activity") => Some(&mut keymap.global.focus_activity),
         ("global", "open_external_editor") => Some(&mut keymap.global.open_external_editor),

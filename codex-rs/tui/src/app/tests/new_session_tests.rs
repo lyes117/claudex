@@ -180,7 +180,7 @@ async fn replacement_uses_server_defaults_and_preserves_explicit_launch_settings
                 .replace(&server_config.cwd.display().to_string(), "<PROJECT>");
             insta::assert_snapshot!(rendered, @"
             ────────────────────────────────────────────────────────────────────────────────
-            › Try a task, /help for commands, or @path for files
+            ❯ Try a task, /help for commands, or @path for files
             ────────────────────────────────────────────────────────────────────────────────
               server-model high · <PROJECT> · ← for agents
             ");

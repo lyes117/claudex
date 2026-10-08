@@ -111,7 +111,7 @@ fn terminal_output_disclosure_follows_live_history_and_keymap() {
         &mut view, &cells, /*width*/ 72, /*height*/ 6,
     ));
     assert_eq!(live, committed);
-    let hint = " (ctrl+t to expand)";
+    let hint = " (ctrl+o to expand)";
     assert!(live.contains(&format!("+ 5 lines{hint}")));
     // Check where the hint is visible, so the copy/search exclusion cannot pass vacuously.
     assert!(

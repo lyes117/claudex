@@ -1,3 +1,4 @@
+mod claude_base;
 mod compact;
 mod guardian_instructions;
 mod model_instructions;
@@ -9,6 +10,10 @@ mod review_exit;
 mod review_request;
 mod update_plan_instructions;
 
+pub use claude_base::CLAUDE_BASE_INSTRUCTIONS;
+pub use claude_base::PONYTAIL_CONTRACT;
+pub use claude_base::claude_base_instructions;
+pub use claude_base::with_ponytail;
 pub use compact::SUMMARIZATION_PROMPT;
 pub use compact::SUMMARY_PREFIX;
 pub use guardian_instructions::GuardianClassifierInstructions;

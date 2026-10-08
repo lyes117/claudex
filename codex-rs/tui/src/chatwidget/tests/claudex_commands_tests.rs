@@ -131,3 +131,174 @@ async fn claudex_workflow_agents_remain_reachable_beyond_visible_rows() {
     }
     assert!(render_bottom_popup(&chat, 90).contains("Agent 14"));
 }
+
+#[tokio::test]
+async fn claudex_workflow_arrows_inspect_selected_run_and_return_without_control() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    chat.open_claudex_workflows(None);
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        None,
+        Ok(vec![workflow_fixture()]),
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert!(std::iter::from_fn(|| rx.try_recv().ok()).any(|event| {
+        matches!(event, AppEvent::OpenClaudexWorkflow(Some(id)) if id == "fixture-run")
+    }));
+
+    chat.open_claudex_workflows(Some("fixture-run".to_string()));
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        Some("fixture-run".to_string()),
+        Ok(vec![workflow_fixture()]),
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    chat.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert!(
+        !std::iter::from_fn(|| rx.try_recv().ok())
+            .any(|event| { matches!(event, AppEvent::ControlClaudexWorkflow { .. }) })
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert!(
+        std::iter::from_fn(|| rx.try_recv().ok())
+            .any(|event| { matches!(event, AppEvent::OpenClaudexWorkflow(None)) })
+    );
+}
+
+#[tokio::test]
+async fn claudex_workflow_agent_arrow_uses_exact_thread_and_refresh_preserves_selection() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    let id = ThreadId::new();
+    let run = |prepend: bool| {
+        serde_json::from_value(serde_json::json!({
+        "runId": "fixture-run", "status": "running", "startedAt": 1,
+        "agents": if prepend {
+            vec![serde_json::json!({"label": "Earlier", "status": "pending"}),
+                 serde_json::json!({"label": "Researcher", "status": "running", "threadId": id.to_string()})]
+        } else {
+            vec![serde_json::json!({"label": "Researcher", "status": "running", "threadId": id.to_string()})]
+        }
+    })).unwrap()
+    };
+    chat.open_claudex_workflows(Some("fixture-run".to_string()));
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        Some("fixture-run".to_string()),
+        Ok(vec![run(false)]),
+    );
+    for _ in 0..4 {
+        chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    }
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        Some("fixture-run".to_string()),
+        Ok(vec![run(true)]),
+    );
+    assert_eq!(
+        chat.bottom_pane
+            .selected_index_for_present_view("claudex-workflows"),
+        Some(5)
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert!(
+        std::iter::from_fn(|| rx.try_recv().ok()).any(|event| {
+            matches!(event, AppEvent::SelectAgentThread(selected) if selected == id)
+        })
+    );
+}
+
+#[tokio::test]
+async fn claudex_workflow_arrow_does_not_open_invalid_thread_or_reopen_closed_panel() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    let run = || {
+        serde_json::from_value(serde_json::json!({
+            "runId": "fixture-run", "status": "running", "startedAt": 1,
+            "agents": [{"label": "Researcher", "status": "running", "threadId": "not-a-thread"}]
+        }))
+        .unwrap()
+    };
+    chat.open_claudex_workflows(Some("fixture-run".to_string()));
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        Some("fixture-run".to_string()),
+        Ok(vec![run()]),
+    );
+    for _ in 0..4 {
+        chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    }
+    chat.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert!(
+        !std::iter::from_fn(|| rx.try_recv().ok())
+            .any(|event| matches!(event, AppEvent::SelectAgentThread(_)))
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        Some("fixture-run".to_string()),
+        Ok(vec![run()]),
+    );
+    assert!(!chat.bottom_pane.has_active_view());
+}
+
+#[tokio::test]
+async fn claudex_workflow_root_refresh_keeps_selected_run_after_reorder() {
+    let (mut chat, _rx, _op_rx) = make_chatwidget_manual(None).await;
+    let mut other = workflow_fixture();
+    other.run_id = "other-run".to_string();
+    chat.open_claudex_workflows(None);
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        None,
+        Ok(vec![workflow_fixture(), other.clone()]),
+    );
+    chat.handle_key_event(KeyEvent::new(KeyCode::Down, KeyModifiers::NONE));
+    chat.apply_claudex_workflows(
+        chat.claudex_workflow_generation,
+        None,
+        Ok(vec![other, workflow_fixture()]),
+    );
+    assert_eq!(
+        chat.bottom_pane
+            .selected_index_for_present_view("claudex-workflows"),
+        Some(0)
+    );
+}
+
+#[tokio::test]
+async fn claudex_agent_role_panel_opens_native_thread_picker() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    chat.dispatch_command(SlashCommand::Agents);
+    chat.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert!(
+        std::iter::from_fn(|| rx.try_recv().ok())
+            .any(|event| matches!(event, AppEvent::OpenAgentPicker))
+    );
+}
+
+#[tokio::test]
+async fn claudex_agent_picker_arrows_survive_refresh_and_do_not_reopen_after_close() {
+    let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(None).await;
+    let id = ThreadId::new();
+    let params = || SelectionViewParams {
+        view_id: Some("agent-picker"),
+        items: vec![SelectionItem {
+            name: "worker".to_string(),
+            actions: vec![Box::new(move |tx| tx.send(AppEvent::SelectAgentThread(id)))],
+            dismiss_on_select: true,
+            ..Default::default()
+        }],
+        ..SelectionViewParams::picker()
+    };
+    chat.show_claudex_agent_picker_navigation(params());
+    assert!(chat.replace_claudex_agent_picker_navigation(params()));
+    chat.handle_key_event(KeyEvent::new(KeyCode::Right, KeyModifiers::NONE));
+    assert!(
+        std::iter::from_fn(|| rx.try_recv().ok())
+            .any(|event| matches!(event, AppEvent::SelectAgentThread(selected) if selected == id))
+    );
+    assert!(!chat.replace_claudex_agent_picker_navigation(params()));
+    assert!(!chat.bottom_pane.has_active_view());
+    chat.show_claudex_agent_picker_navigation(params());
+    chat.handle_key_event(KeyEvent::new(KeyCode::Left, KeyModifiers::NONE));
+    assert!(!chat.bottom_pane.has_active_view());
+}

@@ -608,6 +608,14 @@ pub(super) async fn submission_loop(
                     set_thread_memory_mode(&sess, sub.id.clone(), mode).await;
                     false
                 }
+                Op::RunWorkflow { request } => {
+                    let turn = sess
+                        .new_turn_with_default_settings(sub.id.clone(), Default::default())
+                        .await;
+                    sess.spawn_task(turn, Vec::new(), crate::tasks::WorkflowTask(request))
+                        .await;
+                    false
+                }
                 Op::RunUserShellCommand {
                     command,
                     timeout_ms,

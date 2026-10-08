@@ -30,6 +30,14 @@ fn skills_to_info(
             let enabled = !disabled_paths.contains(&skill.path_to_skills_md);
             codex_app_server_protocol::SkillMetadata {
                 name: skill.name.clone(),
+                claude_command: skill
+                    .policy
+                    .as_ref()
+                    .and_then(|policy| policy.claude_command.as_ref())
+                    .map(|command| codex_app_server_protocol::ClaudeCommandMetadata {
+                        user_invocable: command.user_invocable,
+                        argument_hint: command.argument_hint.clone(),
+                    }),
                 description: skill.description.clone(),
                 short_description: skill.short_description.clone(),
                 interface: skill.interface.clone().map(|interface| {
@@ -75,12 +83,15 @@ fn hooks_to_info(hooks: &[codex_hooks::HookListEntry]) -> Vec<HookMetadata> {
         .filter(|hook| !hook.builtin)
         .map(|hook| {
             let handler = match &hook.handler {
-                HookListEntryHandler::Command { command, r#async } => {
-                    HookHandlerMetadata::Command {
-                        command: command.clone(),
-                        r#async: *r#async,
-                    }
-                }
+                HookListEntryHandler::Command {
+                    command,
+                    args,
+                    r#async,
+                } => HookHandlerMetadata::Command {
+                    args: args.clone(),
+                    command: command.clone(),
+                    r#async: *r#async,
+                },
                 HookListEntryHandler::McpTool { server, tool } => HookHandlerMetadata::McpTool {
                     server: server.clone(),
                     tool: tool.clone(),
@@ -560,6 +571,7 @@ impl CatalogRequestProcessor {
                     };
                     let plugins_input = config.plugins_config_input();
                     let plugins = plugins_manager.plugins_for_config(&plugins_input).await;
+                    let legacy_plugin_selection = config.claude_plugin_selection(&plugins);
                     let plugin_skill_snapshots =
                         plugins_manager.plugin_skill_snapshots_for_config(&plugins_input);
                     let skills_input = codex_skills_extension::HostSkillsLoadInput::new(
@@ -567,6 +579,7 @@ impl CatalogRequestProcessor {
                         plugins.effective_plugin_skill_roots(),
                         config.config_layer_stack,
                     )
+                    .with_legacy_plugin_selection(legacy_plugin_selection)
                     .with_plugin_skill_snapshots(plugin_skill_snapshots);
                     let snapshot = skills_request
                         .snapshot_for_cwd(&skills_input, force_reload, fs)
@@ -650,22 +663,31 @@ impl CatalogRequestProcessor {
                 }
             };
             let hooks_enabled = config.features.enabled(Feature::CodexHooks);
-            let plugin_hooks = if hooks_enabled && config.features.enabled(Feature::Plugins) {
-                let plugins_input = config.plugins_config_input();
-                let plugin_outcome = plugins_manager.plugins_for_config(&plugins_input).await;
-                codex_core_plugins::PluginHookLoadOutcome {
-                    hook_sources: plugin_outcome.effective_plugin_hook_sources(),
-                    hook_load_warnings: plugin_outcome.effective_plugin_hook_warnings(),
-                }
-            } else {
-                codex_core_plugins::PluginHookLoadOutcome::default()
-            };
+            let (plugin_hooks, legacy_plugin_selection) =
+                if hooks_enabled && config.features.enabled(Feature::Plugins) {
+                    let plugins_input = config.plugins_config_input();
+                    let plugin_outcome = plugins_manager.plugins_for_config(&plugins_input).await;
+                    let legacy_plugin_selection = config.claude_plugin_selection(&plugin_outcome);
+                    (
+                        codex_core_plugins::PluginHookLoadOutcome {
+                            hook_sources: plugin_outcome.effective_plugin_hook_sources(),
+                            hook_load_warnings: plugin_outcome.effective_plugin_hook_warnings(),
+                        },
+                        legacy_plugin_selection,
+                    )
+                } else {
+                    (
+                        codex_core_plugins::PluginHookLoadOutcome::default(),
+                        Default::default(),
+                    )
+                };
             let hooks = codex_hooks::list_hooks(codex_hooks::HooksConfig {
                 feature_enabled: hooks_enabled,
                 bypass_hook_trust: config.bypass_hook_trust,
                 config_layer_stack: Some(config.config_layer_stack),
                 plugin_hook_sources: plugin_hooks.hook_sources,
                 plugin_hook_load_warnings: plugin_hooks.hook_load_warnings,
+                legacy_plugin_selection,
                 ..Default::default()
             });
             data.push(codex_app_server_protocol::HooksListEntry {

@@ -1986,6 +1986,7 @@ async fn refresh_runtime_config_refreshes_hooks() -> anyhow::Result<()> {
             group: codex_config::MatcherGroup {
                 matcher: None,
                 hooks: vec![codex_config::HookHandlerConfig::Command {
+                    args: None,
                     command: "python3 /tmp/user.py".to_string(),
                     command_windows: None,
                     timeout_sec: Some(600),
@@ -6743,6 +6744,7 @@ pub(crate) async fn make_session_and_context() -> (Session, TurnContext) {
 
         isolation: codex_extension_api::SessionIsolation::Inherit,
         tool_policy: Arc::default(),
+        completion_reporting: crate::agent::control::CompletionReporting::Automatic,
         windows_sandbox_proxy_settings_mode:
             codex_sandboxing::WindowsSandboxProxySettingsMode::Reconcile,
         multi_agent_version: OnceLock::from(config.multi_agent_version_from_features()),
@@ -9021,6 +9023,7 @@ where
 
         isolation: codex_extension_api::SessionIsolation::Inherit,
         tool_policy: Arc::default(),
+        completion_reporting: crate::agent::control::CompletionReporting::Automatic,
         windows_sandbox_proxy_settings_mode:
             codex_sandboxing::WindowsSandboxProxySettingsMode::Reconcile,
         multi_agent_version: OnceLock::from(config.multi_agent_version_from_features()),
@@ -10614,8 +10617,9 @@ async fn build_initial_context_adds_multi_agent_v2_subagent_usage_hint_as_develo
     assert!(
         developer_messages
             .iter()
-            .any(|message| message.as_slice() == ["Subagent guidance."]),
-        "expected standalone subagent usage hint developer message, got {developer_messages:?}"
+            .any(|message| message.as_slice()
+                == [&codex_prompts::with_ponytail("Subagent guidance.")]),
+        "expected standalone subagent usage hint developer message ending with the ponytail contract, got {developer_messages:?}"
     );
     assert!(
         !developer_messages

@@ -16,8 +16,8 @@ Settings:
   text: {"verbosity":"low"}
   tool_choice: "auto"
 -- request 1 (turn) --
-00:additional_tools/developer (3; hash=853a5788ad239c35):
-        - namespace/functions; hash=48b2ce07cd26a39b
+00:additional_tools/developer (3; hash=4935d5e034fcd893):
+        - namespace/functions; hash=a63abc4fcad74b4d
           - custom/exec
           - function/wait
           - function/request_user_input
@@ -32,22 +32,22 @@ Settings:
           - function/spawn_agent
           - function/wait_agent
 01:message/developer:
-    You are Codex, an agent based on GPT-6. You and the user share one workspace, and your job is to collabo...them until their intended goal is completely handled. [hash=efa50f074efa5803]
+    You are Claude Code, Anthropic's official CLI for Claude. You are an interactive agent that helps users ...ow and the tools available to you to assist the user. [hash=b748f305c3338d99]
 
-    # When to ask the user for permission
+    IMPORTANT: Assist with authorized security testing, defensive security, CTF challenges, and educational ...petitions, security research, or defensive use cases. [hash=45dacb6eb4e87e44]
 
-    Use your best judgement given task context for when you really need user permission, like a competent co...ork without ending the turn to clarify with the user. [hash=ca7367e658b51388]
+    IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are...rovided by the user in their messages or local files. [hash=876f7a7e51bdd948]
 
-    User authorization and preferences persist across turns. Do not request permission again when the user h... any guidelines provided in skills or external files. [hash=911f91c92c72882c]
+    All text you output outside of tool use is displayed to the user. Output text to communicate with the user. You can use GitHub-flavored markdown for formatting.
+    Tools are executed in a user-selected permission mode. When you attempt to call a tool that is not autom...er has denied the tool call and adjust your approach. [hash=e1ee6abd19727303]
+    <OMITTED 113 LINES; ~3758 TOKENS; hash=a808a2d9b228fbd7>
+    ## When NOT to be lazy
+    Never simplify away: input validation at trust boundaries, error handling that prevents data loss, secur...nsists on the full version, build it — no re-arguing. [hash=ac7f60ebf1b7f3d7]
+    Non-trivial logic (a branch, a loop, a parser, a money/security path) leaves ONE runnable check behind —...f the logic breaks. Trivial one-liners need no check. [hash=3d7ddb8ca44ab6f1]
 
-    <OMITTED 155 LINES; ~4935 TOKENS; hash=5573869716192298>
-
-    - Skill naming: If a plugin contributes skills, those skill entries are prefixed with plugin_name: in the Skills list.
-    - MCP naming: Plugin-provided MCP tools keep standard MCP identifiers such as mcp__server__tool; use tool provenance to tell which plugin they come from.
-    - Trigger rules: If the user explicitly names a plugin, prefer capabilities associated with that plugin for that turn.
-    - Relationship to capabilities: Plugins are not invoked directly. Use their underlying skills, MCP tools, and app tools to help solve the task.
-    - Relevance: Determine what a plugin can help with from explicit user mention or from the plugin-associa..., MCP tools, and apps exposed elsewhere in this turn. [hash=620459a4e7b590f0]
-    - Missing/blocked: If the user requests a plugin that does not have relevant callable capabilities for t..., say so briefly and continue with the best fallback. [hash=746b0469a8f6cb3e]
+    ## Output
+    Code first. Then at most three short lines: what was skipped, when to add it. If the explanation is long... for a report or walkthrough, which is given in full. [hash=b78c2d812b858ca0]
+    The shortest path to done is the right path. "stop ponytail" / "normal mode" reverts; the level persists until changed or session end.
 
 02:message/developer[4]:
     [01] <permissions instructions>

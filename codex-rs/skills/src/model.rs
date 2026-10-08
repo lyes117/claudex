@@ -65,6 +65,15 @@ pub struct SkillPolicy {
     // TODO: Enforce product gating in Codex skill selection/injection instead of only parsing and
     // storing this metadata.
     pub products: Vec<Product>,
+    /// Runtime metadata for a Claude Markdown command, not persisted settings.
+    pub claude_command: Option<ClaudeCommandMetadata>,
+}
+
+/// Explicit invocation controls extracted by the authority that loaded the Markdown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClaudeCommandMetadata {
+    pub user_invocable: bool,
+    pub argument_hint: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

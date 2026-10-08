@@ -9,6 +9,6 @@ expression: "normalize_snapshot_paths(render_bottom_popup(&chat, 70))"
 
   Press a number to choose
 ──────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ──────────────────────────────────────────────────────────────────────
   test-model-a default · /tmp/project

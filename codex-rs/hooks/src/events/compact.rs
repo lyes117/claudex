@@ -533,6 +533,7 @@ mod tests {
             source: codex_protocol::protocol::HookSource::User,
             display_order: 0,
             kind: crate::engine::ConfiguredHandlerKind::Command {
+                args: None,
                 command: "python3 compact_hook.py".to_string(),
                 r#async: false,
                 env: std::collections::HashMap::new(),

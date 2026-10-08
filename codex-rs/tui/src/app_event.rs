@@ -293,6 +293,17 @@ pub(crate) enum AppEvent {
     OpenAgentsOverview,
     /// Fill the composer from help without executing a command or discarding a draft.
     PrefillClaudexCommand(crate::slash_command::SlashCommand),
+    ExpandClaudeCommand {
+        thread_id: Option<ThreadId>,
+        cwd: AbsolutePathBuf,
+        request: crate::bottom_pane::ClaudeCommandRequest,
+    },
+    ClaudeCommandExpanded {
+        thread_id: ThreadId,
+        cwd: AbsolutePathBuf,
+        id: uuid::Uuid,
+        result: Result<String, String>,
+    },
     OpenClaudexWorkflow(Option<String>),
     ClaudexWorkflowsLoaded {
         generation: u64,

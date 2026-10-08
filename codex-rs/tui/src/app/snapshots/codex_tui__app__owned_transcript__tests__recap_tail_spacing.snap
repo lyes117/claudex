@@ -9,7 +9,7 @@ History 20
 
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -18,10 +18,10 @@ History 20
 
   ↳ Recap: The draft is ready.
 
-• Follow-up response.
+● Follow-up response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -30,10 +30,10 @@ History 20
 
   ↳ Recap: The draft is ready.
 
-• Streaming response.
+● Streaming response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -47,7 +47,7 @@ History 20
 
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -58,10 +58,10 @@ History 20
   ↳ Recap: The draft is ready.
            Next: Review the changes.
 
-• Follow-up response.
+● Follow-up response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -72,10 +72,10 @@ History 20
   ↳ Recap: The draft is ready.
            Next: Review the changes.
 
-• Streaming response.
+● Streaming response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -89,7 +89,7 @@ History 20
 
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
@@ -100,10 +100,10 @@ History 20
            Next: Review the
            changes.
 
-• Follow-up response.
+● Follow-up response.
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
@@ -114,10 +114,10 @@ History 20
            Next: Review the
            changes.
 
-• Streaming response.
+● Streaming response.
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
@@ -126,25 +126,25 @@ History 20
            Next: Review the changes.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
 80x7, Message after recap
-• Follow-up response.
+● Follow-up response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
 
 80x7, Live message after recap
-• Streaming response.
+● Streaming response.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts
@@ -152,7 +152,7 @@ History 20
 32x6, Recap at tail
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
@@ -160,7 +160,7 @@ History 20
 32x6, Message after recap
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts
@@ -168,7 +168,7 @@ History 20
 32x6, Live message after recap
 
 ────────────────────────────────
-› Try a task, /help for command
+❯ Try a task, /help for command
 ────────────────────────────────
   gpt-test default · /tmp/proje…
   ? for shortcuts

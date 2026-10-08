@@ -274,6 +274,34 @@
         }
       ]
     },
+    "ClaudeCommandExpandParams": {
+      "description": "Resolve one explicitly invoked command from this thread's live skill catalog.",
+      "properties": {
+        "arguments": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/definitions/AbsolutePathBuf"
+        },
+        "threadId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "arguments",
+        "cwd",
+        "name",
+        "path",
+        "threadId"
+      ],
+      "type": "object"
+    },
     "ClientInfo": {
       "properties": {
         "name": {
@@ -5971,6 +5999,29 @@
         "mode"
       ],
       "type": "object"
+    },
+    "WorkflowStartParams": {
+      "additionalProperties": false,
+      "description": "Queue a native workflow on an existing thread, preserving that thread's authority.",
+      "properties": {
+        "args": true,
+        "runId": {
+          "type": "string"
+        },
+        "scriptPath": {
+          "type": "string"
+        },
+        "threadId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "args",
+        "runId",
+        "scriptPath",
+        "threadId"
+      ],
+      "type": "object"
     }
   },
   "description": "Request from the client to the server.",
@@ -6719,6 +6770,54 @@
         "params"
       ],
       "title": "Thread/injectItemsRequest",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "enum": [
+            "workflow/start"
+          ],
+          "title": "Workflow/startRequestMethod",
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/definitions/WorkflowStartParams"
+        }
+      },
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "title": "Workflow/startRequest",
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/RequestId"
+        },
+        "method": {
+          "enum": [
+            "skills/claudeCommand/expand"
+          ],
+          "title": "Skills/claudeCommand/expandRequestMethod",
+          "type": "string"
+        },
+        "params": {
+          "$ref": "#/definitions/ClaudeCommandExpandParams"
+        }
+      },
+      "required": [
+        "id",
+        "method",
+        "params"
+      ],
+      "title": "Skills/claudeCommand/expandRequest",
       "type": "object"
     },
     {

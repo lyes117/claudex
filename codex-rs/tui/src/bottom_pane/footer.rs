@@ -137,7 +137,7 @@ impl FooterKeyHints {
             insert_newline: Some(key_hint::ctrl(KeyCode::Char('j')).into()),
             external_editor: Some(key_hint::ctrl(KeyCode::Char('g')).into()),
             edit_previous: Some(key_hint::plain(KeyCode::Esc).into()),
-            show_transcript: Some(key_hint::ctrl(KeyCode::Char('t')).into()),
+            show_transcript: Some(key_hint::ctrl(KeyCode::Char('o')).into()),
             find_transcript: Some(key_hint::plain(KeyCode::F(3)).into()),
             focus_activity: Some(key_hint::plain(KeyCode::F(4)).into()),
             history_search: Some(key_hint::ctrl(KeyCode::Char('r')).into()),

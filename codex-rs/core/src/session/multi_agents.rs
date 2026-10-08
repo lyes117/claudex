@@ -67,10 +67,14 @@ pub(crate) fn resolve_usage_hints(
             config.root_agent_usage_hint_text.as_deref(),
             multi_agent_messages.root,
         ),
+        // ponytail: the subagent/workflow hint carries the shared contract, and this
+        // is the SINGLE composition point — spawn tooling, fork dedup and world state
+        // all resolve hints through here, so the text must not diverge between them.
         subagent: resolve_role(
             config.subagent_usage_hint_text.as_deref(),
             multi_agent_messages.subagent,
-        ),
+        )
+        .map(MultiAgentRoleInstructions::with_ponytail),
     }
 }
 

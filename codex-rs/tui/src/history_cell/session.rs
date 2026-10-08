@@ -283,6 +283,11 @@ pub(crate) fn has_yolo_permissions(
                 }
         )
 }
+enum SessionHeaderSpace {
+    Unbounded,
+    Rows(u16),
+}
+
 /// Session banner with a model label already resolved for presentation by its caller.
 #[derive(Debug)]
 pub(crate) struct SessionHeaderHistoryCell {
@@ -348,29 +353,49 @@ impl SessionHeaderHistoryCell {
             .as_ref()
             .map(ReasoningEffortConfig::as_str)
     }
-}
 
-impl HistoryCell for SessionHeaderHistoryCell {
-    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+    fn banner_lines(&self, width: u16, space: SessionHeaderSpace) -> Vec<Line<'static>> {
         let model = self
             .reasoning_label()
             .map(|effort| format!("{} · {effort}", self.model))
             .unwrap_or_else(|| self.model.clone());
         let directory = self.format_directory(/*max_width*/ None);
-        super::session_banner::render(
-            super::session_banner::BannerContent {
-                version: self.version,
-                greeting: self
-                    .greeting
-                    .get()
-                    .map(|greeting| greeting.phrase)
-                    .unwrap_or("Welcome to Claudex"),
-                model: &model,
-                directory: &directory,
-                unrestricted: self.yolo_mode,
-            },
-            width,
-        )
+        let content = super::session_banner::BannerContent {
+            version: self.version,
+            greeting: self
+                .greeting
+                .get()
+                .map(|greeting| greeting.phrase)
+                .unwrap_or("Welcome to Claudex"),
+            model: &model,
+            directory: &directory,
+            unrestricted: self.yolo_mode,
+        };
+        match space {
+            SessionHeaderSpace::Unbounded => super::session_banner::render(content, width),
+            SessionHeaderSpace::Rows(rows) => {
+                super::session_banner::render_for_height(content, width, rows)
+            }
+        }
+    }
+}
+
+/// Choose startup decoration before painting so limited height retains useful session metadata.
+pub(crate) fn startup_header_lines(
+    cell: &dyn HistoryCell,
+    width: u16,
+    available_rows: u16,
+) -> Vec<HyperlinkLine> {
+    if let Some(header) = cell.as_any().downcast_ref::<SessionHeaderHistoryCell>() {
+        plain_hyperlink_lines(header.banner_lines(width, SessionHeaderSpace::Rows(available_rows)))
+    } else {
+        cell.display_hyperlink_lines(width)
+    }
+}
+
+impl HistoryCell for SessionHeaderHistoryCell {
+    fn display_lines(&self, width: u16) -> Vec<Line<'static>> {
+        self.banner_lines(width, SessionHeaderSpace::Unbounded)
     }
 
     fn raw_lines(&self) -> Vec<Line<'static>> {

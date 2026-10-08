@@ -108,6 +108,9 @@ use toml::Value as TomlValue;
 #[path = "control/initial_schema_tests.rs"]
 mod initial_schema_tests;
 
+#[path = "control/workflow_tests.rs"]
+mod workflow_tests;
+
 impl LocalAgentControl {
     /// Create a child fixture through the production spawn entry point.
     pub(crate) async fn spawn_agent_with_metadata(

@@ -11,6 +11,6 @@ expression: rendered
 
   Press a number to choose · esc to dismiss · type to continue
 ──────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ──────────────────────────────────────────────────────────────────────
   test-model-a default · /tmp/project

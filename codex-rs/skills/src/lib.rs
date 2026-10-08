@@ -30,6 +30,7 @@ pub use mentions::extract_tool_mentions_with_sigil;
 pub use mentions::normalize_skill_path;
 pub use mentions::plugin_config_name_from_path;
 pub use mentions::tool_kind_for_path;
+pub use model::ClaudeCommandMetadata;
 pub use model::EnvironmentSkillMetadata;
 pub use model::SkillDependencies;
 pub use model::SkillInterface;

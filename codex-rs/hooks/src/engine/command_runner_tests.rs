@@ -123,6 +123,7 @@ async fn hook_shell_startup_does_not_stop_on_controlling_terminal() {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.to_string(),
             r#async: false,
             env: env.clone(),
@@ -225,6 +226,7 @@ async fn cmd_shell_runs_quoted_hook_command_path() {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.clone(),
             r#async: false,
             env: env.clone(),
@@ -275,6 +277,7 @@ async fn fast_exiting_hook_preserves_stdout_when_stdin_is_not_consumed() {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.to_string(),
             r#async: false,
             env: env.clone(),
@@ -363,6 +366,7 @@ async fn command_hook_does_not_expose_configured_noise_auth_token() {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: command.to_string(),
             r#async: false,
             env: env.clone(),
@@ -503,10 +507,163 @@ fn write_handler(temp: &TempDir, source: &str) -> ConfiguredHandler {
         source: HookSource::User,
         display_order: 0,
         kind: ConfiguredHandlerKind::Command {
+            args: None,
             command: format!("python3 {}", script_path.display()),
             r#async: true,
             env: HashMap::new(),
         },
+    }
+}
+
+#[tokio::test]
+async fn structured_hook_argv_runs_directly_and_preserves_event_data() {
+    let temp = tempdir().expect("hook fixture");
+    let mut handler = write_handler(
+        &temp,
+        "import json,sys\nsys.stdin.read()\nprint(json.dumps(sys.argv[1:]))\n",
+    );
+    let value = "résumé & echo injected; $(whoami) `x` \"quoted\" \\";
+    let input = serde_json::json!({"tool_input":{"file_path":value}}).to_string();
+    handler.kind = ConfiguredHandlerKind::Command {
+        command: structured_python_program().to_string(),
+        args: Some(vec![
+            temp.path()
+                .join("async_hook.py")
+                .to_string_lossy()
+                .into_owned(),
+            "${tool_input.file_path}".to_string(),
+            String::new(),
+        ]),
+        env: HashMap::new(),
+        r#async: false,
+    };
+    let (runtime, _) = runtime();
+    // A nonexistent configured shell proves argv mode does not use the shell launcher.
+    let runtime = runtime.reconfigured(CommandShell {
+        program: "must-not-run-hook-shell".to_string(),
+        args: Vec::new(),
+    });
+    let result = run_command(
+        &runtime,
+        &handler,
+        structured_python_program(),
+        &HashMap::new(),
+        &input,
+        temp.path(),
+    )
+    .await;
+    assert_eq!(result.exit_code, Some(0), "{}", result.stderr);
+    assert_eq!(result.error, None);
+    assert_eq!(
+        serde_json::from_str::<Vec<String>>(&result.stdout).unwrap(),
+        vec![value.to_string(), String::new()]
+    );
+}
+
+#[tokio::test]
+async fn structured_hook_argument_failure_never_spawns_or_echoes_event() {
+    let temp = tempdir().expect("hook fixture");
+    let mut handler = write_handler(&temp, "raise RuntimeError('must not execute')");
+    handler.kind = ConfiguredHandlerKind::Command {
+        command: "must-not-spawn".to_string(),
+        args: Some(vec!["${missing}".to_string()]),
+        env: HashMap::new(),
+        r#async: false,
+    };
+    let (runtime, _) = runtime();
+    let result = run_command(
+        &runtime,
+        &handler,
+        "must-not-spawn",
+        &HashMap::new(),
+        r#"{"private":"synthetic-private-canary"}"#,
+        temp.path(),
+    )
+    .await;
+    assert_eq!(result.exit_code, None);
+    assert_eq!(result.stdout, "");
+    assert_eq!(result.stderr, "");
+    assert_eq!(
+        result.error.as_deref(),
+        Some("hook executable arguments could not be resolved safely")
+    );
+}
+
+#[tokio::test]
+async fn structured_hook_async_dispatch_retains_arguments() {
+    let temp = tempdir().expect("hook fixture");
+    let mut handler = write_handler(
+        &temp,
+        "import json,sys\nsys.stdin.read()\nprint(json.dumps({'hookSpecificOutput':{'hookEventName':'UserPromptSubmit','additionalContext':sys.argv[1]}}))\n",
+    );
+    handler.kind = ConfiguredHandlerKind::Command {
+        command: structured_python_program().to_string(),
+        args: Some(vec![
+            temp.path()
+                .join("async_hook.py")
+                .to_string_lossy()
+                .into_owned(),
+            "${prompt}".to_string(),
+        ]),
+        env: HashMap::new(),
+        r#async: true,
+    };
+    let (runtime, results) = runtime();
+    schedule(&runtime, handler, temp.path()).await;
+    let result = timeout(ASYNC_HOOK_TEST_TIMEOUT, results.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(result.run.status, HookRunStatus::Completed);
+    assert!(
+        result
+            .run
+            .entries
+            .iter()
+            .any(|entry| entry.text == "test prompt")
+    );
+    runtime.shutdown().await;
+}
+
+#[tokio::test]
+async fn structured_hook_direct_process_obeys_existing_deadline() {
+    let temp = tempdir().expect("hook fixture");
+    let mut handler = write_handler(
+        &temp,
+        "import time\nfrom pathlib import Path\nPath('started').touch()\ntime.sleep(30)\n",
+    );
+    handler.timeout_sec = 3;
+    handler.kind = ConfiguredHandlerKind::Command {
+        command: structured_python_program().to_string(),
+        args: Some(vec![
+            temp.path()
+                .join("async_hook.py")
+                .to_string_lossy()
+                .into_owned(),
+        ]),
+        env: HashMap::new(),
+        r#async: false,
+    };
+    let (runtime, _) = runtime();
+    let result = run_command(
+        &runtime,
+        &handler,
+        structured_python_program(),
+        &HashMap::new(),
+        "{}",
+        temp.path(),
+    )
+    .await;
+    assert!(temp.path().join("started").is_file());
+    assert_eq!(result.exit_code, None);
+    assert_eq!(result.error.as_deref(), Some("hook timed out after 3s"));
+}
+
+fn structured_python_program() -> &'static str {
+    if cfg!(windows) {
+        "python.exe"
+    } else {
+        "python3"
     }
 }
 

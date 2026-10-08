@@ -222,7 +222,41 @@ pub(crate) async fn run_command(
     let started_at = chrono::Utc::now().timestamp();
     let started = Instant::now();
 
-    let mut command = build_command(&runtime.shell, command_line, &runtime.environment, env);
+    let mut command = match &handler.kind {
+        ConfiguredHandlerKind::Command {
+            args: Some(args), ..
+        } => {
+            let args =
+                match super::command_args::expand_args(command_line, args, input_json, cwd, env) {
+                    Ok(args) => args,
+                    Err(()) => {
+                        return finish_command_run(
+                            started_at,
+                            started,
+                            CommandRunCompletion {
+                                exit_code: None,
+                                stdout: String::new(),
+                                stderr: String::new(),
+                                error: Some(
+                                    "hook executable arguments could not be resolved safely"
+                                        .to_string(),
+                                ),
+                                outcome: "argument_error",
+                            },
+                        );
+                    }
+                };
+            let mut command = Command::new(command_line);
+            command.args(args);
+            configure_command(command, &runtime.environment, env)
+        }
+        ConfiguredHandlerKind::Command { args: None, .. } => {
+            build_command(&runtime.shell, command_line, &runtime.environment, env)
+        }
+        ConfiguredHandlerKind::McpTool { .. } => {
+            unreachable!("command runtime requires a command handler")
+        }
+    };
     command.current_dir(cwd);
     command.env("CLAUDE_PROJECT_DIR", cwd);
 
@@ -410,6 +444,14 @@ fn build_command(
     #[cfg(not(windows))]
     command.arg(command_line);
 
+    configure_command(command, environment, env)
+}
+
+fn configure_command(
+    mut command: Command,
+    environment: &[(OsString, OsString)],
+    env: &HashMap<String, String>,
+) -> Command {
     #[cfg(unix)]
     command.process_mode(codex_utils_pty::ProcessMode::NewSession);
     #[cfg(windows)]

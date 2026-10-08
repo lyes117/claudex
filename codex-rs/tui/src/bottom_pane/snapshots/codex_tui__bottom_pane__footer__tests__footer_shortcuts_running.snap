@@ -13,7 +13,7 @@ expression: terminal.backend()
 "  ctrl+g   External editor      ctrl+c  Interrupt                               "
 "  ctrl+r   Search history                                                       "
 "  esc esc  Edit last message    Transcript (open first)                         "
-"                                ctrl+t                Open transcript           "
+"                                ctrl+o                Open transcript           "
 "                                f3                    Find text                 "
 "                                pgup / pgdn           Scroll                    "
 "                                ctrl+space            Start selection           "

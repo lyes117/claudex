@@ -11,6 +11,7 @@ mod application_network;
 mod attestation;
 mod auto_env;
 mod bedrock_setup;
+mod claude_command_expand;
 mod claude_file_lifecycle;
 mod claude_file_tools;
 mod claude_tool_collisions;
@@ -161,6 +162,7 @@ mod turn_steer;
 mod view_image;
 mod web_search;
 mod windows_sandbox_setup;
+mod workflow_start;
 mod workspace_routing;
 
 mod user_verification;

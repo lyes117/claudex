@@ -77,6 +77,7 @@ async fn async_question_answers_preserve_ambiguous_skill_selection_and_dismiss_r
         path: test_path_buf("/tmp/route/SKILL.md").abs(),
         scope: crate::test_support::skill_scope_repo(),
         enabled: true,
+        claude_command: None,
         plugin_id: None,
     };
     let mut duplicate = skill.clone();
@@ -140,7 +141,7 @@ async fn ordinary_follow_up_clears_unanswered_questions_after_accepted_input() {
                 "questions_cleared_by_follow_up",
                 render_bottom_popup(&chat, /*width*/ 80)
                     .lines()
-                    .find(|line| line.starts_with('›'))
+                    .find(|line| line.starts_with('❯'))
                     .unwrap()
             );
         }

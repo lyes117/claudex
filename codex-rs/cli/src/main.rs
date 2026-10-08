@@ -52,6 +52,11 @@ static ALLOCATOR: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod app_cmd;
 mod claudex;
+mod claudex_memory;
+#[cfg(test)]
+#[path = "claudex_tests.rs"]
+mod claudex_tests;
+mod claudex_workflow;
 mod cloud_config;
 mod config_args;
 #[cfg(test)]
@@ -152,6 +157,11 @@ struct MultitoolCli {
 enum Subcommand {
     /// Browse native agent sessions and saved histories.
     Agents(AgentsCommand),
+
+    /// Manage native Claudex project memory with the Codex subscription observer.
+    Memory(claudex_memory::MemoryCli),
+    /// Execute a local workflow in the native conversation or control an active run.
+    Workflow(claudex_workflow::WorkflowCli),
 
     /// Internal: forward a local TCP socket through an HTTP/3 CONNECT proxy.
     #[clap(hide = true)]
@@ -1038,6 +1048,9 @@ async fn cli_main(
 ) -> anyhow::Result<()> {
     let mut cli = config_args::parse();
     config_args::apply_root_overrides(&mut cli)?;
+    if matches!(&cli.subcommand, Some(Subcommand::Memory(_))) {
+        claudex_memory::validate_runtime_options(&cli.interactive, &cli.config_overrides)?;
+    }
     let MultitoolCli {
         config_overrides: mut root_config_overrides,
         feature_toggles: _,
@@ -1089,6 +1102,39 @@ async fn cli_main(
 
     let open_agents_overview = matches!(&subcommand, Some(Subcommand::Agents(_)));
     match subcommand {
+        Some(Subcommand::Workflow(workflow_cli)) => {
+            reject_remote_mode_for_subcommand(
+                root_remote.as_deref(),
+                root_remote_auth_token_env.as_deref(),
+                "workflow",
+            )?;
+            if let Some((request, cwd)) = workflow_cli.prepare()? {
+                prepend_config_flags(
+                    &mut interactive.config_overrides,
+                    root_config_overrides.clone(),
+                );
+                if let Some(cwd) = cwd {
+                    interactive.cwd = Some(cwd);
+                }
+                interactive.native_workflow = Some(request);
+                let exit_info = run_interactive_tui(
+                    interactive,
+                    root_remote.clone(),
+                    root_remote_auth_token_env.clone(),
+                    arg0_paths.clone(),
+                )
+                .await?;
+                handle_app_exit(exit_info, daemon_cli_executable.as_deref())?;
+            }
+        }
+        Some(Subcommand::Memory(memory_cli)) => {
+            reject_remote_mode_for_subcommand(
+                root_remote.as_deref(),
+                root_remote_auth_token_env.as_deref(),
+                "memory",
+            )?;
+            claudex_memory::run(memory_cli, interactive.cwd.clone()).await?;
+        }
         None | Some(Subcommand::Agents(_)) => {
             prepend_config_flags(
                 &mut interactive.config_overrides,
@@ -1881,6 +1927,7 @@ fn profile_v2_for_subcommand<'a>(
 
     match subcommand {
         Subcommand::Agents(_)
+        | Subcommand::Workflow(_)
         | Subcommand::Exec(_)
         | Subcommand::Review(_)
         | Subcommand::Resume(_)
@@ -2244,6 +2291,7 @@ fn unsupported_subcommand_name_for_strict_config(
     match subcommand {
         None
         | Some(Subcommand::Agents(_))
+        | Some(Subcommand::Workflow(_))
         | Some(Subcommand::Exec(_))
         | Some(Subcommand::Review(_))
         | Some(Subcommand::ExecServer(_))
@@ -2260,6 +2308,7 @@ fn unsupported_subcommand_name_for_strict_config(
         }
         Some(Subcommand::RemoteControl(remote_control)) => Some(remote_control.subcommand_name()),
         Some(Subcommand::Mcp(_)) => Some("mcp"),
+        Some(Subcommand::Memory(_)) => Some("memory"),
         Some(Subcommand::Plugin(_)) => Some("plugin"),
         Some(Subcommand::MigrateRollouts(_)) => Some("migrate-rollouts"),
         #[cfg(any(target_os = "macos", target_os = "windows"))]

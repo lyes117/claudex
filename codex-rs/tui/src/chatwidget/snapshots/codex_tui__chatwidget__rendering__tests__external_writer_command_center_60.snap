@@ -6,4 +6,4 @@ expression: rendered
       Close it there and press R to continue here.
 
    r retry   f fork   ←/esc command center   ctrl+c/q exit
-  ctrl+t transcript
+  ctrl+o transcript

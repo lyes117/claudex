@@ -200,6 +200,7 @@ impl App {
         mut startup_draft: StartupDraftPump,
         managed_worktree: Option<crate::ManagedTuiWorktree>,
         daemon_cli_executable: Option<AbsolutePathBuf>,
+        mut native_workflow: Option<codex_protocol::protocol::WorkflowRunRequest>,
     ) -> Result<AppExitInfo> {
         use tokio_stream::StreamExt;
 
@@ -1069,6 +1070,40 @@ See the Codex keymap documentation for supported actions and examples."
             Ok(exit_reason)
         } else {
             loop {
+                if !waiting_for_initial_session_configured
+                    && let Some(thread_id) = app.current_displayed_thread_id()
+                    && let Some(request) = native_workflow.take()
+                {
+                    let handle = app_server.request_handle();
+                    let events = app.app_event_tx.clone();
+                    app.chat_widget.open_claudex_workflows(None);
+                    tokio::spawn(async move {
+                        let response = tokio::time::timeout(
+                            Duration::from_secs(/*secs*/ 30),
+                            handle
+                                .request_typed::<codex_app_server_protocol::WorkflowStartResponse>(
+                                    ClientRequest::WorkflowStart {
+                                        request_id: codex_app_server_protocol::RequestId::String(
+                                            format!("workflow-start-{}", request.run_id),
+                                        ),
+                                        params: codex_app_server_protocol::WorkflowStartParams {
+                                            thread_id: thread_id.to_string(),
+                                            script_path: request.script_path,
+                                            args: request.args,
+                                            run_id: request.run_id,
+                                        },
+                                    },
+                                ),
+                        )
+                        .await;
+                        match response {
+                        Ok(Ok(_)) => {},
+                        Ok(Err(_)) | Err(_) => events.send(AppEvent::InsertHistoryCell(Box::new(history_cell::new_error_event(
+                            "Native workflow submission was not acknowledged; inspect /workflows before retrying".to_string(),
+                        )))),
+                    }
+                    });
+                }
                 // Reconnect can dismiss an overlay from the server-event path.
                 if app.overlay.is_none() {
                     if !tui.is_owned_screen() && tui.is_alt_screen_active() {

@@ -1226,7 +1226,7 @@ async fn replayed_reasoning_item_preserves_summary_parts_and_hides_raw_reasoning
         }
         other => panic!("expected InsertHistoryCell, got {other:?}"),
     };
-    assert_eq!(rendered, "• done\n");
+    assert_eq!(rendered, "● done\n");
     assert!(!rendered.contains("Raw reasoning"));
 }
 
@@ -1370,17 +1370,17 @@ async fn failed_repl_mcp_tool_call_preserves_status_and_result() {
         }
         insta::allow_duplicates! {
             insta::assert_snapshot!(lines_to_single_string(lines), @r#"
-            • Inspect workspace
-              └ Script failed
+            ● Inspect workspace
+              ⎿ Script failed
                 {"exit_code": 0, "output": "ready", "chunk_id": "chunk-1"}
                 Script error:
-                +1 line (ctrl+t to view transcript)
+                +1 line (ctrl+o to view transcript)
             "#);
         }
         assert_eq!(
             lines.first(),
             Some(&Line::from(vec![
-                "•".red().bold(),
+                "●".red().bold(),
                 " ".into(),
                 "Inspect workspace".fg(crate::style::accent_color()),
             ])),
@@ -1585,7 +1585,7 @@ async fn live_reasoning_summary_drops_empty_parts_without_losing_content() {
         }
         other => panic!("expected InsertHistoryCell, got {other:?}"),
     };
-    assert_eq!(rendered, "• done\n");
+    assert_eq!(rendered, "● done\n");
 }
 
 #[tokio::test]

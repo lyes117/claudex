@@ -4759,6 +4759,25 @@ async fn direct_input_to_multi_agent_v2_subagent_is_rejected(
     assert_eq!(direct_steer_error.error.code, INVALID_REQUEST_ERROR_CODE);
     assert_eq!(direct_steer_error.error.message, ERROR_MESSAGE);
 
+    let direct_workflow_req = mcp
+        .send_raw_request(
+            "workflow/start",
+            Some(json!({
+                "threadId": child_thread_id.clone(),
+                "scriptPath": "unread-workflow.js",
+                "args": {},
+                "runId": "blocked-owned-child-workflow"
+            })),
+        )
+        .await?;
+    let direct_workflow_error: JSONRPCError = timeout(
+        DEFAULT_READ_TIMEOUT,
+        mcp.read_stream_until_error_message(RequestId::Integer(direct_workflow_req)),
+    )
+    .await??;
+    assert_eq!(direct_workflow_error.error.code, INVALID_REQUEST_ERROR_CODE);
+    assert_eq!(direct_workflow_error.error.message, ERROR_MESSAGE);
+
     let direct_guardian_req = mcp
         .send_raw_request(
             "thread/approveGuardianDeniedAction",

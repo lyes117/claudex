@@ -31,6 +31,10 @@ use std::sync::PoisonError;
 use std::sync::RwLock;
 use std::time::Duration;
 
+// Preparatory host contract: no verifier or native reservation adapter is connected yet.
+#[allow(dead_code)]
+mod claudex_admission;
+pub mod claudex_routing;
 mod gateway_oauth;
 pub use gateway_oauth::GatewayOAuthConfig;
 pub use gateway_oauth::GatewayOAuthDelivery;

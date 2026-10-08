@@ -25,6 +25,48 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use tempfile::TempDir;
 
+#[tokio::test]
+async fn runtime_legacy_selection_does_not_reuse_a_stale_cwd_catalog() {
+    let home = tempfile::tempdir().unwrap();
+    let cwd = tempfile::tempdir().unwrap();
+    write_user_skill(&home, "memory", "memory-skill", "fixture");
+    let service = HostSkillsService::new(home.path().abs(), /*bundled_skills_enabled*/ false);
+    let enabled = HostSkillsLoadInput::new(cwd.path().abs(), Vec::new(), config_stack(&home, ""))
+        .with_legacy_plugin_selection(codex_config::claude::LegacyPluginSelection::NativeMemory);
+    let request = service.for_request();
+    let first = request
+        .snapshot_for_cwd(&enabled, false, Some(Arc::clone(&LOCAL_FS)))
+        .await;
+    let skill = first
+        .outcome()
+        .skills
+        .iter()
+        .find(|s| s.name == "memory-skill")
+        .unwrap();
+    assert!(first.outcome().is_skill_enabled(skill));
+    let disabled = HostSkillsLoadInput::new(
+        cwd.path().abs(),
+        Vec::new(),
+        config_stack(&home, &name_toggle_config("memory-skill", false)),
+    )
+    .with_legacy_plugin_selection(codex_config::claude::LegacyPluginSelection::KeepAll);
+    let refreshed = request
+        .snapshot_for_cwd(&disabled, false, Some(Arc::clone(&LOCAL_FS)))
+        .await;
+    let expected = service
+        .snapshot_for_config(&disabled, Some(Arc::clone(&LOCAL_FS)))
+        .await;
+    assert!(std::ptr::eq(refreshed.outcome(), expected.outcome()));
+    assert!(!std::ptr::eq(first.outcome(), refreshed.outcome()));
+    let skill = refreshed
+        .outcome()
+        .skills
+        .iter()
+        .find(|s| s.name == "memory-skill")
+        .unwrap();
+    assert!(!refreshed.outcome().is_skill_enabled(skill));
+}
+
 #[derive(Default)]
 struct TestPluginSkillSnapshotCache {
     snapshots: Mutex<HashMap<PluginSkillRoot, LoadedSkillRoot>>,
@@ -327,6 +369,13 @@ async fn snapshot_for_config_merges_extension_host_and_legacy_plugin_roots() {
     let codex_home = tempfile::tempdir().expect("tempdir");
     let cwd = tempfile::tempdir().expect("tempdir");
     write_user_skill(&codex_home, "user", "user-skill", "from the host loader");
+    let home_skill = codex_home.path().join(".agents/skills/home/SKILL.md");
+    fs::create_dir_all(home_skill.parent().unwrap()).unwrap();
+    fs::write(
+        &home_skill,
+        "---\nname: home-skill\ndescription: from the home fallback\n---\n\n# Body\n",
+    )
+    .unwrap();
     let plugin_skill_path = write_plugin_skill(
         &codex_home,
         "test",
@@ -338,11 +387,14 @@ async fn snapshot_for_config_merges_extension_host_and_legacy_plugin_roots() {
     let plugin_skill_root =
         plugin_skill_root_for_skill_path(&plugin_skill_path, "sample@test", "sample");
     let config_layer_stack = config_stack(&codex_home, "[skills.bundled]\nenabled = false\n");
-    let input = HostSkillsLoadInput::new(
+    let mut input = HostSkillsLoadInput::new(
         cwd.path().abs(),
         vec![plugin_skill_root],
         config_layer_stack,
     );
+    // Keep the real user-home fallback, but point it at this fixture rather
+    // than allowing installed skills in the developer's profile into the result.
+    input.home_dir_override = Some(codex_home.path().abs());
     let skills_service = HostSkillsService::new(
         codex_home.path().abs(),
         /*bundled_skills_enabled*/ false,
@@ -360,7 +412,11 @@ async fn snapshot_for_config_merges_extension_host_and_legacy_plugin_roots() {
 
     assert_eq!(
         skills,
-        vec![("sample:search", Some("sample@test")), ("user-skill", None)]
+        vec![
+            ("home-skill", None),
+            ("sample:search", Some("sample@test")),
+            ("user-skill", None)
+        ]
     );
 }
 

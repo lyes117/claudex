@@ -187,6 +187,11 @@ tool = "scan"
 input = { path = "${tool_input.file_path}", metadata = { enabled = true, retries = 2 } }
 timeout = 30
 statusMessage = "Scanning file"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "node"
+args = ["hook.js", "${tool_input.file_path}"]
 "#,
     )?;
     let mut mcp = TestAppServer::builder()
@@ -210,6 +215,7 @@ statusMessage = "Scanning file"
             .hooks,
         vec![
             ConfiguredHookHandler::Command {
+                args: None,
                 command: "echo managed".to_string(),
                 command_windows: None,
                 timeout_sec: None,
@@ -226,6 +232,18 @@ statusMessage = "Scanning file"
                 }))?,
                 timeout_sec: Some(30),
                 status_message: Some("Scanning file".to_string()),
+            },
+            ConfiguredHookHandler::Command {
+                command: "node".to_string(),
+                args: Some(vec![
+                    "hook.js".to_string(),
+                    "${tool_input.file_path}".to_string()
+                ]),
+                command_windows: None,
+                timeout_sec: None,
+                r#async: false,
+                status_message: None,
+                additional_context_limit: None,
             },
         ]
     );

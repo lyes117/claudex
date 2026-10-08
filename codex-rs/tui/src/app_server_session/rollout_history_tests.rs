@@ -137,17 +137,18 @@ async fn remote_resume_restores_saved_server_profile_without_permission_override
         approvals_reviewer: None,
         display_label: "removed-profile".into(),
     };
-    let forked = server
-        .fork_thread_at(
-            &local_settings,
-            client_config.clone(),
-            thread_id,
-            /*last_turn_id*/ None,
-            /*before_turn_id*/ None,
-            ForkGoalContinuation::StartIfIdle,
-            Some(&stale_selection),
-        )
-        .await?;
+    let forked = server.fork_thread_at(
+        &local_settings,
+        client_config.clone(),
+        thread_id,
+        /*last_turn_id*/ None,
+        /*before_turn_id*/ None,
+        ForkGoalContinuation::StartIfIdle,
+        Some(&stale_selection),
+    );
+    let size = std::mem::size_of_val(&forked);
+    assert!(size < 64 * 1024, "fork-at wrapper future is {size} bytes");
+    let forked = forked.await?;
     assert_eq!(
         forked
             .session
@@ -164,9 +165,10 @@ async fn remote_resume_restores_saved_server_profile_without_permission_override
         forked.session.approvals_reviewer,
         codex_protocol::config_types::ApprovalsReviewer::AutoReview
     );
-    let side = server
-        .fork_side_thread(&local_settings, client_config, thread_id)
-        .await?;
+    let side = server.fork_side_thread(&local_settings, client_config, thread_id);
+    let size = std::mem::size_of_val(&side);
+    assert!(size < 64 * 1024, "side-fork wrapper future is {size} bytes");
+    let side = side.await?;
     assert_eq!(
         side.session.active_permission_profile.unwrap().id,
         "server-only"
@@ -180,14 +182,18 @@ async fn remote_resume_restores_saved_server_profile_without_permission_override
         })
         .build()
         .await?;
-    let explicit_fork = server
-        .fork_thread_with_permission_mode(
-            &local_settings,
-            explicit_config,
-            thread_id,
-            ForkPermissionMode::OverrideFromCurrentConfig,
-        )
-        .await?;
+    let explicit_fork = server.fork_thread_with_permission_mode(
+        &local_settings,
+        explicit_config,
+        thread_id,
+        ForkPermissionMode::OverrideFromCurrentConfig,
+    );
+    let size = std::mem::size_of_val(&explicit_fork);
+    assert!(
+        size < 64 * 1024,
+        "fork-permission wrapper future is {size} bytes"
+    );
+    let explicit_fork = explicit_fork.await?;
     assert_eq!(
         explicit_fork.session.approval_policy,
         codex_app_server_protocol::AskForApproval::OnRequest

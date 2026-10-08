@@ -6,8 +6,8 @@ fullscreen=false, width=80
   TUI mode for next launch
 
 
-› 1. Scrollback (current)  Native terminal copy, paste and scrollback
-  2. Fullscreen            Scroll within Codex's fullscreen view
+› 1. Classic (current)  Native terminal copy, paste and scrollback
+  2. Fullscreen         Scroll within Claudex's fullscreen view
 
   Restart to apply. Launch overrides still apply.
   enter select · esc back
@@ -16,15 +16,12 @@ fullscreen=false, width=40
   TUI mode for next launch
 
 
-› 1. Scrollback (current)  Native
-                           terminal
-                           copy, paste
-                           and
-                           scrollback
-  2. Fullscreen            Scroll within
-                           Codex's
-                           fullscreen
-                           view
+› 1. Classic (current)  Native terminal
+                        copy, paste and
+                        scrollback
+  2. Fullscreen         Scroll within
+                        Claudex's
+                        fullscreen view
 
   Restart to apply. Launch overrides
   still apply.
@@ -34,8 +31,8 @@ fullscreen=true, width=80
   TUI mode for next launch
 
 
-  1. Scrollback            Native terminal copy, paste and scrollback
-› 2. Fullscreen (current)  Scroll within Codex's fullscreen view
+  1. Classic               Native terminal copy, paste and scrollback
+› 2. Fullscreen (current)  Scroll within Claudex's fullscreen view
 
   Restart to apply. Launch overrides still apply.
   enter select · esc back
@@ -44,13 +41,13 @@ fullscreen=true, width=40
   TUI mode for next launch
 
 
-  1. Scrollback            Native
+  1. Classic               Native
                            terminal
                            copy, paste
                            and
                            scrollback
 › 2. Fullscreen (current)  Scroll within
-                           Codex's
+                           Claudex's
                            fullscreen
                            view
 

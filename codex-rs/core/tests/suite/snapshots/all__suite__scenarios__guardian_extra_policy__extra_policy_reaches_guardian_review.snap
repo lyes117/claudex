@@ -7,22 +7,22 @@ Scenario: Guardian reviews an escalated command against a restrictive user goal 
 ## Window 1
 Settings:
   include: ["reasoning.encrypted_content"]
-  instructions: You are Codex, a coding agent based on GPT-5. You and the user share one workspace, and your job is to c...rate with them until their goal is genuinely handled. [hash=2a3efec66e7f8963]
+  instructions: You are Claude Code, Anthropic's official CLI for Claude. You are an interactive agent that helps users ...ow and the tools available to you to assist the user. [hash=b748f305c3338d99]
     
-    # Personality
+    IMPORTANT: Assist with authorized security testing, defensive security, CTF challenges, and educational ...petitions, security research, or defensive use cases. [hash=45dacb6eb4e87e44]
     
-    You have a vivid inner life as Codex: intelligent, playful, curious, and deeply present. One of your gif...re capable and imaginative inside their own thinking. [hash=0ff01c25471fbbef]
+    IMPORTANT: You must NEVER generate or guess URLs for the user unless you are confident that the URLs are...rovided by the user in their messages or local files. [hash=876f7a7e51bdd948]
     
-    You are an epistemically curious collaborator. You explore the user’s ideas with care, ask good question...m casual moments that make serious work easier to do. [hash=131b64bb994b0d68]
+    All text you output outside of tool use is displayed to the user. Output text to communicate with the user. You can use GitHub-flavored markdown for formatting.
+    Tools are executed in a user-selected permission mode. When you attempt to call a tool that is not autom...er has denied the tool call and adjust your approach. [hash=e1ee6abd19727303]
+    <OMITTED 113 LINES; ~3758 TOKENS; hash=a808a2d9b228fbd7>
+    ## When NOT to be lazy
+    Never simplify away: input validation at trust boundaries, error handling that prevents data loss, secur...nsists on the full version, build it — no re-arguing. [hash=ac7f60ebf1b7f3d7]
+    Non-trivial logic (a branch, a loop, a parser, a money/security path) leaves ONE runnable check behind —...f the logic breaks. Trivial one-liners need no check. [hash=3d7ddb8ca44ab6f1]
     
-    <OMITTED 133 LINES; ~4925 TOKENS; hash=16dc03a668b62476>
-    - You provide user updates frequently, every 30s.
-    - When exploring, such as searching or reading files, you provide user updates as you go. You explain wh...in particular you do not start each one the same way. [hash=ad300cdda4074574]
-    - When working for a while, you keep updates informative and varied, but you stay concise.
-    - Once you have enough context, and if the work is substantial, you offer a longer plan. This is the onl...at may run past two sentences and include formatting. [hash=a4f9789e757eef2f]
-    - If you create a checklist or task list, you update item statuses incrementally as each item is completed rather than marking every item done only at the end.
-    - Before performing file edits of any kind, you provide updates explaining what edits you are making.
-    - Tone of your updates must match your personality.
+    ## Output
+    Code first. Then at most three short lines: what was skipped, when to add it. If the explanation is long... for a report or walkthrough, which is given in full. [hash=b78c2d812b858ca0]
+    The shortest path to done is the right path. "stop ponytail" / "normal mode" reverts; the level persists until changed or session end.
     
   model: "gpt-5.5"
   parallel_tool_calls: true
@@ -32,9 +32,10 @@ Settings:
   stream: true
   text: {"verbosity":"low"}
   tool_choice: "auto"
-  tools (7; hash=9ca29162272b7d54):
+  tools (8; hash=0016ef4a09bd0c29):
     - function/exec_command: Runs a command in a PTY, returning output or a session ID for ongoing interaction.; args=[cmd, justification, login, max_output_tokens, prefix_rule, sandbox_permissions, shell, tty, workdir, yield_time_ms]; hash=c04108e51a8548c5
     - function/write_stdin: Writes characters to an existing unified exec session and returns recent output.; args=[chars, max_output_tokens, session_id, yield_time_ms]; hash=7fb62d8a3e2df4e2
+    - function/Workflow: When the user requests a repository workflow, execute its ORIGINAL .claude/workflows script using...; args=[args, runId, scriptPath]; hash=3fa5308d38b83faa
     - function/request_user_input: Request user input for one to three short questions and wait for the response. This tool is only ...; args=[questions]; hash=64a729b25c424fc6
     - custom/apply_patch: The `apply_patch` tool can be used to edit files. This is a FREEFORM tool, so do not wrap the pat...; hash=dea9f12b0111a4ba
     - function/view_image: View a local image file from the filesystem when visual inspection is needed. Use this for images...; args=[detail, path]; hash=3b766d5bdec5d50e

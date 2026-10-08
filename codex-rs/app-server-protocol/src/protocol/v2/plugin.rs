@@ -482,6 +482,8 @@ pub struct SkillMetadata {
     pub enabled: bool,
     /// Owning plugin ID, matching `PluginSummary.id`, when known.
     pub plugin_id: Option<String>,
+    #[serde(default)]
+    pub claude_command: Option<super::ClaudeCommandMetadata>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, TS)]
@@ -568,6 +570,9 @@ pub struct HooksListEntry {
 pub enum HookHandlerMetadata {
     Command {
         command: String,
+        /// Null retains shell execution; a list uses executable plus literal argv.
+        #[serde(default)]
+        args: Option<Vec<String>>,
         #[serde(default)]
         r#async: bool,
     },
@@ -993,6 +998,7 @@ impl From<CoreSkillMetadata> for SkillMetadata {
             scope: value.scope.into(),
             enabled: true,
             plugin_id: None,
+            claude_command: None,
         }
     }
 }

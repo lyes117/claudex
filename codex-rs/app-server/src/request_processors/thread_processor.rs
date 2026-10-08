@@ -3950,11 +3950,13 @@ impl ThreadRequestProcessor {
             _ => {
                 // Config loading can call back into Desktop; release the permit during host work.
                 drop(_thread_list_state_permit);
-                let config = self
-                    .config_manager
-                    .load_for_cwd(request_overrides, typesafe_overrides, history_cwd)
-                    .await
-                    .map_err(|err| config_load_error(&err))?;
+                let config = Box::pin(self.config_manager.load_for_cwd(
+                    request_overrides,
+                    typesafe_overrides,
+                    history_cwd,
+                ))
+                .await
+                .map_err(|err| config_load_error(&err))?;
                 *prepared_config = Some(PreparedResumeConfig {
                     state: config_state,
                     config,
@@ -3969,21 +3971,19 @@ impl ThreadRequestProcessor {
 
         let response_history = thread_history.clone();
 
-        match self
-            .thread_manager
-            .resume_thread_with_history(
-                config,
-                thread_history,
-                self.auth_manager.clone(),
-                match target {
-                    ThreadResumeTarget::Client(request_id) => {
-                        self.request_trace_context(request_id).await
-                    }
-                    ThreadResumeTarget::DaemonRecovery(_) => None,
-                },
-                client_mcp_extensions,
-            )
-            .await
+        match Box::pin(self.thread_manager.resume_thread_with_history(
+            config,
+            thread_history,
+            self.auth_manager.clone(),
+            match target {
+                ThreadResumeTarget::Client(request_id) => {
+                    self.request_trace_context(request_id).await
+                }
+                ThreadResumeTarget::DaemonRecovery(_) => None,
+            },
+            client_mcp_extensions,
+        ))
+        .await
         {
             Ok(NewThread {
                 thread_id,
@@ -5095,11 +5095,13 @@ impl ThreadRequestProcessor {
             }
         }
         // Derive a Config using the same logic as new conversation, honoring overrides if provided.
-        let config = self
-            .config_manager
-            .load_for_cwd(request_overrides, typesafe_overrides, history_cwd)
-            .await
-            .map_err(|err| config_load_error(&err))?;
+        let config = Box::pin(self.config_manager.load_for_cwd(
+            request_overrides,
+            typesafe_overrides,
+            history_cwd,
+        ))
+        .await
+        .map_err(|err| config_load_error(&err))?;
         let goals_enabled = config.features.enabled(Feature::Goals);
 
         let fallback_model_provider = config.model_provider_id.clone();

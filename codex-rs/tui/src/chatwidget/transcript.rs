@@ -62,6 +62,7 @@ pub(super) struct TranscriptState {
     pub(super) saw_plan_item_this_turn: bool,
     /// Latest `update_plan` checklist task counts for terminal-title rendering.
     pub(super) last_plan_progress: Option<(usize, usize)>,
+    pub(super) plan_checklist: super::plan_checklist::PlanChecklist,
     /// Incremental buffer for streamed plan content.
     pub(super) plan_delta_buffer: String,
     /// True while a plan item is streaming.
@@ -112,6 +113,7 @@ impl TranscriptState {
     }
 
     pub(super) fn reset_copy_history(&mut self) {
+        self.plan_checklist = Default::default();
         self.last_status_copy_targets = None;
         self.last_agent_markdown = None;
         self.last_agent_source = None;

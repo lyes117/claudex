@@ -8,11 +8,17 @@ $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $originalRepoRoot = $env:CODEX_REPO_ROOT
 $originalV8Archive = $env:RUSTY_V8_ARCHIVE
 $originalV8Binding = $env:RUSTY_V8_SRC_BINDING_PATH
+$originalIncremental = $env:CARGO_INCREMENTAL
 $locationPushed = $false
 try {
     Push-Location -LiteralPath (Join-Path $repo 'codex-rs')
     $locationPushed = $true
     $env:CODEX_REPO_ROOT = $repo
+    # Keep routine fork builds from accumulating large incremental caches.
+    # An explicit caller choice still wins and is restored after the build.
+    if ([string]::IsNullOrWhiteSpace($env:CARGO_INCREMENTAL)) {
+        $env:CARGO_INCREMENTAL = '0'
+    }
     $rustVersion = & rustc.exe -vV
     if ($LASTEXITCODE -ne 0 -or $rustVersion -notcontains 'host: x86_64-pc-windows-msvc') {
         throw 'This installer layout requires the x86_64-pc-windows-msvc Rust host.'
@@ -81,5 +87,6 @@ finally {
     $env:CODEX_REPO_ROOT = $originalRepoRoot
     $env:RUSTY_V8_ARCHIVE = $originalV8Archive
     $env:RUSTY_V8_SRC_BINDING_PATH = $originalV8Binding
+    $env:CARGO_INCREMENTAL = $originalIncremental
     if ($locationPushed) { Pop-Location }
 }

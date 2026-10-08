@@ -1167,7 +1167,9 @@ async fn active_model_switch_updates_core_context_from_captured_settings(
             .collect::<Vec<_>>(),
         vec![json!(MODEL_A), json!(MODEL_B), json!(MODEL_B)]
     );
-    let initial_instructions = format!("Instructions for {MODEL_A}.");
+    // ponytail: the session base is the shared Claude Code default; the per-model
+    // template now only feeds the <model_switch> notification asserted below.
+    let initial_instructions = codex_prompts::claude_base_instructions();
     assert_eq!(requests[0].instructions_text(), initial_instructions);
     assert!(!requests[0].body_contains_text("<model_switch>"));
     for text in [

@@ -1388,6 +1388,7 @@ approval_policy = "never"
                         pre_tool_use: vec![MatcherGroup {
                             matcher: Some("^Bash$".to_string()),
                             hooks: vec![HookHandlerConfig::Command {
+                                args: None,
                                 command: "python3 /enterprise/hooks/pre.py".to_string(),
                                 command_windows: None,
                                 timeout_sec: Some(10),

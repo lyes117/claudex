@@ -6,6 +6,7 @@ mod apps;
 mod attestation;
 mod bedrock;
 mod browser_use_config;
+mod claude_commands;
 mod collaboration_mode;
 mod command_exec;
 mod computer_use_config;
@@ -38,6 +39,7 @@ mod thread_usage;
 mod turn;
 mod user_verification;
 mod windows_sandbox;
+mod workflow;
 
 pub use account::*;
 pub use application::*;
@@ -45,6 +47,7 @@ pub use apps::*;
 pub use attestation::*;
 pub use bedrock::*;
 pub use browser_use_config::*;
+pub use claude_commands::*;
 pub use collaboration_mode::*;
 pub use command_exec::*;
 pub use computer_use_config::*;
@@ -78,6 +81,7 @@ pub use thread_usage::*;
 pub use turn::*;
 pub use user_verification::*;
 pub use windows_sandbox::*;
+pub use workflow::*;
 
 #[cfg(test)]
 mod tests;

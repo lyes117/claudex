@@ -40,6 +40,45 @@ fn write_metadata(root: &TempDir, directory: &str, contents: &str) {
     fs::write(metadata_dir.join("openai.yaml"), contents).expect("write metadata");
 }
 
+#[tokio::test]
+async fn claude_command_catalog_retains_policy_and_rejects_invalid_sources() {
+    let temp = TempDir::new().expect("temp dir");
+    let commands = temp.path().join(".claude/commands");
+    fs::create_dir_all(&commands).expect("commands directory");
+    fs::write(
+        commands.join("hidden.md"),
+        "---\nuser-invocable: false\nargument-hint: '[révision]'\n---\nBody $ARGUMENTS",
+    )
+    .expect("command");
+    fs::write(
+        commands.join("invalid.md"),
+        "---\nuser-invocable: 'false'\n---\nBody",
+    )
+    .expect("invalid command");
+    fs::write(commands.join("fork.md"), "---\ncontext: fork\n---\nBody")
+        .expect("unsupported command");
+    fs::write(commands.join("large.md"), "x".repeat(32 * 1024 + 1)).expect("oversize command");
+    let root = HostSkillRoot::host(
+        AbsolutePathBuf::from_absolute_path(commands).expect("root"),
+        SkillScope::Repo,
+        Arc::clone(&LOCAL_FS),
+    );
+    let snapshot = load_host_skill_root(root).await;
+    assert_eq!(snapshot.skills.len(), 1);
+    assert_eq!(snapshot.skills[0].name, "hidden");
+    assert_eq!(
+        snapshot.skills[0]
+            .policy
+            .as_ref()
+            .and_then(|policy| policy.claude_command.as_ref()),
+        Some(&codex_skills::ClaudeCommandMetadata {
+            user_invocable: false,
+            argument_hint: Some("[révision]".to_string()),
+        })
+    );
+    assert_eq!(snapshot.errors.len(), 3);
+}
+
 fn root_for(temp_dir: &TempDir, scope: SkillScope) -> HostSkillRoot {
     HostSkillRoot::host(
         AbsolutePathBuf::from_absolute_path(temp_dir.path()).expect("absolute root"),
@@ -147,6 +186,7 @@ policy:
                 }],
             }),
             policy: Some(SkillPolicy {
+                claude_command: None,
                 allow_implicit_invocation: Some(false),
                 products: vec![Product::Codex, Product::Chatgpt, Product::Atlas],
             }),

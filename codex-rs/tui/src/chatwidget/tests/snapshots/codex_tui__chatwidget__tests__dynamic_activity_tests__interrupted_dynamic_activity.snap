@@ -1,13 +1,12 @@
 ---
 source: tui/src/chatwidget/tests/dynamic_activity_tests.rs
-assertion_line: 150
 expression: "format!(\"{buffer:?}\")"
 ---
 Buffer {
     area: Rect { x: 0, y: 0, width: 64, height: 2 },
     content: [
-        "• Interrupted test.lookup                                       ",
-        "  └ Interrupted before this tool returned a result.             ",
+        "● Interrupted test.lookup                                       ",
+        "  ⎿ Interrupted before this tool returned a result.             ",
     ],
     styles: [
         x: 0, y: 0, fg: Red, bg: Reset, underline: Reset, modifier: BOLD,

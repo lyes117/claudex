@@ -3,7 +3,7 @@ source: tui/src/history_cell/tests.rs
 expression: "render_lines(&cell.display_lines(width)).join(\"\\n\")"
 ---
 
-› Skip tests.
+❯ Skip tests.
   
   I just reprocessed
   https://example.test/forwarded/threads/10930?page=1&search=&f

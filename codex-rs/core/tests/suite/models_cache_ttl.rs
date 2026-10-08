@@ -449,9 +449,11 @@ async fn uses_cache_when_version_matches() -> Result<()> {
         "/models should not be called when cache version matches"
     );
     test.submit_turn("use cached model").await?;
+    // ponytail: the session base is the shared Claude Code default; the cached
+    // model's base_instructions no longer override the fresh-session default.
     assert_eq!(
         response.single_request().instructions_text(),
-        "base instructions"
+        codex_prompts::claude_base_instructions()
     );
 
     Ok(())

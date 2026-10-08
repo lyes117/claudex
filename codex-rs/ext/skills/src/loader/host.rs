@@ -152,6 +152,12 @@ async fn load_skills_under_root(
     Vec<SkillError>,
 ) {
     let file_system = skill_root.file_system.as_ref();
+    // Keep origin before root canonicalization, including a symlinked .claude/skills root.
+    let claude_origin = skill_root
+        .path
+        .as_path()
+        .components()
+        .any(|part| part.as_os_str() == ".claude");
     // TODO(anp): Bind discovery to turn permissions when host skill roots accept an accessor;
     // until then, keep using the same unrestricted filesystem that supplied the root.
     let discovery_access = FileSystemEnvironmentAccessor::unrestricted(&skill_root.file_system);
@@ -301,6 +307,7 @@ async fn load_skills_under_root(
                     skill_root.scope,
                     plugin_identity,
                     plugin_root,
+                    claude_origin,
                 )
                 .await;
                 (skill.path, skill.path_uri, discovery_path, result)
@@ -349,6 +356,7 @@ async fn parse_skill_file(
     scope: SkillScope,
     plugin_identity: Option<&PluginIdentity>,
     plugin_root: Option<&AbsolutePathBuf>,
+    claude_origin: bool,
 ) -> Result<SkillMetadata, String> {
     let metadata_path = path_uri
         .parent()
@@ -360,14 +368,39 @@ async fn parse_skill_file(
         SkillMetadataDiscovery::Absent => None,
     }
     .unwrap_or(SkillMetadataDiscovery::Absent);
+    let claude_manifest = match plugin_root {
+        Some(root) => file_system
+            .get_metadata(
+                &PathUri::from_abs_path(&root.join(".claude-plugin/plugin.json")),
+                GetMetadataOptions::default(),
+                /*sandbox*/ None,
+            )
+            .await
+            .is_ok(),
+        None => false,
+    };
+    let is_claude = claude_origin
+        || skill
+            .path
+            .decoded_path_bytes()
+            .split(|byte| *byte == b'/')
+            .any(|part| part == b".claude")
+        || path.file_name().is_some_and(|name| name != "SKILL.md")
+        || claude_manifest;
+    let contents_future = async {
+        if is_claude {
+            super::claude_command_metadata::read_command_text(file_system, path_uri).await
+        } else {
+            file_system
+                .read_file_text(path_uri, ReadFileOptions::default(), /*sandbox*/ None)
+                .await
+        }
+    };
     let (contents, loaded_metadata) = tokio::join!(
-        file_system.read_file_text(path_uri, ReadFileOptions::default(), /*sandbox*/ None,),
+        contents_future,
         load_host_skill_metadata(file_system, path, &metadata, plugin_root),
     );
-    let mut contents = contents.map_err(|error| format!("failed to read file: {error}"))?;
-    let is_claude = codex_config::claude::is_markdown_source(path.as_path())
-        || path.file_name().is_some_and(|name| name != "SKILL.md")
-        || plugin_root.is_some_and(|root| root.join(".claude-plugin/plugin.json").is_file());
+    let mut contents = contents.map_err(|_| "Could not load skill source".to_string())?;
     let claude_metadata = if is_claude {
         codex_config::claude::markdown(&contents)
             .map_err(|error| error.to_string())?
@@ -406,6 +439,10 @@ async fn parse_skill_file(
         dependencies,
         mut policy,
     } = loaded_metadata;
+    if is_claude {
+        policy.get_or_insert_with(Default::default).claude_command =
+            Some(super::claude_command_metadata::parse(&claude_metadata)?);
+    }
     if claude_metadata.get("disable-model-invocation") == Some(&serde_json::Value::Bool(true)) {
         policy
             .get_or_insert_with(Default::default)

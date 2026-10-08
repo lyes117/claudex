@@ -1,14 +1,13 @@
 ---
 source: tui/src/transcript_view/text_tests.rs
-assertion_line: 306
 expression: "format!(\"{buffer:?}\")"
 ---
 Buffer {
     area: Rect { x: 0, y: 0, width: 24, height: 8 },
     content: [
-        "• Running printf 'alpha ",
+        "● Running printf 'alpha ",
         "  │ beta gamma delta'   ",
-        "  └   output alpha beta ",
+        "  ⎿   output alpha beta ",
         "    gamma delta         ",
         "    next line           ",
         "                        ",

@@ -379,7 +379,7 @@ async fn separate_late_finals_with_a_shared_prefix_keep_both_full_captions() {
             _ => None,
         })
         .collect::<Vec<_>>();
-    assert_eq!(captions, vec!["• Hello", "• Hello again"]);
+    assert_eq!(captions, vec!["● Hello", "● Hello again"]);
 }
 
 #[tokio::test]
@@ -463,12 +463,12 @@ async fn stopping_voice_preserves_the_live_transcript_once() {
             }
         }
         insta::allow_duplicates! {
-            insta::assert_snapshot!(rendered.join("\n"), @r"
+            insta::assert_snapshot!(rendered.join("\n"), @"
 
-            › Earlier question
+            ❯ Earlier question
 
-            • Earlier answer
-            • Answer in progress
+            ● Earlier answer
+            ● Answer in progress
             ");
         }
     }
@@ -517,9 +517,9 @@ async fn transcript_completion_waits_for_normal_agent_stream_consolidation() {
     assert_eq!(
         rendered,
         [
-            "• normal typed output",
-            "• voice output",
-            "• unfinished voice output"
+            "● normal typed output",
+            "● voice output",
+            "● unfinished voice output"
         ]
     );
 }
@@ -746,7 +746,7 @@ async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
         .display_lines(/*width*/ 32)
         .into_iter()
         .flat_map(|line| line.spans)
-        .find(|span| span.content == "›")
+        .find(|span| span.content == "❯")
         .expect("genuine spoken user marker");
     assert_eq!(marker.style.fg, Some(ratatui::style::Color::Red));
     assert!(
@@ -769,7 +769,7 @@ async fn spoken_user_transcript_preserves_red_chevron_and_canonical_history() {
     assert!(
         cell.display_lines(/*width*/ 32)
             .iter()
-            .any(|line| line.to_string() == "› hello world")
+            .any(|line| line.to_string() == "❯ hello world")
     );
 }
 
@@ -838,9 +838,9 @@ async fn completed_user_caption_stays_visible_until_history_commit() {
     // A scheduled draw must not clear the caption before its queued history event runs.
     chat.pre_draw_tick();
     let visible = chat.active_cell_transcript_lines(/*width*/ 80).unwrap();
-    insta::assert_snapshot!(visible.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"), @r"
+    insta::assert_snapshot!(visible.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"), @"
 
-    › Keep these words visible.
+    ❯ Keep these words visible.
     ");
     assert!(chat.active_cell_transcript_key().is_some());
     let viewport = render_bottom_popup(&chat, /*width*/ 80);
@@ -912,16 +912,16 @@ async fn animated_interleaved_captions_keep_settled_words_visible() {
     insta::assert_snapshot!(settled.join("\n"), @"
     user first:
 
-    › Keep these words visible please
+    ❯ Keep these words visible please
 
 
-    • Other speaker.
+    ● Other speaker.
     assistant first:
 
-    › Other speaker.
+    ❯ Other speaker.
 
 
-    • Keep these words visible please
+    ● Keep these words visible please
     ");
 }
 

@@ -3,73 +3,68 @@ source: tui/src/startup_draft_tests.rs
 expression: "snapshots.join(\"\\n---\\n\")"
 ---
 empty (48 columns):
-╭──────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                         │
-│ Pull up a prompt.                            │
-│ loading · Codex engine                       │
-│ loading                                      │
-│ /help commands · /tasks agents               │
-╰──────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   loading
+
+Pull up a prompt.
+/help commands · /tasks agents
 
 ────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for
+❯ Try a task, /help for commands, or @path for
 ────────────────────────────────────────────────
   ? for shortcuts
 ---
 resuming (48 columns):
-╭──────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                         │
-│ Welcome to Claudex                           │
-│ loading · Codex engine                       │
-│ loading                                      │
-│ /help commands · /tasks agents               │
-╰──────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   loading
+
+Welcome to Claudex
+/help commands · /tasks agents
   Resuming session…
 ────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for
+❯ Try a task, /help for commands, or @path for
 ────────────────────────────────────────────────
   ? for shortcuts
 ---
 forking (48 columns):
-╭──────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                         │
-│ Welcome to Claudex                           │
-│ loading · Codex engine                       │
-│ loading                                      │
-│ /help commands · /tasks agents               │
-╰──────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   loading
+
+Welcome to Claudex
+/help commands · /tasks agents
   Forking session…
 ────────────────────────────────────────────────
-› draft while loading
+❯ draft while loading
 ────────────────────────────────────────────────
 
 ---
 multiline (48 columns):
-╭──────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                         │
-│ Pull up a prompt.                            │
-│ loading · Codex engine                       │
-│ loading                                      │
-│ /help commands · /tasks agents               │
-╰──────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   loading
+
+Pull up a prompt.
+/help commands · /tasks agents
 
 ────────────────────────────────────────────────
-› first startup line
+❯ first startup line
   second startup line
 ────────────────────────────────────────────────
 
 ---
 narrow (18 columns):
-╭────────────────╮
-│ ✻ Claudex (v0… │
-│ Pull up a pro… │
-│ loading · Cod… │
-│ loading        │
-│ /help command… │
-╰────────────────╯
+Claudex v<VERSION> …
+loading
+loading
+
+Pull up a prompt.
+/help commands · …
 
 ──────────────────
-› first startup
+❯ first startup
   line
   second startup
   line

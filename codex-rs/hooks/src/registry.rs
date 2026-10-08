@@ -46,6 +46,7 @@ pub struct HooksConfig {
     pub config_layer_stack: Option<ConfigLayerStack>,
     pub plugin_hook_sources: Vec<PluginHookSource>,
     pub plugin_hook_load_warnings: Vec<String>,
+    pub legacy_plugin_selection: codex_config::claude::LegacyPluginSelection,
     pub shell_program: Option<String>,
     pub shell_args: Vec<String>,
 }
@@ -65,6 +66,7 @@ pub struct Hooks {
     engine: ClaudeHooksEngine,
     plugin_hook_sources: Vec<PluginHookSource>,
     plugin_hook_load_warnings: Vec<String>,
+    legacy_plugin_selection: codex_config::claude::LegacyPluginSelection,
 }
 
 impl Hooks {
@@ -109,6 +111,13 @@ impl Hooks {
             && self.plugin_hook_load_warnings.iter().eq(warnings)
     }
 
+    pub fn matches_legacy_plugin_selection(
+        &self,
+        selection: codex_config::claude::LegacyPluginSelection,
+    ) -> bool {
+        self.legacy_plugin_selection == selection
+    }
+
     pub fn with_executor_hooks(&self, executor_hooks: Vec<ExecutorPluginHookSource>) -> Self {
         let mut hooks = self.clone();
         hooks.engine.set_executor_hooks(executor_hooks);
@@ -123,29 +132,23 @@ impl Hooks {
     ) -> Self {
         let after_agent = config
             .legacy_notify_argv
+            .clone()
             .filter(|argv| !argv.is_empty() && !argv[0].is_empty())
             .map(|argv| crate::legacy_notify::notify_hook(argv, Arc::clone(&environment)))
             .into_iter()
             .collect();
         let command_runtime = build_runtime(CommandShell {
-            program: config.shell_program.unwrap_or_default(),
-            args: config.shell_args,
+            program: config.shell_program.clone().unwrap_or_default(),
+            args: config.shell_args.clone(),
         });
-        let engine = ClaudeHooksEngine::new(
-            config.feature_enabled,
-            config.bypass_hook_trust,
-            config.config_layer_stack.as_ref(),
-            config.plugin_hook_sources.clone(),
-            config.plugin_hook_load_warnings.clone(),
-            command_runtime,
-            mcp_executor,
-        );
+        let engine = ClaudeHooksEngine::from_hooks_config(&config, command_runtime, mcp_executor);
         Self {
             environment,
             after_agent,
             engine,
             plugin_hook_sources: config.plugin_hook_sources,
             plugin_hook_load_warnings: config.plugin_hook_load_warnings,
+            legacy_plugin_selection: config.legacy_plugin_selection,
         }
     }
 
@@ -306,11 +309,12 @@ pub fn list_hooks(config: HooksConfig) -> HookListOutcome {
         return HookListOutcome::default();
     }
 
-    let discovered = crate::engine::discovery::discover_handlers(
+    let discovered = crate::engine::discovery::discover_handlers_with_legacy_plugin_selection(
         config.config_layer_stack.as_ref(),
         config.plugin_hook_sources,
         config.plugin_hook_load_warnings,
         config.bypass_hook_trust,
+        config.legacy_plugin_selection,
     );
     HookListOutcome {
         hooks: discovered.hook_entries,

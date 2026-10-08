@@ -5,6 +5,7 @@ use crate::bottom_pane::paste_burst::FlushResult;
 
 impl ChatComposer {
     pub(crate) fn insert_str(&mut self, text: &str) {
+        self.cancel_claude_command();
         if !text.is_empty() && self.sparkle.draft.get() == sparkle::SparkleDraft::Untouched {
             self.dismiss_sparkle();
         }
@@ -40,6 +41,7 @@ impl ChatComposer {
 
     /// Classify an explicit paste before integrating text shared with the buffered key path.
     pub fn handle_paste(&mut self, pasted: String) -> bool {
+        self.cancel_claude_command();
         self.note_sparkle_paste(&pasted);
         self.apply_paste(pasted)
     }

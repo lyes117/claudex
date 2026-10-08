@@ -199,9 +199,9 @@ impl SplitFlapTranscriptCell {
                         }
                         text
                     } else {
-                        if grapheme == "›" {
+                        if grapheme == "›" || grapheme == "❯" {
                             style = style.fg(span.style.fg.unwrap_or(Color::Cyan));
-                        } else if grapheme == "•" {
+                        } else if grapheme == "•" || grapheme == "●" {
                             style = style.fg(Color::Magenta);
                         }
                         if grapheme.chars().all(char::is_whitespace) {

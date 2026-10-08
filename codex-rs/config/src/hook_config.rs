@@ -164,6 +164,10 @@ pub enum HookHandlerConfig {
     #[serde(rename = "command")]
     Command {
         command: String,
+        /// When present, `command` is an executable and arguments are passed directly.
+        /// Omission retains the legacy shell command; an empty list still uses direct execution.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        args: Option<Vec<String>>,
         #[serde(default, rename = "commandWindows", alias = "command_windows")]
         command_windows: Option<String>,
         #[serde(default, rename = "timeout")]

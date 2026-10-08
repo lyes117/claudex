@@ -3,12 +3,12 @@ source: tui/src/chatwidget/tests/status_and_layout.rs
 expression: normalize_snapshot_paths(terminal.backend().vt100().screen().contents())
 ---
 
-› count to 1
+❯ count to 1
 
 
-• 1
+● 1
 
 ────────────────────────────────────────
-› Try a task, /help for commands, or @p
+❯ Try a task, /help for commands, or @p
 ────────────────────────────────────────
   gpt-5 default · /tmp/project

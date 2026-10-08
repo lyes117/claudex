@@ -487,13 +487,11 @@ pub async fn load_config_layers_state(
             }
             let mut compatible = crate::claude::native_config(&directory, &mut startup_warnings)?;
             if active_claude_directory.as_ref() == Some(&directory) {
-                let mut plugins = crate::claude::plugin_config(
+                layer.claude_plugin_mcp_configs = crate::claude::plugin_mcp_contributions(
                     &directory,
                     !ignore_user_config,
                     &mut startup_warnings,
                 )?;
-                merge_toml_values(&mut plugins, &compatible);
-                compatible = plugins;
             }
             if matches!(layer.name, ConfigLayerSource::Project { .. }) {
                 // Compatibility must not reintroduce project-local credential/profile overrides.
@@ -511,7 +509,10 @@ pub async fn load_config_layers_state(
             }
             merge_toml_values(&mut compatible, &layer.config);
             layer.config = compatible;
-            layer.version = crate::version_for_toml(&layer.config);
+            layer.version = crate::version_for_toml(&crate::claude::layer_config_with_plugins(
+                layer,
+                crate::claude::LegacyPluginSelection::KeepAll,
+            ));
         }
     }
     if let Err(err) = validate_enabled_config_layers(&layers) {

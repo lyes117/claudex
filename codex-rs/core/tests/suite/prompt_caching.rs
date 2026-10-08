@@ -10,7 +10,8 @@ use codex_features::Feature;
 use codex_models_manager::bundled_models_response;
 use codex_models_manager::collaboration_mode_presets::builtin_collaboration_mode_presets;
 use codex_models_manager::manager::StaticModelsManager;
-use codex_prompts::render_model_instructions;
+use codex_prompts::claude_base_instructions;
+use codex_prompts::without_update_plan_instructions;
 use codex_protocol::config_types::CollaborationMode;
 use codex_protocol::config_types::ModeKind;
 use codex_protocol::config_types::ReasoningSummary;
@@ -140,19 +141,14 @@ async fn prompt_tools_are_consistent_across_requests(
 
     const CUSTOM_BASE_INSTRUCTIONS: &str =
         "Custom base.\r\n## Plan tool\r\nPreserve this custom workflow.\r\n";
-    const MODEL_BASE_INSTRUCTIONS: &str = "Model base.\n\n## Planning\nYou have access to an `update_plan` tool which tracks steps.\n\n## Work\nKeep working.\n\n## `update_plan`\nUpdate the plan.\n";
 
-    let mut model = bundled_models_response()?
+    let model = bundled_models_response()?
         .models
         .into_iter()
         .find(|model| model.slug == "gpt-5.5")
         .expect("bundled gpt-5.5 model");
-    model
-        .model_messages
-        .as_mut()
-        .expect("bundled model messages")
-        .instructions_template = Some(MODEL_BASE_INSTRUCTIONS.to_string());
-    // Supply model instructions without making them an explicit config catalog override.
+    // ponytail: the model template is no longer the session default, so no
+    // instructions_template override is injected here; the manager only pins gpt-5.5.
     let models_manager = Arc::new(StaticModelsManager::new(
         /*auth_manager*/ None,
         ModelsResponse {
@@ -177,7 +173,6 @@ async fn prompt_tools_are_consistent_across_requests(
         home: _home,
         codex,
         config,
-        thread_manager,
         ..
     } = test_codex()
         .with_models_manager(models_manager)
@@ -204,27 +199,17 @@ async fn prompt_tools_are_consistent_across_requests(
         })
         .build(&server)
         .await?;
-    let model_info = thread_manager
-        .get_models_manager()
-        .get_model_info(
-            config
-                .model
-                .as_deref()
-                .expect("test config should have a model"),
-            &config.to_models_manager_config(),
-        )
-        .await;
     let base_instructions = if custom_instructions {
         CUSTOM_BASE_INSTRUCTIONS.to_string()
     } else {
-        let original = render_model_instructions(&model_info);
+        // ponytail: fresh sessions ship the Claude Code base instructions; the
+        // update_plan checklist stripping still runs on them but is a no-op,
+        // so the expected request text is the shared default either way.
+        let original = claude_base_instructions();
         if expected_update_plan_enabled {
             original
         } else {
-            let (before, planning) = original.split_once("## Planning\n").unwrap();
-            let (_, after) = planning.split_once("\n## ").unwrap();
-            let (after, _) = after.split_once("## `update_plan`\n").unwrap();
-            format!("{before}## {after}")
+            without_update_plan_instructions(&original)
         }
     };
 

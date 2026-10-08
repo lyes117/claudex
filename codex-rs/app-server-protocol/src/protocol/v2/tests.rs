@@ -3815,6 +3815,7 @@ fn user_input_into_core_preserves_media_fields() {
 fn hook_handler_metadata_only_exposes_async_for_commands() {
     assert_eq!(
         serde_json::to_value(HookHandlerMetadata::Command {
+            args: None,
             command: "echo hello".to_string(),
             r#async: true,
         })
@@ -3823,6 +3824,7 @@ fn hook_handler_metadata_only_exposes_async_for_commands() {
             "handlerType": "command",
             "command": "echo hello",
             "async": true,
+            "args": null,
         }),
     );
     assert_eq!(
@@ -3832,6 +3834,7 @@ fn hook_handler_metadata_only_exposes_async_for_commands() {
         }))
         .unwrap(),
         HookHandlerMetadata::Command {
+            args: None,
             command: "echo hello".to_string(),
             r#async: false,
         },

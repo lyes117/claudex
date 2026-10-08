@@ -4,10 +4,10 @@ expression: rendered
 ---
 rich before:
 
-› Please format this
+❯ Please format this
   for copying
 
-• • first item
+● • first item
   • second item
 
    Col     Value
@@ -15,8 +15,8 @@ rich before:
    code    x = 1
 
   copy me
-• Called
-  └ workspace.inspect({"path":"README.md
+● Called
+  ⎿ workspace.inspect({"path":"README.md
         "})
     structured output
     second line
@@ -40,10 +40,10 @@ second line
 
 rich after:
 
-› Please format this
+❯ Please format this
   for copying
 
-• • first item
+● • first item
   • second item
 
    Col     Value
@@ -51,8 +51,8 @@ rich after:
    code    x = 1
 
   copy me
-• Called
-  └ workspace.inspect({"path":"README.md
+● Called
+  ⎿ workspace.inspect({"path":"README.md
         "})
     structured output
     second line

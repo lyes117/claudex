@@ -540,6 +540,8 @@ mod account_processor;
 mod apps_processor;
 mod bedrock_auth;
 mod catalog_processor;
+mod claude_command_deadline;
+mod claude_commands;
 mod command_exec_processor;
 mod config_processor;
 mod diagnostics;
@@ -572,6 +574,7 @@ mod thread_sections;
 mod token_usage_replay;
 mod turn_processor;
 mod windows_sandbox_processor;
+mod workflow;
 
 pub(crate) use account_processor::AccountRequestProcessor;
 pub(crate) use apps_processor::AppsRequestProcessor;

@@ -3,6 +3,6 @@ source: tui/src/chatwidget/tests/security_setup_tests.rs
 expression: rendered
 ---
 ──────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ──────────────────────────────────────────────────────────────────────
   test-model-a default · /tmp/project

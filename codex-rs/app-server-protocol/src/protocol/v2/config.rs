@@ -643,6 +643,9 @@ pub enum ConfiguredHookHandler {
     #[ts(rename = "command")]
     Command {
         command: String,
+        /// Null retains shell execution; a list uses executable plus literal argv.
+        #[serde(default)]
+        args: Option<Vec<String>>,
         #[serde(rename = "commandWindows")]
         #[ts(rename = "commandWindows")]
         command_windows: Option<String>,

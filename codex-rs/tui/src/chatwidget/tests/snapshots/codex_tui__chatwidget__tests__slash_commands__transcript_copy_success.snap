@@ -3,6 +3,6 @@ source: tui/src/chatwidget/tests/slash_commands.rs
 expression: "render_bottom_popup(&chat, 80)"
 ---
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   Copied selection to clipboard

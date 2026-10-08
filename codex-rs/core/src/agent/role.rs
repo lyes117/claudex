@@ -16,6 +16,7 @@ use codex_config::loader::resolve_relative_paths_in_config_toml;
 use codex_exec_server::read_sensitive_file_to_string;
 use codex_features::Feature;
 use codex_features::feature_for_key;
+use codex_prompts::with_ponytail;
 use codex_protocol::config_types::Personality;
 use codex_protocol::config_types::ReasoningSummary;
 use codex_protocol::config_types::ServiceTier;
@@ -78,7 +79,11 @@ async fn apply_role_to_config_inner(
     let role_layer_toml = load_role_layer_toml(config, config_file, is_built_in, role_name).await?;
     let role_config = deserialize_config_toml_with_base(role_layer_toml, &config.codex_home)?;
     let mut overrides = AgentRoleOverrides {
-        developer_instructions: role_config.developer_instructions,
+        // ponytail: every agent-role prompt ends with the shared contract, from the
+        // single source in `codex_prompts` — role toml assets carry no copy of it.
+        developer_instructions: role_config
+            .developer_instructions
+            .map(|instructions| with_ponytail(&instructions)),
         model: role_config.model,
         model_reasoning_effort: role_config.model_reasoning_effort,
         model_reasoning_summary: role_config.model_reasoning_summary,
@@ -374,7 +379,7 @@ Typical tasks:
 Rules:
 - Explicitly assign **ownership** of the task (files / responsibility). When the subtask involves code changes, you should clearly specify which files or modules the worker is responsible for. This helps avoid merge conflicts and ensures accountability. For example, you can say "Worker 1 is responsible for updating the authentication module, while Worker 2 will handle the database layer." By defining clear ownership, you can delegate more effectively and reduce coordination overhead.
 - Always tell workers they are **not alone in the codebase**, and they should not revert the edits made by others, and they should adjust their implementation to accommodate the changes made by others. This is important because there may be multiple workers making changes in parallel, and they need to be aware of each other's work to avoid conflicts and ensure a cohesive final product."#.to_string()),
-                        config_file: None,
+                        config_file: Some("worker.toml".to_string().parse().unwrap_or_default()),
                         nickname_candidates: None,
                     }
                 ),
@@ -405,9 +410,11 @@ Rules:
     pub(super) fn config_file_contents(path: &Path) -> Option<&'static str> {
         const EXPLORER: &str = include_str!("../../assets/agent/builtins/explorer.toml");
         const AWAITER: &str = include_str!("../../assets/agent/builtins/awaiter.toml");
+        const WORKER: &str = include_str!("../../assets/agent/builtins/worker.toml");
         match path.to_str()? {
             "explorer.toml" => Some(EXPLORER),
             "awaiter.toml" => Some(AWAITER),
+            "worker.toml" => Some(WORKER),
             _ => None,
         }
     }

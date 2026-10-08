@@ -537,7 +537,7 @@ async fn owned_details_keep_the_composer_cursor_and_screen() -> Result<()> {
     assert!(rendered.contains("preserved draft"));
     assert!(app.handle_owned_backtrack_event(
         &mut tui,
-        &TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL)),
+        &TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
     )?);
     assert_eq!(
         (
@@ -1014,7 +1014,7 @@ async fn offline_find_closes_before_the_next_ctrl_c_quits() -> Result<()> {
     app.handle_tui_event(
         &mut tui,
         &mut app_server,
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL)),
+        TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
     )
     .await?;
     assert!(!app.transcript_view.is_detailed());
@@ -1051,7 +1051,7 @@ async fn offline_backtrack_keeps_the_preview_and_draft_without_reverting() -> Re
         for key in [
             KeyEvent::new(KeyCode::Char('j'), KeyModifiers::NONE),
             KeyEvent::new(KeyCode::Char('h'), KeyModifiers::NONE),
-            KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+            KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
         ] {
             app.handle_tui_event(&mut tui, &mut app_server, TuiEvent::Key(key))
                 .await?;

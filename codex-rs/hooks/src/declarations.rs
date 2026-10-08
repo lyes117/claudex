@@ -64,6 +64,7 @@ mod tests {
                     hooks: vec![
                         HookHandlerConfig::Prompt {},
                         HookHandlerConfig::Command {
+                            args: None,
                             command: "echo hi".to_string(),
                             command_windows: None,
                             timeout_sec: None,

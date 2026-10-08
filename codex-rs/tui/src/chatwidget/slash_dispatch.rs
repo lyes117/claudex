@@ -831,6 +831,7 @@ impl ChatWidget {
                 }
                 _ => self.add_error_message("Usage: /keymap [debug]".to_string()),
             },
+            SlashCommand::Tui => self.select_tui_mode(trimmed),
             SlashCommand::Raw => match trimmed.to_ascii_lowercase().as_str() {
                 "on" => {
                     self.set_raw_output_mode_and_notify(/*enabled*/ true);

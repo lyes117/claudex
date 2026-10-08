@@ -522,6 +522,32 @@ class CapabilityRootLocation(RootModel[EnvironmentCapabilityRootLocation]):
     ]
 
 
+class ClaudeCommandExpandParams(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    arguments: str
+    cwd: str
+    name: str
+    path: AbsolutePathBuf
+    thread_id: Annotated[str, Field(alias="threadId")]
+
+
+class ClaudeCommandExpandResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    text: str
+
+
+class ClaudeCommandMetadata(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    argument_hint: Annotated[str | None, Field(alias="argumentHint")] = None
+    user_invocable: Annotated[bool, Field(alias="userInvocable")]
+
+
 class CliAuthCredentialsStoreMode(Enum):
     file = "file"
     keyring = "keyring"
@@ -1003,6 +1029,12 @@ class CommandConfiguredHookHandler(BaseModel):
             alias="additionalContextLimit",
             description="Approximate token threshold for spilling this hook's `additionalContext` to disk. `null` uses 2,500 tokens; `0` disables spilling for this hook. The threshold is evaluated against the original context; a spilled preview also includes recovery metadata.",
             ge=0,
+        ),
+    ] = None
+    args: Annotated[
+        list[str] | None,
+        Field(
+            description="Null retains shell execution; a list uses executable plus literal argv."
         ),
     ] = None
     async_: Annotated[bool, Field(alias="async")]
@@ -6571,6 +6603,25 @@ class WindowsWorldWritableWarningNotification(BaseModel):
     sample_paths: Annotated[list[str], Field(alias="samplePaths")]
 
 
+class WorkflowStartParams(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        populate_by_name=True,
+    )
+    args: Any
+    run_id: Annotated[str, Field(alias="runId")]
+    script_path: Annotated[str, Field(alias="scriptPath")]
+    thread_id: Annotated[str, Field(alias="threadId")]
+
+
+class WorkflowStartResponse(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    run_id: Annotated[str, Field(alias="runId")]
+    submission_id: Annotated[str, Field(alias="submissionId")]
+
+
 class WorkspaceMessageType(Enum):
     headline = "headline"
     announcement = "announcement"
@@ -7014,6 +7065,27 @@ class ThreadInjectItemsRequest(BaseModel):
         Literal["thread/inject_items"], Field(title="Thread/injectItemsRequestMethod")
     ]
     params: ThreadInjectItemsParams
+
+
+class WorkflowStartRequest(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    id: RequestId
+    method: Annotated[Literal["workflow/start"], Field(title="Workflow/startRequestMethod")]
+    params: WorkflowStartParams
+
+
+class SkillsClaudeCommandExpandRequest(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+    )
+    id: RequestId
+    method: Annotated[
+        Literal["skills/claudeCommand/expand"],
+        Field(title="Skills/claudeCommand/expandRequestMethod"),
+    ]
+    params: ClaudeCommandExpandParams
 
 
 class SkillsListRequest(BaseModel):
@@ -8299,6 +8371,12 @@ class HookMetadata1(BaseModel):
     status_message: Annotated[str | None, Field(alias="statusMessage")] = None
     timeout_sec: Annotated[int, Field(alias="timeoutSec", ge=0)]
     trust_status: Annotated[HookTrustStatus, Field(alias="trustStatus")]
+    args: Annotated[
+        list[str] | None,
+        Field(
+            description="Null retains shell execution; a list uses executable plus literal argv."
+        ),
+    ] = None
     async_: Annotated[bool | None, Field(alias="async")] = False
     command: str
     handler_type: Annotated[Literal["command"], Field(alias="handlerType")]
@@ -9619,6 +9697,7 @@ class SkillMetadata(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
     )
+    claude_command: Annotated[ClaudeCommandMetadata | None, Field(alias="claudeCommand")] = None
     dependencies: SkillDependencies | None = None
     description: str
     enabled: bool
@@ -12473,6 +12552,8 @@ class ClientRequest(
         | ThreadTurnsListRequest
         | ThreadItemsListRequest
         | ThreadInjectItemsRequest
+        | WorkflowStartRequest
+        | SkillsClaudeCommandExpandRequest
         | SkillsListRequest
         | SkillsExtraRootsSetRequest
         | HooksListRequest
@@ -12583,6 +12664,8 @@ class ClientRequest(
         | ThreadTurnsListRequest
         | ThreadItemsListRequest
         | ThreadInjectItemsRequest
+        | WorkflowStartRequest
+        | SkillsClaudeCommandExpandRequest
         | SkillsListRequest
         | SkillsExtraRootsSetRequest
         | HooksListRequest

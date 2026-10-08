@@ -1731,12 +1731,25 @@ impl ThreadManagerState {
         root_turn_id: Option<String>,
     ) -> CodexResult<String> {
         let thread = self.get_thread(thread_id).await?;
+        self.send_op_to_thread(&thread, op, parent_turn_id, root_turn_id)
+            .await
+    }
+
+    /// Submit to an already captured runtime, preserving residency and operation recording.
+    pub(crate) async fn send_op_to_thread(
+        &self,
+        thread: &Arc<CodexThread>,
+        op: Op,
+        parent_turn_id: Option<String>,
+        root_turn_id: Option<String>,
+    ) -> CodexResult<String> {
+        let thread_id = thread.session.thread_id;
         let residency_guard = if matches!(op, Op::InterAgentCommunication { .. }) {
             thread
                 .session
                 .services
                 .local_agent_runtime
-                .pin_v2_residency(self, &thread)
+                .pin_v2_residency(self, thread)
                 .await?
         } else {
             None
@@ -1936,6 +1949,7 @@ impl ThreadManagerState {
             /*inherited_exec_policy*/ None,
             /*environments*/ None,
             /*inherited_tool_policy*/ None,
+            ExtensionDataInit::new(),
         ))
         .await
     }
@@ -1955,6 +1969,7 @@ impl ThreadManagerState {
         inherited_exec_policy: Option<Arc<crate::exec_policy::ExecPolicyManager>>,
         environments: Option<Vec<TurnEnvironmentSelection>>,
         inherited_tool_policy: Option<CapturedToolPolicy>,
+        thread_extension_init: ExtensionDataInit,
     ) -> CodexResult<NewThread> {
         let client_mcp_extensions = self.client_mcp_extensions_for_child(parent_thread_id).await;
         let options = StartThreadOptions {
@@ -1964,6 +1979,7 @@ impl ThreadManagerState {
             metrics_service_name,
             environments,
             client_mcp_extensions,
+            thread_extension_init,
             ..StartThreadOptions::new(config)
         };
         let mut request =
@@ -2105,6 +2121,17 @@ impl ThreadManagerState {
             mut reserved_thread_id,
             disabled_plugin_ids,
         } = options;
+        if self.agent_control_factory.is_some()
+            && thread_extension_init
+                .get::<crate::agent::control::CompletionReporting>()
+                .is_some_and(|reporting| {
+                    *reporting == crate::agent::control::CompletionReporting::SupervisorOwned
+                })
+        {
+            return Err(CodexErr::UnsupportedOperation(
+                "supervised admission requires the local agent backend".into(),
+            ));
+        }
         let inherited_environments = captured_environments.or(inherited_environments);
         let session_source = session_source.unwrap_or_else(|| self.session_source.clone());
         // Older callers and saved reviewers identify isolation through their source.
@@ -2164,6 +2191,15 @@ impl ThreadManagerState {
             let mut threads = self.threads.write().await;
             if let Some(thread) = threads.get(&resumed.conversation_id).cloned() {
                 if thread.is_running() {
+                    let requested_reporting = thread_extension_init
+                        .get::<crate::agent::control::CompletionReporting>()
+                        .map(|reporting| *reporting)
+                        .unwrap_or_default();
+                    if thread.session.completion_reporting() != requested_reporting {
+                        return Err(CodexErr::InvalidRequest(
+                            crate::agent::control::LIVE_THREAD_REPORTING_MISMATCH.into(),
+                        ));
+                    }
                     if !thread.session.tool_policy.is_subset_of(&tool_policy) {
                         return Err(CodexErr::InvalidRequest(
                             LIVE_THREAD_TOOL_POLICY_MISMATCH.to_owned(),

@@ -71,7 +71,10 @@ async fn tui_mode_picker_saves_selected_config_without_changing_the_live_mode() 
         let saved: toml::Value = toml::from_str(&std::fs::read_to_string(&selected)?)?;
         assert_eq!(
             serde_json::to_value(saved)?,
-            serde_json::json!({"tui": {"animations": false, "fullscreen_transcript": enabled}})
+            serde_json::json!({"tui": {
+                "animations": false,
+                "fullscreen_transcript": enabled
+            }})
         );
         let reloaded = ConfigBuilder::default()
             .codex_home(home.path().to_path_buf())
@@ -85,6 +88,122 @@ async fn tui_mode_picker_saves_selected_config_without_changing_the_live_mode() 
         assert_eq!(reloaded.tui_fullscreen_transcript, enabled);
     }
     assert_eq!(std::fs::read_to_string(base)?, "# untouched base config\n");
+    Ok(())
+}
+
+#[tokio::test]
+async fn claude_tui_fullscreen_recovers_a_disabled_alternate_buffer_only_after_reload()
+-> anyhow::Result<()> {
+    let home = tempfile::tempdir()?;
+    let path = home.path().join("config.toml");
+    std::fs::write(
+        &path,
+        "[tui]\nalternate_screen = \"never\"\nanimations = false\n",
+    )?;
+    let (mut app, _events, _ops) = make_test_app_with_channels().await;
+    app.local_settings.user_config_path = AbsolutePathBuf::from_absolute_path(&path)?;
+    app.local_settings.tui.alternate_screen = codex_config::types::AltScreenMode::Never;
+    app.chat_widget.local_settings.tui.alternate_screen = codex_config::types::AltScreenMode::Never;
+    let before = (
+        app.local_settings.transcript_mode,
+        app.chat_widget.local_settings.transcript_mode,
+    );
+    app.save_fullscreen_transcript(/*enabled*/ true).await;
+    assert_eq!(
+        (
+            app.local_settings.transcript_mode,
+            app.chat_widget.local_settings.transcript_mode
+        ),
+        before,
+    );
+    assert_eq!(
+        app.local_settings.tui.alternate_screen,
+        codex_config::types::AltScreenMode::Never
+    );
+    assert_eq!(
+        app.chat_widget.local_settings.tui.alternate_screen,
+        codex_config::types::AltScreenMode::Never
+    );
+    let reloaded = ConfigBuilder::default()
+        .codex_home(home.path().to_path_buf())
+        .loader_overrides(LoaderOverrides {
+            ignore_project_config: true,
+            ..LoaderOverrides::without_managed_config_for_tests()
+        })
+        .build()
+        .await?;
+    assert_eq!(
+        (
+            reloaded.tui_fullscreen_transcript,
+            reloaded.tui_alternate_screen
+        ),
+        (true, codex_config::types::AltScreenMode::Auto),
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn claude_tui_fullscreen_preserves_saved_policies_when_launch_restrictions_disable_overlays()
+-> anyhow::Result<()> {
+    for (saved, saved_mode, no_alt_screen, terminal_app_over_ssh) in [
+        (
+            "always",
+            codex_config::types::AltScreenMode::Always,
+            true,
+            false,
+        ),
+        (
+            "auto",
+            codex_config::types::AltScreenMode::Auto,
+            false,
+            true,
+        ),
+    ] {
+        let home = tempfile::tempdir()?;
+        let path = home.path().join("config.toml");
+        std::fs::write(
+            &path,
+            format!("# preserved\n[tui]\nalternate_screen = \"{saved}\"\nanimations = false\n"),
+        )?;
+        let launch_uses_alt =
+            crate::determine_alt_screen_mode(no_alt_screen, saved_mode, terminal_app_over_ssh);
+        assert!(!launch_uses_alt);
+        let (mut app, _events, _ops) = make_test_app_with_channels().await;
+        app.local_settings.user_config_path = AbsolutePathBuf::from_absolute_path(&path)?;
+        // LocalSettings::for_tui represents disabled launch overlays as Never;
+        // the preference writer must not mistake that effective policy for disk state.
+        app.local_settings.tui.alternate_screen = codex_config::types::AltScreenMode::Never;
+        app.chat_widget.local_settings.tui.alternate_screen =
+            codex_config::types::AltScreenMode::Never;
+        app.local_settings.transcript_mode = crate::transcript_mode::TranscriptMode::resolve(
+            /*owned_enabled*/ true,
+            launch_uses_alt,
+        );
+        app.chat_widget.local_settings.transcript_mode = app.local_settings.transcript_mode;
+        let before = (
+            app.local_settings.clone(),
+            app.chat_widget.local_settings.clone(),
+        );
+        app.save_fullscreen_transcript(/*enabled*/ true).await;
+        let mut expected = before;
+        expected.0.tui.fullscreen_transcript = true;
+        expected.1.tui.fullscreen_transcript = true;
+        assert_eq!(
+            (&app.local_settings, &app.chat_widget.local_settings),
+            (&expected.0, &expected.1),
+        );
+        let contents = std::fs::read_to_string(&path)?;
+        let parsed: toml::Value = toml::from_str(&contents)?;
+        assert_eq!(
+            serde_json::to_value(parsed)?,
+            serde_json::json!({"tui": {
+                "animations": false,
+                "alternate_screen": saved,
+                "fullscreen_transcript": true,
+            }}),
+        );
+        assert!(contents.starts_with("# preserved\n"));
+    }
     Ok(())
 }
 

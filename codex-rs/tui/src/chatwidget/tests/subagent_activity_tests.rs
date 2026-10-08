@@ -119,7 +119,7 @@ async fn subagent_completion_preserves_stream_and_authoritative_answer() {
         );
         insta::allow_duplicates! {
             insta::assert_snapshot!(rendered, @"
-            • The top is PR #42.
+            ● The top is PR #42.
 
               Branch: feature/rollout.
 

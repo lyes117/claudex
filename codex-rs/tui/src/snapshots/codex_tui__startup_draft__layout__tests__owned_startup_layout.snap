@@ -3,18 +3,18 @@ source: tui/src/startup_draft_layout_tests.rs
 expression: "format!(\"cursor={:?}\\n{frame}\",\nlayout.cursor_pos(area)).replace(crate::version::CODEX_CLI_VERSION,\n\"<VERSION>\")"
 ---
 cursor=Some((13, 12))
-╭──────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                         │
-│ Pull up a prompt.                            │
-│ loading · Codex engine                       │
-│ loading                                      │
-│ /help commands · /tasks agents               │
-╰──────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex             
+ ██  ▄▄▄   loading                              
+  ▀████▀   loading                              
+                                                
+Pull up a prompt.                               
+/help commands · /tasks agents                  
+                                                
                                                 
                                                 
                                                 
 ────────────────────────────────────────────────
-› first line                                    
+❯ first line                                    
   second line                                   
 ────────────────────────────────────────────────
                                                 

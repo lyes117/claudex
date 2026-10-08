@@ -74,6 +74,7 @@ policy:
                 }],
             }),
             policy: Some(SkillPolicy {
+                claude_command: None,
                 allow_implicit_invocation: Some(false),
                 products: vec![Product::Codex, Product::Atlas],
             }),

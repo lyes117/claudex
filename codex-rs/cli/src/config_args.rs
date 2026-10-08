@@ -139,6 +139,8 @@ fn clear_descendant_config_overrides(cli: &mut MultitoolCli) {
         Subcommand::Sandbox(command) => command.config_overrides.raw_overrides.clear(),
         Subcommand::Apply(command) => command.config_overrides.raw_overrides.clear(),
         Subcommand::Agents(_)
+        | Subcommand::Memory(_)
+        | Subcommand::Workflow(_)
         | Subcommand::TcpTunnel(_)
         | Subcommand::Review(_)
         | Subcommand::AppServer(_)

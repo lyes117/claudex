@@ -2,12 +2,12 @@
 source: tui/src/app/tests/realtime_requests.rs
 expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
 ---
-╭──────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (v0.160.0)                           │ /help commands              │
-│ Welcome to Claudex                             │ /agents roles               │
-│ gpt-test · Codex engine                        │ /tasks session agents       │
-│ /tmp/project                                   │ /workflows runs             │
-╰──────────────────────────────────────────────────────────────────────────────╯
+  ▄████▄   Claudex v0.160.0 · Codex
+ ██  ▄▄▄   gpt-test
+  ▀████▀   /tmp/project
+
+Welcome to Claudex
+/help commands · /agents profiles · /tasks agents · /workflows runs
 
   To get started, describe a task or try one of these commands:
 
@@ -17,16 +17,16 @@ expression: "normalize_voice_snapshot_directory(&rendered, &app.config.cwd)"
   /model - choose what model and reasoning effort to use
   /review - review any changes and find issues
 
-› show <code> & tests
+❯ show <code> & tests
 
-• spoken answer
+● spoken answer
 
-› typed words
-
-
-› show <code> & tests
+❯ typed words
 
 
-› typed words
+❯ show <code> & tests
 
-• different caption
+
+❯ typed words
+
+● different caption

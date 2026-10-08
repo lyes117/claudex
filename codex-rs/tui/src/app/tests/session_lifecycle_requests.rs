@@ -311,7 +311,7 @@ pub(super) async fn start_recording_app_server_with_realtime_speech(
                     tokio_tungstenite::tungstenite::error::ProtocolError::ResetWithoutClosingHandshake,
                 )) => break,
                 Err(tokio_tungstenite::tungstenite::Error::Io(error))
-                    if matches!(error.kind(), std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionReset) => break,
+                    if matches!(error.kind(), std::io::ErrorKind::BrokenPipe | std::io::ErrorKind::ConnectionReset | std::io::ErrorKind::ConnectionAborted) => break,
                 _ => {}
             }
             let Message::Text(text) = frame? else {
@@ -2687,7 +2687,7 @@ async fn underfilled_scrollback_fetches_older_pages_without_opening_the_transcri
     app.handle_key_event(
         &mut tui,
         &mut app_server,
-        KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+        KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL),
     )
     .await;
     assert!(app.scrollback_has_older_history);

@@ -112,7 +112,7 @@ async fn global_chord_keeps_hints_and_completes_before_deadline() -> Result<()> 
             .replace(&test_path_display("/tmp/project"), "/tmp/project"),
         @"
     ────────────────────────────────────────────────────────────────────────────────
-    › Try a task, /help for commands, or @path for files
+    ❯ Try a task, /help for commands, or @path for files
     ────────────────────────────────────────────────────────────────────────────────
       ctrl+x then · ctrl+t open transcript · ctrl+u interrupt turn · esc cancel
     "

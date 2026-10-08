@@ -220,7 +220,7 @@ fn code_mode_output_shares_a_row_budget_across_blocks() {
       ⎿ Page title
         Navigation
         Main content
-        +3 lines (ctrl+t to view transcript)
+        +3 lines (ctrl+o to view transcript)
     ");
     let transcript = cell
         .transcript_lines(/*width*/ 100)
@@ -265,7 +265,7 @@ fn code_mode_output_preserves_trailing_failure_diagnostics_in_transcript() {
       ⎿ Script failed
         Page title
         Navigation
-        +6 lines (ctrl+t to view transcript)
+        +6 lines (ctrl+o to view transcript)
     ");
     let transcript = cell
         .transcript_lines(/*width*/ 80)

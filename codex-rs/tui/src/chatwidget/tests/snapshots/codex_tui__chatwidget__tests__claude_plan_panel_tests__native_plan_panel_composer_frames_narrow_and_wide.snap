@@ -1,0 +1,19 @@
+---
+source: tui/src/chatwidget/tests/claude_plan_panel_tests.rs
+expression: "frames.join(\"\\n\\n\")"
+---
+width=32
+Tasks · 0/1 complete
+◐ Verify native workflow 研 究
+────────────────────────────────
+❯ Review équipe 研 究
+────────────────────────────────
+  GPT-5.6-Sol default · C:\tmp\…
+
+width=80
+Tasks · 0/1 complete
+◐ Verify native workflow 研 究
+────────────────────────────────────────────────────────────────────────────────
+❯ Review équipe 研 究
+────────────────────────────────────────────────────────────────────────────────
+  GPT-5.6-Sol default · C:\tmp\project

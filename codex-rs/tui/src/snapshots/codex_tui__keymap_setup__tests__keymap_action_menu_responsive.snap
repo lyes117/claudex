@@ -6,7 +6,7 @@ expression: snapshot
 
   Edit Shortcut
   Open Transcript · Global
-  Current ctrl-t · Default keymap
+  Current ctrl-o · Default keymap
   Config `tui.keymap.global.open_transcript`
   Open the transcript overlay.
 
@@ -26,18 +26,18 @@ expression: snapshot
 
   Edit Shortcut
   Open Transcript · Global
-  Current ctrl-t · Default keymap
+  Current ctrl-o · Default keymap
   Config `tui.keymap.global.open_transcript`
   Open the transcript overlay.
 
 
 › 1. Replace binding                   Capture a replacement key
-                                       for `ctrl-t`
-  2. Add alternate binding             Keep `ctrl-t` and add
+                                       for `ctrl-o`
+  2. Add alternate binding             Keep `ctrl-o` and add
                                        another key
-  3. Replace with key chord            Replace `ctrl-t` with a
+  3. Replace with key chord            Replace `ctrl-o` with a
                                        two-stroke key chord
-  4. Add alternate key chord           Keep `ctrl-t` and add a
+  4. Add alternate key chord           Keep `ctrl-o` and add a
                                        two-stroke key chord
   –  Remove custom binding (disabled)  No custom root override
                                        to remove
@@ -51,15 +51,15 @@ expression: snapshot
 
   Edit Shortcut
   Open Transcript · Global
-  Current ctrl-t · Default keymap
+  Current ctrl-o · Default keymap
   Config `tui.keymap.global.open_transcript`
   Open the transcript overlay.
 
 
-› 1. Replace binding                   Capture a replacement key for `ctrl-t`
-  2. Add alternate binding             Keep `ctrl-t` and add another key
-  3. Replace with key chord            Replace `ctrl-t` with a two-stroke key chord
-  4. Add alternate key chord           Keep `ctrl-t` and add a two-stroke key chord
+› 1. Replace binding                   Capture a replacement key for `ctrl-o`
+  2. Add alternate binding             Keep `ctrl-o` and add another key
+  3. Replace with key chord            Replace `ctrl-o` with a two-stroke key chord
+  4. Add alternate key chord           Keep `ctrl-o` and add a two-stroke key chord
   –  Remove custom binding (disabled)  No custom root override to remove
   5. Back to shortcuts                 Return to the shortcut list
 

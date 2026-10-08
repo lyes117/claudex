@@ -329,12 +329,13 @@ async fn websocket_first_turn_uses_startup_prewarm_and_create(
         .body_json();
     let turn = connection.get(1).expect("missing turn request").body_json();
     assert_eq!(warmup["instructions"], turn["instructions"]);
+    // ponytail: the session base is the shared Claude Code default, which carries
+    // no update_plan checklist regardless of the toggle.
     assert_eq!(
         warmup["instructions"]
             .as_str()
-            .expect("warmup base instructions")
-            .contains("update_plan"),
-        update_plan_enabled
+            .expect("warmup base instructions"),
+        codex_prompts::claude_base_instructions()
     );
     assert_eq!(warmup["type"].as_str(), Some("response.create"));
     assert_eq!(warmup["generate"].as_bool(), Some(false));

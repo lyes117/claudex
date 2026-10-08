@@ -9,7 +9,7 @@ Conversation
   breakdown.
                                                   ⚠ 5h limit: 8% left · /status
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   ? for shortcuts                                      ⚠ 1 warning · f2 to view
@@ -19,11 +19,11 @@ Conversation
 ⚠ Heads up, you have less than 5% of your 5h limit left. Run /status for a
   breakdown.
 
-• Working (0s • esc to interrupt)
+● Working (0s • esc to interrupt)
 
                                              ⚠ 5h limit: only 2% left · /status
 ────────────────────────────────────────────────────────────────────────────────
-› draft stays
+❯ draft stays
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   tab to queue message
@@ -31,11 +31,11 @@ Conversation
 32 columns, 10 rows, running=true, queued=false
   Run /status for a breakdown.
 
-• Working (0s • esc to interrup…
+● Working (0s • esc to interrup…
 
                   ⚠ 5h <1% left
 ────────────────────────────────
-› draft stays
+❯ draft stays
 ────────────────────────────────
   GPT-5.6-Sol default · /tmp/pr…
   tab to queue message
@@ -43,11 +43,11 @@ Conversation
 18 columns, 10 rows, running=true, queued=false
   a breakdown.
 
-• Working (0s • e…
+● Working (0s • e…
 
      ⚠ 5h 5% left
 ──────────────────
-› draft stays
+❯ draft stays
 ──────────────────
   GPT-5.6-Sol def…
   tab to queue mes
@@ -59,36 +59,36 @@ Conversation row 19
 ⚠ Heads up, you have less than 5% of your 5h limit left. Run /status for a
   breakdown.
 
-• Working (0s • esc to interrupt)
+● Working (0s • esc to interrupt)
 
 • Queued follow-up inputs
   ↳ queued follow-up
     shift+← edit last queued message
                                              ⚠ 5h limit: only 2% left · /status
 ────────────────────────────────────────────────────────────────────────────────
-› draft stays
+❯ draft stays
   second line
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   tab to queue message
 
 80 columns, 11 rows, running=true, queued=true
-• Working (0s • esc to interrupt)
+● Working (0s • esc to interrupt)
 
 • Queued follow-up inputs
   ↳ queued follow-up
     shift+← edit last queued message
 ────────────────────────────────────────────────────────────────────────────────
-› draft stays
+❯ draft stays
   second line
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   tab to queue message
 
 80 columns, 6 rows, running=true, queued=false
-• Working (0s • esc to interrupt)
+● Working (0s • esc to interrupt)
 ────────────────────────────────────────────────────────────────────────────────
-› draft stays
+❯ draft stays
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   tab to queue message

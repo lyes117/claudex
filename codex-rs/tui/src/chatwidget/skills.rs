@@ -23,14 +23,14 @@ use codex_utils_plugins::mention_syntax::TOOL_MENTION_SIGIL;
 
 impl ChatWidget {
     pub(crate) fn open_skills_list(&mut self) {
-        self.insert_str("$");
+        self.insert_str("/");
     }
 
     pub(crate) fn open_skills_menu(&mut self) {
         let items = vec![
             SelectionItem {
                 name: "List skills".to_string(),
-                description: Some("Tip: press $ to open this list directly".to_string()),
+                description: Some("Tip: press /; skills follow the native commands".to_string()),
                 actions: vec![Box::new(|tx| {
                     tx.send(AppEvent::OpenSkillsList);
                 })],

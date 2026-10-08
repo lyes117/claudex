@@ -2,6 +2,61 @@ use super::*;
 use pretty_assertions::assert_eq;
 
 #[test]
+fn native_memory_marker_alone_preserves_legacy_without_editing_claude_files() {
+    let profile = tempfile::tempdir().unwrap();
+    let home = profile.path().join(".claude");
+    let memory = profile.path().join("legacy-memory");
+    let helper = profile.path().join("other-plugin");
+    fs::create_dir_all(home.join("plugins")).unwrap();
+    fs::create_dir(&memory).unwrap();
+    fs::create_dir(&helper).unwrap();
+    let settings = serde_json::json!({"enabledPlugins":{
+        "claude-mem@thedotmack":true,"other@marketplace":true}})
+    .to_string();
+    let registry = serde_json::json!({"plugins":{
+        "claude-mem@thedotmack":[{"installPath":memory}],
+        "other@marketplace":[{"installPath":helper}]}})
+    .to_string();
+    fs::write(home.join("settings.json"), &settings).unwrap();
+    fs::write(home.join("plugins/installed_plugins.json"), &registry).unwrap();
+    let original = vec![
+        ("claude-mem@thedotmack".into(), memory),
+        ("other@marketplace".into(), helper.clone()),
+    ];
+    assert_eq!(
+        plugins_for_scope_in_home(&home, /*include_user*/ true, &home).unwrap(),
+        original
+    );
+    fs::create_dir_all(profile.path().join(".claudex/memory")).unwrap();
+    fs::write(
+        profile.path().join(".claudex/memory/native-active.json"),
+        r#"{"version":1,"active":true,"pluginId":"claude-mem@claudex-memory"}"#,
+    )
+    .unwrap();
+    assert_eq!(
+        plugins_for_scope_in_home(&home, /*include_user*/ true, &home).unwrap(),
+        original
+    );
+    let project = profile.path().join("project");
+    fs::create_dir(&project).unwrap();
+    fs::create_dir(project.join(".git")).unwrap();
+    fs::create_dir(project.join(".claude")).unwrap();
+    fs::write(project.join(".claude/settings.json"), &settings).unwrap();
+    assert_eq!(
+        plugins_for_scope_in_home(&project.join(".claude"), /*include_user*/ false, &home).unwrap(),
+        original
+    );
+    assert_eq!(
+        fs::read_to_string(home.join("settings.json")).unwrap(),
+        settings
+    );
+    assert_eq!(
+        fs::read_to_string(home.join("plugins/installed_plugins.json")).unwrap(),
+        registry
+    );
+}
+
+#[test]
 fn native_skills_and_ignored_user_plugins_keep_their_scope() {
     assert!(!is_markdown_source(Path::new(
         ".agents/skills/example/SKILL.md"

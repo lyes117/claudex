@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { isDeepStrictEqual } from 'node:util';
 import { atomic, cleanLabel, createRunController, listRuns, readRun, sendControl, validRunId, WorkflowStopped } from './workflow-control.mjs';
+import { executionProfile as validateExecutionProfile, profileIdentity, childExecutionProfile } from './workflow-execution-profile.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
@@ -51,6 +52,8 @@ async function executeAgent(prompt, options, context) {
   if (!executable || !existsSync(executable)) throw new Error('CLAUDEX_BIN must point to the compiled fork');
   const output = join(context.directory, `${context.index}.output.txt`);
   const args = ['exec', '--skip-git-repo-check', '--output-last-message', output, '-C', context.cwd];
+  const profile = childExecutionProfile(context.executionProfile);
+  args.push(...profile.args);
   if (options.schema) {
     const schema = join(context.directory, `${context.index}.schema.json`);
     atomic(schema, options.schema);
@@ -58,7 +61,7 @@ async function executeAgent(prompt, options, context) {
   }
   args.push('-');
   return new Promise((fulfill, reject) => {
-    const child = spawn(executable, args, { cwd: context.cwd, windowsHide: true, stdio: ['pipe', 'ignore', 'ignore'] });
+    const child = spawn(executable, args, { cwd: context.cwd, windowsHide: true, stdio: ['pipe', 'ignore', 'ignore'], ...profile.spawnOptions });
     const terminate = () => { if (process.platform === 'win32') spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' }); else child.kill('SIGTERM'); };
     let persistenceError;
     child.stdin.on('error', error => { persistenceError ||= error; terminate(); });
@@ -79,7 +82,9 @@ async function executeAgent(prompt, options, context) {
   });
 }
 
-export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId = randomUUID(), runsRoot = join(homedir(), '.claudex', 'workflow-runs'), execute = executeAgent, nativeLockHeld = false, log = message => process.stderr.write(`${message}\n`) }) {
+export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId = randomUUID(), runsRoot = join(homedir(), '.claudex', 'workflow-runs'), execute = executeAgent, executionProfile = 'inherit', nativeLockHeld = false, log = message => process.stderr.write(`${message}\n`) }) {
+  executionProfile = validateExecutionProfile(executionProfile);
+  const profileFields = profileIdentity(executionProfile);
   if (!validRunId(runId)) throw new Error('Invalid run ID');
   const script = readFileSync(resolve(scriptPath), 'utf8');
   const directory = join(resolve(runsRoot), runId);
@@ -104,10 +109,10 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
   let controller;
   let finalStatus = 'failed';
   try {
-    const fingerprint = hash({ script, args, cwd: resolve(cwd) });
-    const identity = hash({ args, cwd: resolve(cwd) });
+    const fingerprint = hash({ script, args, cwd: resolve(cwd), ...profileFields });
+    const identity = hash({ args, cwd: resolve(cwd), ...profileFields });
     const state = existsSync(checkpoint) ? JSON.parse(readFileSync(checkpoint, 'utf8')) : { fingerprint, identity, results: [] };
-    if (state.identity ? state.identity !== identity : state.fingerprint !== fingerprint) throw new Error('Arguments or cwd changed, or legacy checkpoint cannot replay edited script; use a new run ID');
+    if (state.identity ? state.identity !== identity : state.fingerprint !== fingerprint) throw new Error('Arguments, cwd or execution profile changed, or legacy checkpoint cannot replay edited script; use a new run ID');
     if (!Array.isArray(state.results) || state.results.length > 1000) throw new Error('Malformed workflow checkpoint');
     controller = createRunController(directory, { runId, scriptPath: resolve(scriptPath), cwd: resolve(cwd) });
     let replayInvalidated = false;
@@ -119,7 +124,7 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
       validateSchema(options.schema);
       const position = index++;
       if (position >= 1000) throw new Error('1000-agent run limit');
-      const key = hash({ prompt, options });
+      const key = hash({ prompt, options, ...profileFields });
       const phase = cleanLabel(options.phase || controller.state.phase || '');
       try {
         controller.agent(position, { index: position, label: cleanLabel(options.label || `Agent ${position + 1}`), phase, status: 'pending' });
@@ -139,7 +144,7 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
         let result;
         let failed = false;
         try {
-          result = await execute(prompt, options, { index: position, directory, cwd: resolve(cwd), signal: controller.signal, registerChild: pid => { children.add(pid); updateLock(); }, unregisterChild: pid => { children.delete(pid); updateLock(); } });
+          result = await execute(prompt, options, { index: position, directory, cwd: resolve(cwd), executionProfile, signal: controller.signal, registerChild: pid => { children.add(pid); updateLock(); }, unregisterChild: pid => { children.delete(pid); updateLock(); } });
           if (options.schema) validate(result, options.schema);
         } catch {
           result = null; failed = true;
@@ -189,7 +194,7 @@ export async function runWorkflow({ scriptPath, args, cwd = process.cwd(), runId
 
 async function main() {
   const [scriptPath, ...rest] = process.argv.slice(2);
-  if (!scriptPath || scriptPath === '--help') { console.log('claudex workflow <script.js> [--args JSON|@file] [--run-id ID] [--cwd PATH]\nclaudex workflow list|status <ID>|pause <ID>|resume <ID>|stop <ID>\nTrusted scripts; agents run sequentially through the compiled Codex fork.'); return; }
+  if (!scriptPath || scriptPath === '--help') { console.log('claudex workflow <script.js> [--args JSON|@file] [--run-id ID] [--cwd PATH] [--execution-profile inherit|text-only]\nclaudex workflow list|status <ID>|pause <ID>|resume <ID>|stop <ID>\nTrusted scripts; agents run sequentially through the compiled Codex fork. text-only requests no-tools ephemeral agents; managed policies still apply.'); return; }
   const runsRoot = join(homedir(), '.claudex', 'workflow-runs');
   if (scriptPath === 'list') { console.log(JSON.stringify(listRuns(runsRoot), null, 2)); return; }
   if (scriptPath === 'status') { console.log(JSON.stringify(readRun(runsRoot, rest[0]), null, 2)); return; }
@@ -205,6 +210,7 @@ async function main() {
     if (key === '--args') options.args = JSON.parse(value.startsWith('@') ? readFileSync(value.slice(1), 'utf8') : value);
     else if (key === '--run-id') options.runId = value;
     else if (key === '--cwd') options.cwd = resolve(value);
+    else if (key === '--execution-profile') options.executionProfile = validateExecutionProfile(value);
     else throw new Error(`Unknown option ${key}`);
   }
   console.log(JSON.stringify(await runWorkflow(options)));

@@ -2,7 +2,7 @@
 source: tui/src/app/tests/math_interruption_tests.rs
 expression: rendered
 ---
-• Intro.
+● Intro.
 
   $$
   \frac{a+b+c+d+e+f}

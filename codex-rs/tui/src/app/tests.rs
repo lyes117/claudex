@@ -1,5 +1,8 @@
 //! App-level orchestration tests for the TUI.
 
+#[path = "tests/claude_command_deadline_tests.rs"]
+mod claude_command_deadline;
+
 #[path = "tests/daybreak_tests.rs"]
 mod daybreak_tests;
 #[path = "tests/math_interruption_tests.rs"]
@@ -6641,7 +6644,7 @@ async fn capped_resize_reflow_renders_recent_suffix_only() {
             .map(rendered_line_text)
             .collect::<Vec<_>>(),
         vec![
-            "Earlier messages are available — press ctrl+t to view the full transcript".to_string(),
+            "Earlier messages are available — press ctrl+o to view the full transcript".to_string(),
             String::new(),
             "cell 18".to_string(),
             String::new(),

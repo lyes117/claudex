@@ -1965,6 +1965,7 @@ async fn run_ratatui_app(
         prompt,
         shared,
         daemon_cli_executable,
+        native_workflow,
         ..
     } = cli;
     let images = shared.into_inner().images;
@@ -2056,6 +2057,7 @@ async fn run_ratatui_app(
         startup_draft,
         managed_worktree,
         daemon_cli_executable,
+        native_workflow,
     ))
     .await;
 

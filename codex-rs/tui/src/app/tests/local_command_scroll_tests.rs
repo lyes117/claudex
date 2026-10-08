@@ -350,20 +350,8 @@ async fn copy_shortcut_reveals_its_feedback_without_changing_the_draft() -> Resu
     while events.try_recv().is_ok() {}
 
     // No response avoids the host clipboard while exercising the real shortcut route.
-    app.handle_tui_event(
-        &mut tui,
-        &mut server,
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
-    )
-    .await?;
-    assert!(!app.transcript_view.is_following());
-    // The default copy shortcut is a chord; its prefix alone must not move the viewport.
-    app.handle_tui_event(
-        &mut tui,
-        &mut server,
-        TuiEvent::Key(KeyCode::Char('o').into()),
-    )
-    .await?;
+    app.handle_tui_event(&mut tui, &mut server, TuiEvent::Key(KeyCode::F(6).into()))
+        .await?;
     while let Ok(event) = events.try_recv() {
         app.handle_event(&mut tui, &mut server, event).await?;
     }

@@ -3,6 +3,8 @@ mod lifecycle;
 mod regular;
 mod review;
 mod user_shell;
+mod workflow;
+pub(crate) use workflow::WorkflowTask;
 
 use std::sync::Arc;
 use std::time::Duration;

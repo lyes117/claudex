@@ -70,6 +70,14 @@ pub enum ConfigEdit {
         segments: Vec<String>,
         value: TomlItem,
     },
+    /// Replace an existing string only if its persisted value still matches.
+    /// The condition is evaluated against the document read for this transaction,
+    /// so runtime overrides and stale configuration snapshots cannot rewrite it.
+    SetPathIfString {
+        segments: Vec<String>,
+        expected: String,
+        value: TomlItem,
+    },
     /// Remove the value stored at the exact dotted path.
     ClearPath { segments: Vec<String> },
 }
@@ -324,6 +332,21 @@ impl ConfigDocument {
                     }
                 }
                 Ok(self.insert(segments, value.clone()))
+            }
+            ConfigEdit::SetPathIfString {
+                segments,
+                expected,
+                value,
+            } => {
+                let mut existing = Some(self.doc.as_item());
+                for segment in segments {
+                    existing = existing.and_then(|item| item.as_table_like()?.get(segment));
+                }
+                if existing.and_then(TomlItem::as_str) == Some(expected.as_str()) {
+                    Ok(self.insert(segments, value.clone()))
+                } else {
+                    Ok(false)
+                }
             }
             ConfigEdit::ClearPath { segments } => {
                 let preserves_broker_settings = is_structured_feature_path(segments)
@@ -987,3 +1010,7 @@ impl ConfigEditsBuilder {
 #[cfg(test)]
 #[path = "edit_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "edit_conditional_tests.rs"]
+mod conditional_tests;

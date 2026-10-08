@@ -60,6 +60,11 @@ fix *args:
 clippy *args:
     cargo clippy --tests {args}
 
+# Build from the repo root (the cargo workspace lives in codex-rs/):
+# e.g. `just build -p codex-cli` for the CLI binary.
+build *args:
+    cargo build {args}
+
 [unix]
 install:
     rustup show active-toolchain

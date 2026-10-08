@@ -96,6 +96,8 @@ pub struct TuiGlobalKeymap {
     pub open_agents: Option<KeybindingsSpec>,
     /// Open the transcript overlay.
     pub open_transcript: Option<KeybindingsSpec>,
+    /// Show or hide the latest native plan checklist above the composer.
+    pub toggle_plan_checklist: Option<KeybindingsSpec>,
     /// Find text in the full transcript.
     pub find_transcript: Option<KeybindingsSpec>,
     /// Focus activity groups in the owned transcript to inspect their details.

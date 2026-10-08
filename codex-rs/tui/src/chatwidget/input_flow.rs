@@ -40,6 +40,7 @@ impl ChatWidget {
             InputResult::Submitted { .. }
             | InputResult::Queued { .. }
             | InputResult::ParentOwnedInputBlocked
+            | InputResult::ClaudeCommand(_)
             | InputResult::None => false,
         };
         if follow_transcript {
@@ -109,6 +110,13 @@ impl ChatWidget {
             InputResult::ParentOwnedInputBlocked => {
                 self.add_error_message(PARENT_OWNED_INPUT_MESSAGE.to_string());
             }
+            InputResult::ClaudeCommand(request) => {
+                self.app_event_tx.send(AppEvent::ExpandClaudeCommand {
+                    thread_id: self.thread_id,
+                    cwd: self.config.cwd.clone(),
+                    request,
+                });
+            }
             InputResult::None => {}
         }
         if had_modal_or_popup && self.bottom_pane.no_modal_or_popup_active() {
@@ -165,6 +173,23 @@ impl ChatWidget {
         pending_pastes: Vec<(String, String)>,
         source: UserMessageSource,
     ) -> bool {
+        self.queue_user_message_with_history(
+            user_message,
+            action,
+            pending_pastes,
+            source,
+            UserMessageHistoryRecord::UserMessageText,
+        )
+    }
+
+    pub(super) fn queue_user_message_with_history(
+        &mut self,
+        user_message: UserMessage,
+        action: QueuedInputAction,
+        pending_pastes: Vec<(String, String)>,
+        source: UserMessageSource,
+        history_record: UserMessageHistoryRecord,
+    ) -> bool {
         if self.has_misalignment_policy_violation() {
             return false;
         }
@@ -212,7 +237,7 @@ impl ChatWidget {
                 });
             self.input_queue
                 .queued_user_message_history_records
-                .push_back(UserMessageHistoryRecord::UserMessageText);
+                .push_back(history_record);
             self.refresh_pending_input_preview();
             if model_prompt && !should_run_now {
                 self.bottom_pane.clear_pending_questions();
@@ -224,7 +249,7 @@ impl ChatWidget {
         } else {
             self.submit_user_message_with_history_and_shell_escape_policy(
                 user_message,
-                UserMessageHistoryRecord::UserMessageText,
+                history_record,
                 ShellEscapePolicy::Allow,
                 source,
             )

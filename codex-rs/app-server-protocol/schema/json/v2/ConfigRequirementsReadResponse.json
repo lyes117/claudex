@@ -616,6 +616,17 @@
                 "null"
               ]
             },
+            "args": {
+              "default": null,
+              "description": "Null retains shell execution; a list uses executable plus literal argv.",
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
+            },
             "async": {
               "type": "boolean"
             },

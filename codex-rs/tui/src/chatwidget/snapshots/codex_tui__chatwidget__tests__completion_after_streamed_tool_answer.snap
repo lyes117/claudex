@@ -2,9 +2,9 @@
 source: tui/src/chatwidget/tests/completion_styling_tests.rs
 expression: text
 ---
-• Ran echo ready
-  └ ready
+● Ran echo ready
+  ⎿ ready
 
-• The change is ready.
+● The change is ready.
 
   Worked for [duration] • [completion time]

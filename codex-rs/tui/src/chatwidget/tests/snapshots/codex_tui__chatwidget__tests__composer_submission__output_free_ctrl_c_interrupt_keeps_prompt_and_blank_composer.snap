@@ -4,7 +4,7 @@ expression: "format!(\"history:\\n{interrupted_history}\\ncomposer:\\n{}\",\ncha
 ---
 history:
 
-› revise this prompt
+❯ revise this prompt
 
 
 ■ Conversation interrupted - use /feedback if something went wrong

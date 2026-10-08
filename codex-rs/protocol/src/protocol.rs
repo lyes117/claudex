@@ -583,11 +583,23 @@ pub struct AdditionalContextEntry {
     pub kind: AdditionalContextKind,
 }
 
+/// Explicit native workflow submission. Script authority comes from the owning thread.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WorkflowRunRequest {
+    pub script_path: PathBuf,
+    pub args: serde_json::Value,
+    pub run_id: String,
+}
+
 /// Submission operation
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 #[non_exhaustive]
 pub enum Op {
+    /// Execute a workflow in the native session without asking a model to dispatch it.
+    RunWorkflow { request: WorkflowRunRequest },
+
     /// Abort current task without terminating background terminal processes.
     /// This server sends [`EventMsg::TurnAborted`] in response.
     Interrupt,
@@ -932,6 +944,7 @@ impl InterAgentCommunication {
 impl Op {
     pub fn kind(&self) -> &'static str {
         match self {
+            Self::RunWorkflow { .. } => "run_workflow",
             Self::Interrupt => "interrupt",
             Self::InterruptIfNoPendingInput { .. } => "interrupt_if_no_pending_input",
             Self::CleanBackgroundTerminals => "clean_background_terminals",

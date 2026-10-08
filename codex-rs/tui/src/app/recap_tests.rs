@@ -718,11 +718,11 @@ async fn recap_history_uses_one_separator_before_following_message() {
         .map(|line| line.line.to_string())
         .collect::<Vec<_>>()
         .join("\n");
-    insta::assert_snapshot!(rendered, @r"
+    insta::assert_snapshot!(rendered, @"
       ↳ Recap: The draft is ready.
                Next: Review the changes.
 
-    • Follow-up response.
+    ● Follow-up response.
     ");
 }
 

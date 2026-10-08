@@ -112,12 +112,12 @@ alias(
             "@rusty_v8_150_4_0_%s_unknown_linux_gnu_archive//file" % arch,
         ],
         outs = ["libv8_150_4_0_%s_unknown_linux_gnu_prebuilt.a" % arch],
-        cmd = """
-            gzip -dc "$(location @rusty_v8_150_4_0_%s_unknown_linux_gnu_archive//file)" > "$@.unadjusted"
-            $(location @llvm//tools:llvm-objcopy) \
-                --weaken-symbols="$(location :gnu_libcxx_shared_exception_symbols.txt)" \
-                "$@.unadjusted" "$@"
-            rm "$@.unadjusted"
+        cmd = """\r
+            gzip -dc "$(location @rusty_v8_150_4_0_%s_unknown_linux_gnu_archive//file)" > "$@.unadjusted"\r
+            $(location @llvm//tools:llvm-objcopy) \\\r
+                --weaken-symbols="$(location :gnu_libcxx_shared_exception_symbols.txt)" \\\r
+                "$@.unadjusted" "$@"\r
+            rm "$@.unadjusted"\r
         """ % arch,
         tools = ["@llvm//tools:llvm-objcopy"],
     )

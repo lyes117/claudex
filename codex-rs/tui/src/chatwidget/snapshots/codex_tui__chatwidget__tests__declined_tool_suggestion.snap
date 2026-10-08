@@ -3,6 +3,6 @@ source: tui/src/chatwidget/tests/app_server.rs
 expression: normalize_snapshot_paths(popup)
 ---
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project

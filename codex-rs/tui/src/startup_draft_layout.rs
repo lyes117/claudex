@@ -1,5 +1,6 @@
 //! First-frame owned layout: the banner stays at the top and the normal composer at the bottom.
 //! Measurement, paint, and cursor placement use the same bottom rectangle, including both footers.
+//! Short viewports choose a compact banner before painting; the composer keeps its full rectangle.
 //! Only a new conversation paints decoration in the unused area, so it cannot enter scrollback.
 
 use crossterm::cursor::SetCursorStyle;
@@ -53,7 +54,11 @@ impl<'a> OwnedStartupLayout<'a> {
 impl Renderable for OwnedStartupLayout<'_> {
     fn render(&self, area: Rect, buf: &mut Buffer) {
         let bottom = self.bottom_area(area);
-        let lines = self.pump.header.display_hyperlink_lines(area.width);
+        let lines = crate::history_cell::startup_header_lines(
+            self.pump.header.as_ref(),
+            area.width,
+            bottom.y.saturating_sub(area.y),
+        );
         let paragraph = HyperlinkParagraph::new(&lines, Style::default());
         let header = Rect {
             height: u16::try_from(paragraph.line_count(area.width))

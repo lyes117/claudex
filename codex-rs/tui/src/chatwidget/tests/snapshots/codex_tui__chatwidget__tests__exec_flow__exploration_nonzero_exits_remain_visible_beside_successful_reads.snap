@@ -2,8 +2,8 @@
 source: tui/src/chatwidget/tests/exec_flow.rs
 expression: active_blob(&chat)
 ---
-• Explored
-  └ Read first.txt
+● Explored
+  ⎿ Read first.txt
     Read missing.txt (exit 1)
     Read later.txt
     Search absent in . (exit 1)

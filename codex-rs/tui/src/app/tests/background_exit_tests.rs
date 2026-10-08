@@ -88,7 +88,7 @@ async fn external_writer_view_preserves_draft_from_keys_and_paste() -> Result<()
     app.handle_tui_event(
         &mut tui,
         &mut app_server,
-        TuiEvent::Key(KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL)),
+        TuiEvent::Key(KeyEvent::new(KeyCode::Char('o'), KeyModifiers::CONTROL)),
     )
     .await?;
     assert!(app.overlay.is_some());

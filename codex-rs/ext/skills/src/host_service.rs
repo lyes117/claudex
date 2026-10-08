@@ -45,37 +45,9 @@ struct ConfigSkillsCacheEntry {
     snapshot: Arc<OnceCell<HostSkillsSnapshot>>,
 }
 
-#[derive(Debug, Clone)]
-pub struct HostSkillsLoadInput {
-    cwd: AbsolutePathBuf,
-    effective_skill_roots: Vec<PluginSkillRoot>,
-    config_layer_stack: ConfigLayerStack,
-    plugin_skill_snapshots: Option<SkillRootSnapshots<PluginSkillRoot>>,
-}
-
-impl HostSkillsLoadInput {
-    pub fn new(
-        cwd: AbsolutePathBuf,
-        effective_skill_roots: Vec<PluginSkillRoot>,
-        config_layer_stack: ConfigLayerStack,
-    ) -> Self {
-        Self {
-            cwd,
-            effective_skill_roots,
-            config_layer_stack,
-            plugin_skill_snapshots: None,
-        }
-    }
-
-    /// Attaches plugin skill snapshots parsed during plugin loading, when available.
-    pub fn with_plugin_skill_snapshots(
-        mut self,
-        plugin_skill_snapshots: Option<SkillRootSnapshots<PluginSkillRoot>>,
-    ) -> Self {
-        self.plugin_skill_snapshots = plugin_skill_snapshots;
-        self
-    }
-}
+#[path = "host_input.rs"]
+mod host_input;
+pub use host_input::HostSkillsLoadInput;
 
 /// Owns host skill discovery, immutable snapshots, cache invalidation, and extra roots.
 ///
@@ -229,6 +201,9 @@ impl HostSkillsService {
             &input.cwd,
             input.effective_skill_roots.clone(),
             self.extra_roots(),
+            input.legacy_plugin_selection.unwrap_or_default(),
+            #[cfg(test)]
+            input.home_dir_override.as_ref(),
         )
         .await;
         if !bundled_skills_enabled {
@@ -249,7 +224,9 @@ impl HostSkillsService {
             self.ensure_system_skills_installed();
         }
         let use_cwd_cache = fs.is_some();
-        let cache_snapshot_by_cwd = use_cwd_cache && input.effective_skill_roots.is_empty();
+        let cache_snapshot_by_cwd = use_cwd_cache
+            && input.effective_skill_roots.is_empty()
+            && input.legacy_plugin_selection.is_none();
         if cache_snapshot_by_cwd
             && !force_reload
             && let Some(snapshot) = self.cached_snapshot_for_cwd(&input.cwd)
@@ -263,6 +240,9 @@ impl HostSkillsService {
             &input.cwd,
             input.effective_skill_roots.clone(),
             self.extra_roots(),
+            input.legacy_plugin_selection.unwrap_or_default(),
+            #[cfg(test)]
+            input.home_dir_override.as_ref(),
         )
         .await;
         if !bundled_skills_enabled {

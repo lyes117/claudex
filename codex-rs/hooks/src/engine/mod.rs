@@ -1,4 +1,6 @@
+mod command_args;
 pub(crate) mod command_runner;
+mod construction;
 pub(crate) mod discovery;
 pub(crate) mod dispatcher;
 pub(crate) mod mcp_runner;
@@ -27,10 +29,8 @@ use crate::events::user_prompt_submit::UserPromptSubmitOutcome;
 use crate::events::user_prompt_submit::UserPromptSubmitRequest;
 use crate::mcp::HookMcpExecutor;
 use crate::output_spill::AdditionalContextLimit;
-use codex_config::ConfigLayerStack;
 use codex_config::HookHandlerConfig;
 use codex_plugin::ExecutorPluginHookSource;
-use codex_plugin::PluginHookSource;
 use codex_plugin::PluginId;
 use codex_protocol::protocol::HookEventName;
 use codex_protocol::protocol::HookExecutionMode;
@@ -116,6 +116,7 @@ impl std::fmt::Display for HandlerSourcePath {
 pub(crate) enum ConfiguredHandlerKind {
     Command {
         command: String,
+        args: Option<Vec<String>>,
         env: HashMap<String, String>,
         r#async: bool,
     },
@@ -191,8 +192,15 @@ impl ConfiguredHandler {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HookListEntryHandler {
-    Command { command: String, r#async: bool },
-    McpTool { server: String, tool: String },
+    Command {
+        command: String,
+        args: Option<Vec<String>>,
+        r#async: bool,
+    },
+    McpTool {
+        server: String,
+        tool: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -226,47 +234,6 @@ pub(crate) struct ClaudeHooksEngine {
 }
 
 impl ClaudeHooksEngine {
-    pub(crate) fn new(
-        enabled: bool,
-        bypass_hook_trust: bool,
-        config_layer_stack: Option<&ConfigLayerStack>,
-        plugin_hook_sources: Vec<PluginHookSource>,
-        plugin_hook_load_warnings: Vec<String>,
-        command_runtime: CommandHookRuntime,
-        mcp_executor: Arc<dyn HookMcpExecutor>,
-    ) -> Self {
-        if !enabled && plugin_hook_sources.is_empty() {
-            return Self {
-                handlers: Vec::new(),
-                warnings: Vec::new(),
-                required_load_errors: Vec::new(),
-                command_runtime,
-                mcp_executor,
-            };
-        }
-
-        let _ = schema_loader::generated_hook_schemas();
-        let mut discovered = discovery::discover_handlers(
-            config_layer_stack,
-            plugin_hook_sources,
-            plugin_hook_load_warnings,
-            bypass_hook_trust,
-        );
-        if !enabled {
-            discovered.handlers.retain(|handler| handler.builtin);
-            // Disabled ordinary hooks must not emit warnings or reject session startup.
-            discovered.warnings.clear();
-            discovered.required_load_errors.clear();
-        }
-        Self {
-            handlers: discovered.handlers,
-            warnings: discovered.warnings,
-            required_load_errors: discovered.required_load_errors,
-            command_runtime,
-            mcp_executor,
-        }
-    }
-
     pub(crate) fn warnings(&self) -> &[String] {
         &self.warnings
     }

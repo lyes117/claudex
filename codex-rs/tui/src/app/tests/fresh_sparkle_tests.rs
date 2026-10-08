@@ -316,13 +316,13 @@ async fn overlays_shortcuts_and_key_chords_leave_the_main_sparkle_untouched() ->
         );
     }
 
-    app.handle_tui_event(&mut tui, &mut server, TuiEvent::Key(ctrl('t')))
+    app.handle_tui_event(&mut tui, &mut server, TuiEvent::Key(ctrl('o')))
         .await?;
     assert!(app.overlay.is_some());
     for event in [
         TuiEvent::Key(KeyCode::Char('j').into()),
         TuiEvent::Paste("overlay input".into()),
-        TuiEvent::Key(ctrl('t')),
+        TuiEvent::Key(ctrl('o')),
     ] {
         app.handle_tui_event(&mut tui, &mut server, event).await?;
     }

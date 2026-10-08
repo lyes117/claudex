@@ -3,12 +3,12 @@ source: tui/src/app/empty_state_animation_tests.rs
 expression: "format!(\"enabled:\\n{}\\n---\\ndisabled:\\n{}\", text(after), text(&before))"
 ---
 enabled:
-╭────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (v0.160.0)                                     │ /help commands              │
-│ Pull up a prompt.                                        │ /agents roles               │
-│ GPT-5.6-Sol · Codex engine                               │ /tasks session agents       │
-│ /tmp/project                                             │ /workflows runs             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+  ▄████▄   Claudex v0.160.0 · Codex
+ ██  ▄▄▄   GPT-5.6-Sol
+  ▀████▀   /tmp/project
+
+Pull up a prompt.
+/help commands · /agents profiles · /tasks agents · /workflows runs
 
 
 
@@ -43,18 +43,18 @@ enabled:
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   ? for shortcuts                                                                              ⚠ 1 warning · f2 to view
 ---
 disabled:
-╭────────────────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (v0.160.0)                                     │ /help commands              │
-│ Pull up a prompt.                                        │ /agents roles               │
-│ GPT-5.6-Sol · Codex engine                               │ /tasks session agents       │
-│ /tmp/project                                             │ /workflows runs             │
-╰────────────────────────────────────────────────────────────────────────────────────────╯
+  ▄████▄   Claudex v0.160.0 · Codex
+ ██  ▄▄▄   GPT-5.6-Sol
+  ▀████▀   /tmp/project
+
+Pull up a prompt.
+/help commands · /agents profiles · /tasks agents · /workflows runs
 
 
 
@@ -89,7 +89,7 @@ disabled:
 
 
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
   GPT-5.6-Sol default · /tmp/project
   ? for shortcuts                                                                              ⚠ 1 warning · f2 to view

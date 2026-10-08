@@ -61,6 +61,7 @@ fn command_hook_hash(
         group: codex_config::MatcherGroup {
             matcher: matcher.map(ToOwned::to_owned),
             hooks: vec![codex_config::HookHandlerConfig::Command {
+                args: None,
                 command: command.to_string(),
                 command_windows: None,
                 timeout_sec: Some(timeout_sec),
@@ -215,6 +216,7 @@ async fn hooks_list_shows_discovered_hook() -> Result<()> {
                 key: format!("{}:pre_tool_use:0:0", config_path.as_path().display()),
                 event_name: HookEventName::PreToolUse,
                 handler: HookHandlerMetadata::Command {
+                    args: None,
                     command: "python3 /tmp/listed-hook.py".to_string(),
                     r#async: true,
                 },
@@ -242,6 +244,49 @@ async fn hooks_list_shows_discovered_hook() -> Result<()> {
             warnings: Vec::new(),
             errors: Vec::new(),
         }]
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn hooks_list_preserves_structured_argv_without_executing_it() -> Result<()> {
+    let codex_home = TempDir::new()?;
+    let cwd = TempDir::new()?;
+    std::fs::write(
+        codex_home.path().join("config.toml"),
+        r#"[features]
+hooks = true
+[[hooks.PreToolUse]]
+matcher = "Edit|Write"
+[[hooks.PreToolUse.hooks]]
+type = "command"
+command = "must-not-execute"
+args = ["hook.js", "${tool_input.file_path}"]
+"#,
+    )?;
+    let mut app = TestAppServer::builder()
+        .with_codex_home(codex_home.path())
+        .without_auto_env()
+        .build_initialized_with_timeout(DEFAULT_TIMEOUT)
+        .await?;
+    let id = app
+        .send_hooks_list_request(HooksListParams {
+            cwds: vec![cwd.path().to_path_buf()],
+        })
+        .await?;
+    let response: HooksListResponse = timeout(DEFAULT_TIMEOUT, app.read_response(id)).await??;
+    let hook = response.data.iter().flat_map(|entry| &entry.hooks).find(|entry| matches!(&entry.handler, HookHandlerMetadata::Command { command, .. } if command == "must-not-execute"));
+    let hook = hook.expect("structured hook must be listed");
+    assert_eq!(
+        hook.handler,
+        HookHandlerMetadata::Command {
+            command: "must-not-execute".to_string(),
+            args: Some(vec![
+                "hook.js".to_string(),
+                "${tool_input.file_path}".to_string()
+            ]),
+            r#async: false,
+        }
     );
     Ok(())
 }
@@ -297,6 +342,7 @@ async fn hooks_list_shows_discovered_plugin_hook() -> Result<()> {
                 key: "demo@test:hooks/hooks.json:pre_tool_use:0:0".to_string(),
                 event_name: HookEventName::PreToolUse,
                 handler: HookHandlerMetadata::Command {
+                    args: None,
                     command: "echo plugin hook".to_string(),
                     r#async: false,
                 },
@@ -518,6 +564,7 @@ async fn plugin_upgrade_refreshes_hook_runtime_for_loaded_session() -> Result<()
     assert_eq!(
         hook.handler,
         HookHandlerMetadata::Command {
+            args: None,
             command: format!("python3 {}", expected_hook_path.display()),
             r#async: false,
         }
@@ -796,6 +843,7 @@ source = "{}"
     assert_eq!(
         data[0].hooks[0].handler,
         HookHandlerMetadata::Command {
+            args: None,
             command: format!("python3 {}", expected_hook_path.display()),
             r#async: false,
         }
@@ -984,6 +1032,7 @@ enabled = false
                 key: format!("{plugin_id}:hooks/hooks.json:stop:0:1"),
                 event_name: HookEventName::Stop,
                 handler: HookHandlerMetadata::Command {
+                    args: None,
                     command: ordinary_command.to_string(),
                     r#async: false,
                 },
@@ -1183,6 +1232,7 @@ timeout = 5
                     ),
                     event_name: HookEventName::PreToolUse,
                     handler: HookHandlerMetadata::Command {
+                        args: None,
                         command: "echo project hook".to_string(),
                         r#async: false,
                     },
@@ -1258,6 +1308,7 @@ async fn hooks_list_uses_root_repo_hooks_for_linked_worktrees() -> Result<()> {
     assert_eq!(
         repo_hook.handler,
         HookHandlerMetadata::Command {
+            args: None,
             command: "echo root hook".to_string(),
             r#async: false,
         }
@@ -1265,6 +1316,7 @@ async fn hooks_list_uses_root_repo_hooks_for_linked_worktrees() -> Result<()> {
     assert_eq!(
         worktree_hook.handler,
         HookHandlerMetadata::Command {
+            args: None,
             command: "echo root hook".to_string(),
             r#async: false,
         }

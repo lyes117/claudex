@@ -1,3 +1,4 @@
+mod claude_command_metadata;
 mod discovery;
 mod environment;
 mod host;
@@ -7,6 +8,7 @@ mod io_test_support;
 mod metadata;
 mod namespace;
 
+pub(crate) use claude_command_metadata::read_command_text;
 pub(crate) use environment::load_environment_skills_from_discovery;
 pub(crate) use environment::load_environment_skills_from_root;
 pub(crate) use host::HostSkillRoot;

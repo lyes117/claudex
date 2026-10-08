@@ -195,6 +195,175 @@ documentés dans le design. Ils bloquent l'activation. La notification brute au
 parent avant validation, le runner borné et la reprise après panne restent
 des étapes séparées. Ces résultats ne constituent pas une parité complète.
 
+## Reprise ciblée et mémoire native — 3 octobre 2026
+
+La campagne core ciblée `tests-claudex-native-ownership-numeric-cycle3.log`
+passe **110/110**, en 57,789 s. Elle comprend les dix cas de propriété exacte
+du runtime enfant et les treize cas de schéma/decimaux. L'admission conserve
+l'Arc original, y compris pour l'envoi initial et le cleanup ; les nombres sont
+comparés exactement avec des budgets de lexème/exposant. Le cycle1 était une
+erreur de compilation de fixture ; le cycle2 passait 109/110 avant correction
+d'une fixture utilisant des registres distincts. Les autres barrières
+d'activation du workflow restent ouvertes : notification parent avant
+validation, runner JS borné et journal/reprise native.
+
+La suite TUI complète réellement exécutée (`tests-claudex-tui-full-cycle1.log`)
+donne **5248 réussites et 314 échecs**, sur 5562 tests, avec huit skips.
+270 réussites portent l'indicateur LEAK de nextest ; le nettoyage des processus
+de ces fixtures reste à établir. 267 échecs concernent des snapshots et 47
+des assertions. La revue distingue les marqueurs intentionnels de deux
+régressions réelles : ancien marqueur du prompt épinglé et bannière trop haute
+sur petit terminal. La reprise ciblée
+`tests-claudex-tui-failure-recovery-cycle2.log` exécute 323 cas :
+276 réussites (23 LEAK), 47 échecs, 5249 skips ; compilation 5 min 58 s,
+tests 71,602 s. Les nouveaux cas compact à 48×16/48×12, les métadonnées,
+les cellules du compositeur et l'égalité du prompt épinglé passent.
+
+Les 47 échecs sont 43 assertions Insta, trois fixtures cherchant encore les
+anciens glyphes et une vraie régression de couleur du prompt vocal animé.
+Les conditions de l'animation reconnaissent maintenant ❯/● tout en gardant
+Red/BOLD et le comportement des anciens glyphes ; les assertions couleur
+ne sont pas modifiées. Cette correction reste à exécuter.
+
+Après revue, 37 goldens externes et six inline sont acceptés sélectivement.
+Trois attentes inline sont d'abord rebasées par cargo-insta sans modification
+du littéral malgré un code de sortie zéro. Leurs payloads sont revérifiés,
+puis leurs clés réelles acceptées ; changements de hash source et inventaire
+vide sont confirmés. Le contenu des 37 fichiers externes reconstruit exactement
+les bytes approuvés en rétablissant seulement `assertion_line`, métadonnée
+normalement retirée par insta. Receipts :
+`claudex-tui-review-goldens-cycle2.json`,
+`claudex-tui-rebased-inline-accept-receipt-cycle2.json` et
+`claudex-tui-final-acceptance-proof-cycle2.json`.
+Les assertions suivantes et la suite TUI complète doivent encore passer.
+
+L'intégration claude-mem est en construction, **pas installée ni validée en
+inférence réelle**. Le bundle est construit depuis la révision publique épinglée
+`a1951f2ad247330b2b5d58a1e0c7efeef4a03be5`, édition
+`13.29.0-dev+a1951f2`. La release npm 13.28.0 examinée ne contient pas le
+fournisseur Codex requis et est refusée par le helper. Les quatorze tests Node des
+helpers passent ; les fixtures source du fournisseur donnent 53 réussites,
+16 skips Windows et zéro échec. Les scripts lifecycle des dépendances n'ont
+pas été exécutés pendant le build.
+
+Le design utilise l'app-server officiel et un observer séparé sans outils ni
+hooks, avec HOME/USERPROFILE privés pour son processus. Les nouvelles données
+sont prévues sous `~/.claudex/memory/data`, port 37778, sans import ou modification
+de l'état Claude-mem existant. Le chargement effectif du plugin natif doit
+être prouvé avant exclusion du plugin legacy ; le marqueur seul ne suffit pas.
+La capture, l'injection, la recherche MCP, l'isolation réelle et l'authentification
+observer sur deux projets synthétiques restent à vérifier. L'identité par nom
+de dossier, le matcher PreToolUse partiel, la redaction non exhaustive et
+l'allocation de port non atomique restent des limites à traiter.
+
+La sélection mémoire passe ses onze tests ciblés de configuration dans
+`tests-claudex-memory-selection-config-cycle2.log`. La campagne élargie
+`tests-claudex-memory-reporting-libraries-cycle1.log` est arrêtée à la compilation :
+17 diagnostics dans les nouvelles fixtures de reporting Workflow, aucun test
+exécuté. Les imports de macro, deux conversions d'erreur `AgentPath` et deux
+snapshots d'environnement sont corrigés ; les refus et résultats invalides
+vérifient désormais l'erreur exacte et l'exécution de la requête native.
+La politique privée est capturée avant startup et le fallback V2 conserve son
+refus de changement de propriétaire. Ces corrections attendent leur exécution ;
+le bridge Workflow reste privé, non activé et non installé.
+
+Le lancement installé est revérifié le 3 octobre : `claudex 0.160.0` en
+PowerShell et CMD, connexion `Logged in using ChatGPT`, binaire présent et entrée
+PATH utilisateur présente. Le processus d'outillage hérite encore de l'ancien
+PATH ; le contrôle recharge les PATH Machine et User sans les modifier.
+Cette vérification concerne le binaire installé précédent, pas les sources
+actuellement en cours de validation.
+
+## Résultats les plus récents — 3 octobre 2026
+
+Cette section actualise les points encore marqués « à exécuter » dans les
+comptes rendus historiques ci-dessus. Une nouvelle installation est décrite
+après les campagnes source ci-dessous.
+
+- `tests-claudex-memory-reporting-libraries-cycle2.log` : **3274/3278 PASS**,
+  trois skips. Deux fixtures de reporting ont ensuite été corrigées pour
+  attendre la fin du traitement avant de vérifier la version V1 ; une fixture
+  skills a reçu un HOME synthétique plutôt que le profil réel. Le dernier
+  échec exige un privilège Windows de création de symlink (OS 1314).
+- `tests-claudex-recovery-cli-memory-tui-cycle1.log` : **368/372 PASS**,
+  22 indicateurs LEAK et 8637 cas hors filtre. Les 17 cas de reporting privés,
+  cinq tests du CLI mémoire, le watcher et la fixture skills corrigée passent.
+  Les quatre échecs sont des snapshots TUI ; leur revue indépendante trouve
+  exactement huit substitutions de glyphes. Les assertions suivantes et la
+  suite TUI complète restent à rejouer.
+- `tests-claudex-recovery-cli-memory-tui-cycle2.log` : **370/372 PASS**,
+  24 indicateurs LEAK. Les quatre snapshots revus sont acceptés avec preuve
+  exacte et hashes avant/après. Deux tests atteignent ensuite une nouvelle
+  assertion snapshot (espacement du feedback copie et étape exec suivante) ;
+  leurs nouveaux artefacts attendent leur revue, sans acceptation automatique.
+- `tests-claudex-memory-identity-query-cycle2.log` : **31/31 PASS**, sans skip,
+  incluant identité canonique Git/worktree/submodule/jonctions, contenu HTTP
+  synthétique scoped, budgets de lecture et télémétrie explicitement désactivée.
+- `build-claudex-memory-cx1-cycle1.log` : bundle source construit avec succès,
+  édition `13.29.0-dev+a1951f2.cx1`. Resolver et artefacts sont hashés ; l'ancien
+  bundle sans schéma cx1 est désormais refusé. Aucun service, capture,
+  compression, injection ou inférence réelle de ce bundle n'a été vérifié.
+
+La notification brute des enfants supervisés est maintenant supprimée par une
+politique privée immuable avant publication ; les fixtures de résultats
+valides/invalides, warm reuse et FullHistory fork passent. Le fallback V2 est
+revu statiquement. Le restore froid de cette politique, le runner JS borné,
+le journal/reprise et l'outil conversationnel Workflow restent ouverts.
+
+`tests-claudex-memory-cx2-combined-cycle1.log` passe **34/34**, sans skip.
+Le build `build-claudex-memory-cx2-cycle1.log` et les hashes/resolver du bundle
+cx2 sont vérifiés. Cette édition refuse le reclaim automatique de port ;
+elle n'est pas installée ni exécutée en inférence réelle.
+
+`just fmt` termine avec succès. `just fix` scoped aux six packages termine
+avec succès après 11 min 08 s ; il conserve un warning dans le cleanup privé
+de spawn (verrou de publication gardé pendant SQL Closed). La revue confirme
+que libérer ce verrou réintroduirait une course avec le remplacement ; la
+contrainte de non-réentrance du store doit être documentée. La correction
+automatique retire un import inutilisé dans core/tests/suite/scenarios.rs.
+
+Le build natif et ses helpers passe en 4 min 33 s. Le binaire est installé,
+SHA identique à la source `5E0D4685…0F03217C` ; les fichiers d'installation
+précédents remplacés sont conservés dans un backup owned. PowerShell et CMD
+confirment la version et `memory status` non configuré ; la connexion ChatGPT,
+`-C`, aide native mémoire et refus d'option modèle sont vérifiés.
+Receipt : `installed-claudex-memory-reporting-cycle1.json`.
+
+Le contrôle Windows PTY réel du binaire installé vérifie bannière Claudex,
+ouverture de /help, paste Unicode multiligne et sortie zéro, sans envoyer
+de turn modèle. Receipt sous `live-ui-memory-cycle1/run-aa66094c54ac417a90075b4dd1fc7c42`.
+59 warnings de configuration sont affichés au démarrage du profil courant ;
+leurs causes ne sont pas classifiées par ce smoke. Des entrées et raccourcis
+Codex persistent, et ce résultat ne prouve pas la parité Claude Code complète.
+
+La reprise finale `tests-claudex-tui-exec-final-recovery-cycle5.log` passe
+le test d'historique jusqu'à son étape 6. Les attentes step5/step6 sont acceptées
+avec revue indépendante des deux glyphes et preuve exact-hash par paire.
+Le contrôle follow/caret/geometry passe dans le cycle3 (un indicateur LEAK).
+
+La suite TUI complète courante, `tests-claudex-tui-full-cycle2.log`, termine
+avec **5554/5554 PASS, zéro échec et quatre skips**, en 665,085 secondes.
+Un cas est marqué slow et 304 sont marqués LEAK par nextest. Le nettoyage de ces
+fixtures reste à examiner ; zéro assertion en échec ne prouve pas zéro ressource
+survivante. Cette campagne concerne la lib codex-tui dans le profil dev-small,
+pas toutes les intégrations ou tous les packages du workspace.
+
+Le proxy/guard/harness mémoire possède désormais 28 tests synthétiques PASS,
+deux lanceurs natifs compilés et une revue indépendante. Les raccords sidecar,
+checkpoints et bornes sont vérifiés ; le verdict live reste explicitement faux
+jusqu'à supervision et association effective capture/invocation/audit. Aucun
+auth réel n'a été lié et aucune inférence mémoire réelle exécutée.
+
+## Candidat workflow et diagnostic hooks — 3 octobre, cycle routing-workflow-1
+
+Le build natif `dev-small` termine sans erreur en 5 min 16 s. Le candidat est livré dans `.build-tools/candidate-routing-workflow-cycle1/bin`, sans modification du PATH utilisateur. La session installée était ouverte (PID 34452) ; Windows a refusé le remplacement de son exécutable. Aucune session utilisateur n'a été interrompue. Le candidat se lance dans PowerShell et CMD et reconnaît l'authentification ChatGPT existante.
+
+`node scripts/workflows.test.mjs` passe après le nouveau profil. Le vrai CLI compilé a ensuite exécuté `text-only.workflow.js` : deux phases, trois résultats structurés issus d'appels réels, fichier témoin inchangé. La deuxième invocation du même CLI et run-id reprend trois résultats en cache, avec résultat et checkpoint identiques. L'arrêt et l'absence du verrou actif sont vérifiés. Receipt : `.build-tools/workflow-zai-cycle1/cli-text-only-a1da7862-c43b-4051-a180-e76122c68706.receipt.json`. Concurrence observée : un. Aucun outil `Workflow` conversationnel, agent natif imbriqué, accès fichier par le modèle ou appel Z.ai n'est démontré par ce test.
+
+Les bibliothèques de candidature au routage, de construction Chat Completions et de décodage GLM passent 238 tests ciblés, zéro skip, puis Clippy avec warnings interdits. Elles restent inactives : aucun fournisseur GLM natif, transport réseau, authentification Z.ai ou imputation au quota Coding Plan n'est encore validé.
+
+Le diagnostic sans tour modèle depuis `C:\Users\lyesb` observe 48 notifications de compatibilité, toutes classées `unsupported-agent-tools`. Le catalogue natif contient sept hooks activés et de confiance, dont une commande `node` sans arguments et une commande `bash`. Aucun hook n'est exécuté par ce diagnostic. La lecture du code confirme que le champ `args` d'un hook SEO est ignoré ; correction en cours. La résolution Windows de Bash, les doublons GitNexus et les différences de payload nécessitent encore leur vérification propre. Ces causes possibles ne sont pas présentées comme des échecs reproduits.
+
 ## Limites matérielles de compatibilité
 
 1. La nouvelle bannière, le compositeur et les marqueurs Claudex sont installés et vérifiés. Des menus, textes et raccourcis de Codex restent présents ; l'ensemble des interactions Claude Code n'est pas encore reproduit.
@@ -206,3 +375,151 @@ des étapes séparées. Ces résultats ne constituent pas une parité complète.
 7. SSE MCP, imports Markdown globaux `~`, activation dynamique exacte des règles par chemins et `${CLAUDE_PROJECT_DIR}` dans les corps de commandes ne sont pas couverts.
 
 Les dépôts contenant ces cas restent directement ouvrables, mais chaque élément incompatible ne peut pas être annoncé comme fonctionnel. La matrice détaillée est dans [CLAUDEX.md](CLAUDEX.md).
+
+## Rebuild accueil, commandes et hooks — reprise du 4 octobre
+
+L'installation précédente reste conservée, avec une sauvegarde vérifiée sous
+`.build-tools/backups/installed-before-hooks-slash-cycle2`. La fermeture de la
+session utilisateur autorise son remplacement ; le rebuild attend les contrôles.
+
+Les bibliothèques hooks/catalogue passent 1000 tests ; la bibliothèque app-server
+passe 369 tests et les trois intégrations RPC ciblées passent. Le cycle TUI 5
+échoue : 5517 tests réussis, 45 échecs et un délai dépassé. Après corrections,
+le groupe de reprise du cycle 6 passe 77 tests sur 80 : le test d'horloge et deux
+débordements de pile Windows restent à corriger. Deux tests passent après retry ;
+37 sont marqués LEAK. Ce résultat ne valide pas la suite TUI entière.
+
+La revue indépendante du cycle 6 compare 1351 goldens préservés à 1352 goldens
+courants : 16 changements d'accueil déjà relus, un nouveau rendu framebuffer,
+aucune suppression ni acceptation sans rapport. Reçu :
+`.build-tools/claude-tui-visual-cycle2/golden-review-cycle6.json`.
+
+La commande `/tui classic|fullscreen|scrollback` et le réglage conditionnel
+`never` vers `auto` sont intégrés aux mécanismes natifs, après revue adverse.
+Les politiques enregistrées `always` et `auto` sont préservées malgré les
+restrictions CLI/SSH ; le renderer actif ne bascule pas avant redémarrage.
+Les tests de cette tranche et son rendu picker ne sont pas encore validés.
+
+Le moteur V8 de workflows, le superviseur Windows et les raccourcis compatibles
+restent des tranches préparées séparément. Ils ne sont pas activés par ce rebuild.
+Ni les workflows conversationnels naturels ni la parité complète du TUI ne sont
+annoncés comme terminés.
+
+### Reprise cycle 7 : preuves et tranches préparées
+
+Le groupe ciblé passe 93 tests sur 94 (deux retries, 37 marqueurs LEAK). Le fork,
+le délai de commande, les six fixtures `/tui` et les cinq fixtures Ctrl+O passent.
+Le dernier échec est une reprise froide qui déborde la pile pendant la restauration
+du moteur ; le correctif minimal de frontière de future est en test. La suite TUI
+complète, les quatre tests du réglage conditionnel, Clippy et le rebuild restent
+à exécuter avant le remplacement de l'installation.
+
+La revue indépendante des goldens cycle 7 approuve 17 rendus existants modifiés
+et un nouveau sur 1352, sans suppression. Le seul nouveau changement depuis le
+cycle 6 est le picker `/tui`, inspecté à 40 et 80 colonnes. Reçu :
+`.build-tools/claude-tui-visual-cycle2/golden-review-cycle7.json`. Cela ne remplace
+pas une vérification dans un terminal Windows réel.
+
+La checklist Ctrl+T native, avec rejet des événements d'un autre thread avant
+toute mutation, est préparée et relue dans le staging cycle 5 ; elle n'est pas
+encore appliquée. Le parseur AST de workflows réutilise Tree-sitter et sa grammaire
+JavaScript officielle, afin de distinguer les imports réels du texte des prompts.
+Cette tranche reste stagée, sans compilation ni exécution de `film.workflow.js`.
+
+L'ancien cache incrémental généré a été conservé sur D: ; le nombre de fichiers
+(247159) et le total d'octets (109730196364) correspondent exactement à l'inventaire
+avant déplacement. Aucun code, dépôt utilisateur ou fichier d'authentification
+n'a été déplacé. Le builder désactive ce cache par défaut et respecte une valeur
+explicitement fournie. Reçu : `.build-tools/cache-archive-recovery-cycle7.json`.
+
+### Checklist Ctrl+T appliquée : validation ciblée cycle 7g
+
+Les 33 fichiers de la tranche checklist ont été appliqués après contrôle de tous
+les hashes avant/après, avec sauvegarde dédiée et reçu
+`.build-tools/claude-tui-plan-panel-cycle5/application-receipt.json`.
+La compilation et les neuf nouvelles fixtures passent, ainsi que les cinq fixtures
+Ctrl+O/raccourcis : 14 tests réussis sur 15 dans
+`.build-tools/tui-resume-core-diagnostic-checklist-cycle7g.log`.
+Le seul échec reste la reprise froide ; les diagnostics la localisent désormais
+dans la restauration de l'historique de session, après son initialisation.
+
+Les goldens de checklist à 32 et 80 colonnes sont issus des fixtures réellement
+exécutées. Leur revue indépendante, le schéma de configuration et la suite TUI
+complète restent nécessaires. Cette checklist affiche le plan natif reçu ; elle
+n'implémente pas encore les tâches partagées persistantes de Claude. Aucun nouveau
+binaire installé ni test du nouveau TUI dans un terminal Windows réel à ce stade.
+
+Le parseur AST privé de workflows passe les revues statiques adverse et Rust,
+mais reste stagé. Une tranche distincte remplace deux sérialisations non bornées
+du bridge par un writer compteur ; ses huit fixtures sont préparées, sans test
+exécuté ni changement actif. L'outil Workflow conversationnel reste à raccorder.
+
+### Reprise après redémarrage : preuves du 4 octobre
+
+Le journal principal et ses 26 journaux d'agents ont été intégralement analysés
+comme JSONL. Les changements préexistants et l'installation ont été préservés.
+L'inventaire et le checkpoint sont dans `.build-tools/recovery-2026-10-04*`.
+
+La tranche de sérialisation bornée du bridge de workflows est maintenant appliquée,
+après vérification des hashes et deux revues indépendantes. Ses huit nouvelles
+fixtures et le cas existant de budget collectif passent : **9/9**, exit 0,
+dans `.build-tools/recovery-workflow-bounds-cycle4-tests.log`. L'hôte V8,
+le superviseur Windows et l'outil Workflow conversationnel restent à intégrer.
+
+Le diagnostic natif de la reprise froide identifie un cadre RPC de 4,44 Mio.
+Le boxing de la future interne de commande Claude réduit ce cadre de 128 224
+octets. La reprise et les deux fixtures de délai passent au cycle7n : **3/3**,
+avec un signalement `LEAK` pour la reprise. La preuve après nettoyage, le schéma,
+la suite TUI et le nouveau build restent à valider ; ce résultat ne modifie
+pas le binaire installé.
+
+L'audit final demandé couvre Claude Code, les capacités Codex préservées et
+le routage Z.ai. Son protocole est dans `CLAUDEX-FINAL-FACTCHECK-PLAN.md`.
+Il reste à exécuter après la fusion ; aucune parité complète n'est déclarée.
+
+### Avancement vérifié du 4 octobre — intégration encore ouverte
+
+La compilation de production CLI/app-server/TUI passe après le correctif RPC et
+l'import explicite de reprise (cycle7q). Le schéma a été réellement régénéré,
+avec revue de son diff. Les trois fixtures RPC d'expansion, hooks argv et
+configuration gérée passent (3/3).
+
+La suite TUI complète cycle7q a exécuté 5593 tests : 5545 passés, 46 échecs,
+2 timeouts, 8 ignorés ; 300 résultats ont le signalement LEAK. Les fixtures
+obsolètes et les captures Ctrl+O/F6 ont ensuite été relues et corrigées.
+Le passage ciblé isolé cycle7s donne 44/49 passés (dont 8 LEAK), cinq captures
+encore en échec ; les deux anciens timeouts passent en exécution séquentielle.
+Une deuxième vague de cinq captures a été inspectée et appliquée ; son rerun est
+en cours. Cela ne clôture pas la suite complète ni l'origine des LEAK.
+
+Les fondations Workflow codec/AST et les lots Windows 03/04/04b/05 sont appliqués.
+Cargo metadata --locked et le véritable bazel-lock-update passent. Le check
+production PTY et dix fixtures Job Windows passent : 10/10, exit0.
+Les tests AST ont trouvé une particularité de grammaire sur export suivi d'un
+commentaire/newline ; les corrections restent soumises aux tests avant le lot V8.
+L'hôte V8 supervisé, son caller conversationnel, le journal et la reprise restent
+ouverts. Aucun film ni workflow utilisateur réel exécuté.
+
+Le transport Chat Completions Z.ai dédié est intégré et les 30 fixtures ciblées
+DTO/decoder/HTTP/framing/stream passent. La suite complète API/HTTP précédemment
+exécutée conserve cinq échecs de fallback TLS Windows Schannel : les deux
+expériences de fixture n'ont rien corrigé et ont été intégralement retirées.
+Aucune politique de certificat/TLS n'a été assouplie. L'interface transport est
+exportée, mais provider/identité enfant/replay/spawn/quota réel restent ouverts.
+Aucun appel d'inférence distant et aucun remplacement du binaire installé.
+
+### Hôte Workflow privé et bibliothèques — preuves complémentaires
+
+Les 174 tests des bibliothèques PTY, code-mode-runtime et model-provider-info
+passent (1 ignoré), dont les neuf fixtures d'admission Z.ai préparatoire et les
+deux fixtures de reçu de lancement Windows. Les 18 essais de l'hôte V8 et du
+superviseur Windows passent (1 ignoré). Ils couvrent parsing sans évaluation,
+imports, groupes synthétiques, finalisation, refus des nombres non représentables,
+EOF, délai CPU/microtasks et allocation ArrayBuffer sous limites combinées.
+Les agents natifs, le journal, la quarantaine et la reprise ne sont pas prouvés
+par ces essais. Aucun workflow film réel exécuté et aucune inférence distante.
+
+La correction finale de footer running a conservé métadonnées/EOL ; une nouvelle
+suite complète du package TUI est en cours (cycle7u, 4 threads, aucun retry,
+INSTA_UPDATE=new, profil utilisateur uniquement isolé dans le process runner).
+Aucun résultat forcé et aucune limite de temps accrue. Binaire installé inchangé.

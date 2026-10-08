@@ -2969,6 +2969,28 @@ impl App {
                     .handle_start_side(tui, app_server, parent_thread_id, user_message)
                     .await;
             }
+            AppEvent::ExpandClaudeCommand {
+                thread_id,
+                cwd,
+                request,
+            } => {
+                self.expand_claude_command(app_server, thread_id, cwd, request);
+            }
+            AppEvent::ClaudeCommandExpanded {
+                thread_id,
+                cwd,
+                id,
+                result,
+            } => {
+                if self.current_displayed_thread_id() == Some(thread_id) {
+                    let result = if self.chat_widget.config_ref().cwd == cwd {
+                        result
+                    } else {
+                        Err("Command scope changed".to_string())
+                    };
+                    self.chat_widget.on_claude_command_expanded(id, result);
+                }
+            }
             AppEvent::OpenSkillsList => {
                 self.chat_widget.open_skills_list();
             }

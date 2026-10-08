@@ -1535,7 +1535,10 @@ async fn root_switch_preserves_vim_line_yank() -> Result<()> {
         .take(2)
         .collect::<Vec<_>>()
         .join("\n");
-    insta::assert_snapshot!(composer_lines, @"› new line\n  saved line");
+    insta::assert_snapshot!(composer_lines, @"
+    ❯ new line
+      saved line
+    ");
     app_server.shutdown().await?;
     Ok(())
 }

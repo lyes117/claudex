@@ -493,7 +493,11 @@ impl HooksBrowserView {
             /*max_lines*/ None,
         ));
         match &hook.handler {
-            HookHandlerMetadata::Command { command, r#async } => {
+            HookHandlerMetadata::Command {
+                command,
+                args,
+                r#async,
+            } => {
                 lines.extend(detail_wrapped_lines(
                     "Command",
                     command,
@@ -501,6 +505,14 @@ impl HooksBrowserView {
                     Some(MAX_COMMAND_DETAIL_LINES),
                 ));
                 lines.push(detail_line("Mode", if *r#async { "Async" } else { "Sync" }));
+                if let Some(args) = args {
+                    lines.extend(detail_wrapped_lines(
+                        "Arguments",
+                        &serde_json::to_string(args).unwrap_or_default(),
+                        width,
+                        Some(MAX_COMMAND_DETAIL_LINES),
+                    ));
+                }
             }
             HookHandlerMetadata::McpTool { server, tool } => {
                 lines.extend(detail_wrapped_lines(
@@ -896,6 +908,7 @@ mod tests {
             key: key.to_string(),
             event_name,
             handler: HookHandlerMetadata::Command {
+                args: None,
                 command: command.to_string(),
                 r#async: false,
             },

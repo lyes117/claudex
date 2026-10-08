@@ -256,7 +256,8 @@ impl ChatComposer {
             }
             InputResult::Submitted { .. }
             | InputResult::Queued { .. }
-            | InputResult::ParentOwnedInputBlocked => self.dismiss_sparkle(),
+            | InputResult::ParentOwnedInputBlocked
+            | InputResult::ClaudeCommand(_) => self.dismiss_sparkle(),
             InputResult::CommandWithArgs(_, _, _) | InputResult::None => {
                 if self.history_search.is_none() && self.draft.textarea.vim_query().is_none() {
                     let draft = self.current_text();

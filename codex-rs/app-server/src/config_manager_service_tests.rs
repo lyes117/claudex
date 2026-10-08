@@ -1327,7 +1327,11 @@ async fn load_default_config_preserves_managed_requirements_and_selected_user_co
 #[tokio::test]
 async fn managed_auth_policy_survives_unusable_requirements_file_changes() -> Result<()> {
     let tmp = tempdir()?;
-    std::fs::write(tmp.path().join(CONFIG_TOML_FILE), "")?;
+    // Keep this fixture's API policy explicit rather than inheriting Claudex's ChatGPT default.
+    std::fs::write(
+        tmp.path().join(CONFIG_TOML_FILE),
+        "forced_login_method = \"api\"\n",
+    )?;
     let requirements_path = tmp.path().join("requirements.toml");
     std::fs::write(
         &requirements_path,
@@ -1340,6 +1344,16 @@ async fn managed_auth_policy_survives_unusable_requirements_file_changes() -> Re
         CloudConfigBundleLoader::default(),
     );
     let startup = service.load_latest_config(/*fallback_cwd*/ None).await?;
+    assert_eq!(
+        startup
+            .config_layer_stack
+            .requirements()
+            .managed_auth_policy(),
+        codex_config::ManagedAuthPolicy {
+            allowed_login_methods: Some(vec![codex_protocol::config_types::ForcedLoginMethod::Api]),
+            allowed_chatgpt_workspaces: Some(vec!["startup".to_string()]),
+        }
+    );
     let auth_manager = codex_login::AuthManager::shared_from_config(
         &startup, /*enable_codex_api_key_env*/ false,
     )
@@ -1354,7 +1368,22 @@ async fn managed_auth_policy_survives_unusable_requirements_file_changes() -> Re
             .load_latest_config_with_session_layers(&startup.config_layer_stack, &startup.cwd)
             .await?,
     ] {
-        assert_eq!(refreshed.forced_login_method, None);
+        assert_eq!(
+            refreshed
+                .config_layer_stack
+                .requirements()
+                .managed_auth_policy(),
+            codex_config::ManagedAuthPolicy {
+                allowed_login_methods: Some(vec![
+                    codex_protocol::config_types::ForcedLoginMethod::Chatgpt,
+                ]),
+                allowed_chatgpt_workspaces: Some(Vec::new()),
+            }
+        );
+        assert_eq!(
+            refreshed.forced_login_method,
+            Some(codex_protocol::config_types::ForcedLoginMethod::Api)
+        );
         assert_eq!(refreshed.forced_chatgpt_workspace_id, None);
     }
     assert!(
@@ -2662,17 +2691,11 @@ async fn allowed_login_methods_follow_current_forced_workspaces() -> Result<()> 
     for (workspaces, expected) in [
         (
             Some(vec!["managed".to_string()]),
-            vec![ForcedLoginMethod::Api, ForcedLoginMethod::Chatgpt],
+            vec![ForcedLoginMethod::Chatgpt],
         ),
-        (
-            Some(vec!["other".to_string()]),
-            vec![ForcedLoginMethod::Api],
-        ),
-        (Some(Vec::new()), vec![ForcedLoginMethod::Api]),
-        (
-            None,
-            vec![ForcedLoginMethod::Api, ForcedLoginMethod::Chatgpt],
-        ),
+        (Some(vec!["other".to_string()]), Vec::new()),
+        (Some(Vec::new()), Vec::new()),
+        (None, vec![ForcedLoginMethod::Chatgpt]),
     ] {
         auth.set_forced_chatgpt_workspace_id(workspaces);
         assert_eq!(auth.allowed_login_methods(), expected);

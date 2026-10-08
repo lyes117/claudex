@@ -621,7 +621,9 @@ async fn summarize_context_three_requests_and_instructions(
     if custom_instructions {
         assert_eq!(instr1, CUSTOM_INSTRUCTIONS);
     } else {
-        assert_eq!(instr1.contains("update_plan"), enable_plan);
+        // ponytail: fresh sessions ship the Claude Code base instructions, which
+        // carry no update_plan checklist; compaction must still preserve them.
+        assert_eq!(instr1, codex_prompts::claude_base_instructions());
     }
     assert_eq!(
         instr1, instr2,

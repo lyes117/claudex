@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Acceptance is not completion. Observe the native workflow and child events.",
+  "properties": {
+    "runId": {
+      "type": "string"
+    },
+    "submissionId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "runId",
+    "submissionId"
+  ],
+  "title": "WorkflowStartResponse",
+  "type": "object"
+}

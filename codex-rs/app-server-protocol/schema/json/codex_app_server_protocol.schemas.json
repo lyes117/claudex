@@ -956,6 +956,54 @@
             },
             "method": {
               "enum": [
+                "workflow/start"
+              ],
+              "title": "Workflow/startRequestMethod",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/definitions/v2/WorkflowStartParams"
+            }
+          },
+          "required": [
+            "id",
+            "method",
+            "params"
+          ],
+          "title": "Workflow/startRequest",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/v2/RequestId"
+            },
+            "method": {
+              "enum": [
+                "skills/claudeCommand/expand"
+              ],
+              "title": "Skills/claudeCommand/expandRequestMethod",
+              "type": "string"
+            },
+            "params": {
+              "$ref": "#/definitions/v2/ClaudeCommandExpandParams"
+            }
+          },
+          "required": [
+            "id",
+            "method",
+            "params"
+          ],
+          "title": "Skills/claudeCommand/expandRequest",
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/definitions/v2/RequestId"
+            },
+            "method": {
+              "enum": [
                 "skills/list"
               ],
               "title": "Skills/listRequestMethod",
@@ -8395,6 +8443,68 @@
           }
         ]
       },
+      "ClaudeCommandExpandParams": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Resolve one explicitly invoked command from this thread's live skill catalog.",
+        "properties": {
+          "arguments": {
+            "type": "string"
+          },
+          "cwd": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "$ref": "#/definitions/v2/AbsolutePathBuf"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "arguments",
+          "cwd",
+          "name",
+          "path",
+          "threadId"
+        ],
+        "title": "ClaudeCommandExpandParams",
+        "type": "object"
+      },
+      "ClaudeCommandExpandResponse": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ClaudeCommandExpandResponse",
+        "type": "object"
+      },
+      "ClaudeCommandMetadata": {
+        "description": "Claude Markdown invocation metadata. An absent value keeps older catalogs compatible.",
+        "properties": {
+          "argumentHint": {
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "userInvocable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "userInvocable"
+        ],
+        "type": "object"
+      },
       "CliAuthCredentialsStoreMode": {
         "enum": [
           "file",
@@ -10278,6 +10388,17 @@
                 "minimum": 0.0,
                 "type": [
                   "integer",
+                  "null"
+                ]
+              },
+              "args": {
+                "default": null,
+                "description": "Null retains shell execution; a list uses executable plus literal argv.",
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "array",
                   "null"
                 ]
               },
@@ -13229,6 +13350,17 @@
         "oneOf": [
           {
             "properties": {
+              "args": {
+                "default": null,
+                "description": "Null retains shell execution; a list uses executable plus literal argv.",
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "array",
+                  "null"
+                ]
+              },
               "async": {
                 "default": false,
                 "type": "boolean"
@@ -20189,6 +20321,17 @@
       },
       "SkillMetadata": {
         "properties": {
+          "claudeCommand": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/v2/ClaudeCommandMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "dependencies": {
             "anyOf": [
               {
@@ -26322,6 +26465,49 @@
           "samplePaths"
         ],
         "title": "WindowsWorldWritableWarningNotification",
+        "type": "object"
+      },
+      "WorkflowStartParams": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "additionalProperties": false,
+        "description": "Queue a native workflow on an existing thread, preserving that thread's authority.",
+        "properties": {
+          "args": true,
+          "runId": {
+            "type": "string"
+          },
+          "scriptPath": {
+            "type": "string"
+          },
+          "threadId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "args",
+          "runId",
+          "scriptPath",
+          "threadId"
+        ],
+        "title": "WorkflowStartParams",
+        "type": "object"
+      },
+      "WorkflowStartResponse": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "description": "Acceptance is not completion. Observe the native workflow and child events.",
+        "properties": {
+          "runId": {
+            "type": "string"
+          },
+          "submissionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "submissionId"
+        ],
+        "title": "WorkflowStartResponse",
         "type": "object"
       },
       "WorkspaceMessage": {

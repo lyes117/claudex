@@ -8,6 +8,17 @@ use std::path::PathBuf;
 use serde_json::Value;
 use toml::Value as TomlValue;
 
+#[path = "claude_native_memory.rs"]
+mod native_memory;
+#[path = "claude_plugin_selection.rs"]
+mod plugin_selection;
+pub use plugin_selection::ClaudePluginMcpConfig;
+pub use plugin_selection::LegacyPluginSelection;
+pub use plugin_selection::NATIVE_MEMORY_PLUGIN_ID;
+pub(crate) use plugin_selection::layer_config_with_plugins;
+pub use plugin_selection::plugin_mcp_contributions;
+pub use plugin_selection::selected_mcp_config;
+
 pub fn home() -> Option<PathBuf> {
     std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
@@ -169,8 +180,16 @@ pub fn plugins_for_scope(
     let Some(home) = home() else {
         return Ok(Vec::new());
     };
+    plugins_for_scope_in_home(directory, include_user, &home)
+}
+
+fn plugins_for_scope_in_home(
+    directory: &Path,
+    include_user: bool,
+    home: &Path,
+) -> io::Result<Vec<(String, PathBuf)>> {
     let mut merged = if include_user {
-        settings(&home)?
+        settings(home)?
     } else {
         serde_json::json!({})
     };
@@ -444,6 +463,9 @@ pub fn validate_skill(metadata: &Value) -> io::Result<()> {
     Ok(())
 }
 
+#[path = "claude_command_expansion.rs"]
+mod command_expansion;
+
 pub fn expand_command(
     metadata: &Value,
     body: &str,
@@ -451,60 +473,18 @@ pub fn expand_command(
     tokens: &[String],
     path: &Path,
 ) -> io::Result<String> {
-    validate_skill(metadata)?;
-    if body.contains("!`") || body.contains("${CLAUDE_PROJECT_DIR}") {
-        return Err(io::Error::new(
-            io::ErrorKind::Unsupported,
-            "Dynamic shell injection and session project-dir interpolation are unsupported",
-        ));
-    }
-    let names: Vec<&str> = match metadata.get("arguments") {
-        Some(Value::String(names)) => names.split_whitespace().collect(),
-        Some(Value::Array(names)) => names.iter().filter_map(Value::as_str).collect(),
-        _ => Vec::new(),
-    };
-    let pattern = regex_lite::Regex::new(r"\\?\$(?:ARGUMENTS(?:\[\d+\])?|\d+|\{CLAUDE_(?:SKILL|PROJECT)_DIR\}|[a-zA-Z_][a-zA-Z_0-9]*)").map_err(io::Error::other)?;
-    let mut substituted_argument = false;
-    let result = pattern.replace_all(body, |captures: &regex_lite::Captures<'_>| {
-        let original = &captures[0];
-        if let Some(literal) = original.strip_prefix('\\') {
-            return literal.to_owned();
-        }
-        let name = &original[1..];
-        if name == "ARGUMENTS" {
-            substituted_argument = true;
-            return arguments.to_owned();
-        }
-        if let Ok(index) = name
-            .strip_prefix("ARGUMENTS[")
-            .and_then(|index| index.strip_suffix(']'))
-            .unwrap_or(name)
-            .parse::<usize>()
-        {
-            substituted_argument = true;
-            return tokens
-                .get(index)
-                .cloned()
-                .unwrap_or_else(|| original.to_owned());
-        }
-        if let Some(index) = names.iter().position(|candidate| *candidate == name) {
-            substituted_argument = true;
-            return tokens.get(index).cloned().unwrap_or_default();
-        }
-        if name == "{CLAUDE_SKILL_DIR}" {
-            return path
-                .parent()
-                .unwrap_or(Path::new("."))
-                .display()
-                .to_string();
-        }
-        original.to_owned()
-    });
-    let mut result = result.into_owned();
-    if !arguments.is_empty() && !substituted_argument {
-        result.push_str(&format!("\n\nArguments: {arguments}"));
-    }
-    Ok(result)
+    command_expansion::expand(metadata, body, arguments, tokens, path, usize::MAX)
+}
+
+/// Bound explicit command expansion to 8 KiB; this keeps one model input below 10K tokens.
+pub fn expand_command_bounded(
+    metadata: &Value,
+    body: &str,
+    arguments: &str,
+    tokens: &[String],
+    path: &Path,
+) -> io::Result<String> {
+    command_expansion::expand(metadata, body, arguments, tokens, path, 8 * 1024)
 }
 
 fn permission_block_in_directories(
@@ -638,6 +618,22 @@ pub fn hook_sources_for_scope(
     include_user: bool,
     warnings: &mut Vec<String>,
 ) -> io::Result<Vec<(PathBuf, crate::HookEventsToml, Option<PathBuf>)>> {
+    hook_sources_with_selection(
+        directory,
+        plugin_directory,
+        include_user,
+        LegacyPluginSelection::KeepAll,
+        warnings,
+    )
+}
+
+pub fn hook_sources_with_selection(
+    directory: &Path,
+    plugin_directory: Option<&Path>,
+    include_user: bool,
+    selection: LegacyPluginSelection,
+    warnings: &mut Vec<String>,
+) -> io::Result<Vec<(PathBuf, crate::HookEventsToml, Option<PathBuf>)>> {
     if settings(directory)?.get("disableAllHooks") == Some(&Value::Bool(true)) {
         return Ok(Vec::new());
     }
@@ -646,8 +642,10 @@ pub fn hook_sources_for_scope(
         (directory.join("settings.local.json"), None),
     ];
     if plugin_directory == Some(directory) {
-        for (_, root) in plugins_for_scope(directory, include_user)? {
-            sources.push((root.join("hooks/hooks.json"), Some(root)));
+        for (plugin_id, root) in plugins_for_scope(directory, include_user)? {
+            if selection.retains(&plugin_id) {
+                sources.push((root.join("hooks/hooks.json"), Some(root)));
+            }
         }
     }
     let mut output = Vec::new();

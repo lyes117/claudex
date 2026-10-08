@@ -16,7 +16,7 @@ workspace = true
 codex-protocol = { workspace = true }
 prost = "0.14.3"
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value", "arbitrary_precision"] }
 tokio = { workspace = true, features = ["io-util", "sync"] }
 tokio-util = { workspace = true, features = ["rt"] }
 tonic = { workspace = true }

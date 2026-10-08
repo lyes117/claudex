@@ -641,6 +641,12 @@ impl App {
         app_server: &mut AppServerSession,
         key_event: KeyEvent,
     ) -> bool {
+        if self.keymap.app.toggle_plan_checklist.is_pressed(key_event) {
+            if self.chat_widget.no_modal_or_popup_active() {
+                self.chat_widget.toggle_plan_checklist();
+            }
+            return true;
+        }
         if self.keymap.app.open_warnings.is_pressed(key_event) {
             self.chat_widget.open_warnings(&self.transcript_cells);
             return true;

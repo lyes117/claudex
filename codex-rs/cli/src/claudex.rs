@@ -44,101 +44,80 @@ pub(crate) fn dispatch() -> anyhow::Result<Option<()>> {
             );
             Ok(Some(()))
         }
-        Some("workflow") => {
-            let executable = std::env::current_exe()?;
-            let script = executable
-                .parent()
-                .ok_or_else(|| anyhow::anyhow!("Executable has no directory"))?
-                .join("workflows.mjs");
-            if !script.is_file() {
-                anyhow::bail!(
-                    "Workflow runtime missing: {}. Run scripts/install-claudex.ps1.",
-                    script.display()
-                );
-            }
-            let mut args = args.collect::<Vec<_>>();
-            if args.is_empty()
-                || args.first().is_some_and(|arg| {
-                    matches!(
-                        arg.as_str(),
-                        "--help" | "list" | "status" | "pause" | "resume" | "stop"
-                    )
-                })
-            {
-                run_workflow_runtime(&executable, &script, &args)?;
-                return Ok(Some(()));
-            }
-            let mut seen = std::collections::BTreeSet::new();
-            let options = args[1..].chunks_exact(2);
-            if !options.remainder().is_empty() {
-                anyhow::bail!("Workflow options require a value");
-            }
-            for pair in options {
-                if !matches!(pair[0].as_str(), "--args" | "--run-id" | "--cwd") {
-                    anyhow::bail!("Unknown workflow option");
-                }
-                if !seen.insert(pair[0].clone()) {
-                    anyhow::bail!("Duplicate workflow option");
-                }
-            }
-            if !seen.contains("--run-id") {
-                args.extend([
-                    "--run-id".to_string(),
-                    codex_protocol::ThreadId::new().to_string(),
-                ]);
-            }
-            let run_id = args
-                .get(1..)
-                .unwrap_or_default()
-                .chunks_exact(2)
-                .find(|pair| pair[0] == "--run-id")
-                .map(|pair| pair[1].as_str())
-                .unwrap_or("new-run");
-            if run_id.is_empty()
-                || run_id.len() > 128
-                || !run_id
-                    .bytes()
-                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
-            {
-                anyhow::bail!("Invalid workflow run ID");
-            }
-            let directory = codex_config::claude::home()
-                .and_then(|home| {
-                    home.parent()
-                        .map(|path| path.join(".claudex/workflow-locks"))
-                })
-                .ok_or_else(|| anyhow::anyhow!("User home unavailable"))?;
-            std::fs::create_dir_all(&directory)?;
-            let file = std::fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create(true)
-                .truncate(false)
-                .open(directory.join(format!("{run_id}.lock")))?;
-            let mut lock = fd_lock::RwLock::new(file);
-            let _guard = lock.try_write().map_err(|_| {
-                anyhow::anyhow!("Workflow run is already active; exclusive OS lock unavailable")
-            })?;
-            run_workflow_runtime(&executable, &script, &args)?;
+        // `claudex zcode <PROMPT>` — route the prompt through the ZCode bridge.
+        Some("zcode") => {
+            // ponytail: one positional prompt, extra args ignored — no options on purpose.
+            let prompt = args
+                .next()
+                .ok_or_else(|| anyhow::anyhow!("usage : claudex zcode <PROMPT>"))?;
+            run_zcode(&prompt)?;
             Ok(Some(()))
         }
         _ => Ok(None),
     }
 }
 
-fn run_workflow_runtime(
-    executable: &std::path::Path,
-    script: &std::path::Path,
-    args: &[String],
-) -> anyhow::Result<()> {
-    let status = std::process::Command::new("node")
-        .arg(script)
-        .args(args)
-        .env("CLAUDEX_BIN", executable)
-        .env("CLAUDEX_WORKFLOW_LOCK_HELD", "1")
-        .status()?;
-    if !status.success() {
-        anyhow::bail!("Workflow failed with {status}");
+/// Route one prompt to ZCode: spawn the CLI, create a session in the current
+/// directory, send the turn, print the final reply on stdout. Exit 0 on a
+/// completed turn, exit 1 with a clear message otherwise (anyhow error through
+/// `main`).
+fn run_zcode(prompt: &str) -> anyhow::Result<()> {
+    let mut bridge = codex_api::ZcodeBridge::spawn().map_err(|error| {
+        anyhow::anyhow!(
+            "impossible de lancer le CLI ZCode ({error}) — vérifie que l'app ZCode est installée"
+        )
+    })?;
+    let workspace = std::env::current_dir()?;
+    let session = bridge
+        .session_create(&workspace.to_string_lossy())
+        .map_err(|error| anyhow::anyhow!("{error} — lance zcode et connecte-toi"))?;
+    let turn = bridge.session_send(&session.session_id, prompt)?;
+    match turn.outcome {
+        codex_api::Outcome::Ok(result) => {
+            let (drained, terminal) = bridge.wait_terminal(std::time::Duration::from_secs(120))?;
+            let mut notifications = turn.notifications;
+            notifications.extend(drained);
+            let texte = texte_parcouru(&result)
+                .or_else(|| notifications.iter().rev().find_map(texte_parcouru));
+            match (terminal, texte) {
+                // Measured real failure: the terminal event names the cause (e.g.
+                // CONFIGURATION_ERROR "Select a model before continuing") — surface
+                // it instead of the polite accepted ack.
+                (Some(terminal), _) if terminal.status == "failed" => anyhow::bail!(
+                    "tour ZCode échoué : {} — le CLI ZCode autonome ne résout pas de \
+                     modèle : le catalogue vient de l'app ZCode (lancez la commande \
+                     depuis une session de l'app, ou attendez la tranche catalog)",
+                    terminal.error_message
+                ),
+                (_, Some(texte)) => {
+                    println!("{texte}");
+                    Ok(())
+                }
+                (Some(terminal), None) => anyhow::bail!(
+                    "tour ZCode terminé ({}) sans réponse textuelle — format d'événement \
+                     à calibrer sur le premier tour réussi",
+                    terminal.status
+                ),
+                (None, None) => {
+                    anyhow::bail!("tour ZCode sans événement terminal ni réponse")
+                }
+            }
+        }
+        codex_api::Outcome::Err { code, message, .. } => {
+            anyhow::bail!("tour ZCode échoué ({code} {message}) — lance zcode et connecte-toi")
+        }
     }
-    Ok(())
+}
+
+/// First string found under a reply-ish key, depth-first.
+pub(crate) fn texte_parcouru(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .find(|(key, _)| matches!(key.as_str(), "content" | "text" | "message"))
+            .and_then(|(_, value)| value.as_str().map(str::to_owned))
+            .or_else(|| map.values().find_map(texte_parcouru)),
+        serde_json::Value::Array(items) => items.iter().find_map(texte_parcouru),
+        _ => None,
+    }
 }

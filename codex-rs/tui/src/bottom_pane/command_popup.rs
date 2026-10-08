@@ -2,6 +2,7 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::widgets::WidgetRef;
 
+use super::claude_slash_catalog::ClaudeSlashCommand;
 use super::picker_style::selection_style;
 use super::popup_consts::MAX_POPUP_ROWS;
 use super::scroll_state::ScrollState;
@@ -30,6 +31,7 @@ const COMMAND_COLUMN_WIDTH: ColumnWidthConfig = ColumnWidthConfig::new(
 pub(crate) enum CommandItem {
     Builtin(SlashCommand),
     ServiceTier(ServiceTierCommand),
+    ClaudeSkill(ClaudeSlashCommand),
 }
 
 pub(crate) struct CommandPopup {
@@ -89,6 +91,21 @@ impl CommandPopup {
             commands,
             state: ScrollState::new(),
         }
+    }
+
+    pub(crate) fn with_claude_commands(mut self, commands: Vec<ClaudeSlashCommand>) -> Self {
+        let commands = commands
+            .into_iter()
+            .filter(|command| {
+                !self
+                    .commands
+                    .iter()
+                    .any(|native| native.command() == command.name)
+            })
+            .map(CommandItem::ClaudeSkill)
+            .collect::<Vec<_>>();
+        self.commands.extend(commands);
+        self
     }
 
     /// Update the filter string based on the current composer text. The text
@@ -186,7 +203,19 @@ impl CommandPopup {
 
         for command in self.commands.iter() {
             let display = command.command();
-            push_match(command.clone(), display, None, 0);
+            let bare = match command {
+                CommandItem::ClaudeSkill(skill) => skill
+                    .name
+                    .rsplit_once(':')
+                    .map(|(plugin, name)| (name, plugin.chars().count() + 1)),
+                CommandItem::Builtin(_) | CommandItem::ServiceTier(_) => None,
+            };
+            push_match(
+                command.clone(),
+                display,
+                bare.map(|(name, _)| name),
+                bare.map_or(0, |(_, offset)| offset),
+            );
         }
 
         out.extend(exact);
@@ -206,7 +235,15 @@ impl CommandPopup {
             .into_iter()
             .enumerate()
             .map(|(index, (item, indices))| {
-                let name = format!("/{}", item.command());
+                let name = match &item {
+                    CommandItem::ClaudeSkill(command) => match command.argument_hint.as_deref() {
+                        Some(hint) => format!("/{} {hint}", command.name),
+                        None => format!("/{}", command.name),
+                    },
+                    CommandItem::Builtin(_) | CommandItem::ServiceTier(_) => {
+                        format!("/{}", item.command())
+                    }
+                };
                 let description = item.description().to_string();
                 GenericDisplayRow {
                     category_tag: None,
@@ -257,6 +294,7 @@ impl CommandItem {
         match self {
             Self::Builtin(cmd) => cmd.command(),
             Self::ServiceTier(command) => &command.name,
+            Self::ClaudeSkill(command) => &command.name,
         }
     }
 
@@ -264,6 +302,7 @@ impl CommandItem {
         match self {
             Self::Builtin(cmd) => cmd.description(),
             Self::ServiceTier(command) => &command.description,
+            Self::ClaudeSkill(command) => &command.description,
         }
     }
 }
@@ -301,6 +340,7 @@ mod tests {
         let has_init = matches.iter().any(|item| match item {
             CommandItem::Builtin(cmd) => cmd.command() == "init",
             CommandItem::ServiceTier(_) => false,
+            CommandItem::ClaudeSkill(_) => false,
         });
         assert!(
             has_init,
@@ -321,6 +361,9 @@ mod tests {
             Some(CommandItem::ServiceTier(command)) => {
                 panic!("expected init command, got service tier {command:?}")
             }
+            Some(CommandItem::ClaudeSkill(command)) => {
+                panic!("unexpected Claude command {command:?}")
+            }
             None => panic!("expected a selected command for exact match"),
         }
     }
@@ -334,6 +377,9 @@ mod tests {
             Some(CommandItem::Builtin(cmd)) => assert_eq!(cmd.command(), "model"),
             Some(CommandItem::ServiceTier(command)) => {
                 panic!("expected model command, got service tier {command:?}")
+            }
+            Some(CommandItem::ClaudeSkill(command)) => {
+                panic!("unexpected Claude command {command:?}")
             }
             None => panic!("expected at least one match for '/mo'"),
         }
@@ -428,6 +474,7 @@ mod tests {
             .map(|item| match item {
                 CommandItem::Builtin(cmd) => cmd.command().to_string(),
                 CommandItem::ServiceTier(command) => command.name,
+                CommandItem::ClaudeSkill(command) => command.name,
             })
             .collect();
         assert_eq!(
@@ -516,6 +563,7 @@ mod tests {
             .map(|item| match item {
                 CommandItem::Builtin(cmd) => cmd.command().to_string(),
                 CommandItem::ServiceTier(command) => command.name,
+                CommandItem::ClaudeSkill(command) => command.name,
             })
             .collect();
         assert!(
@@ -591,6 +639,7 @@ mod tests {
             .map(|item| match item {
                 CommandItem::Builtin(cmd) => cmd.command().to_string(),
                 CommandItem::ServiceTier(command) => command.name,
+                CommandItem::ClaudeSkill(command) => command.name,
             })
             .collect();
         assert!(
@@ -623,6 +672,9 @@ mod tests {
             Some(CommandItem::ServiceTier(command)) => {
                 panic!("expected plan command, got service tier {command:?}")
             }
+            Some(CommandItem::ClaudeSkill(command)) => {
+                panic!("unexpected Claude command {command:?}")
+            }
             other => panic!("expected plan to be selected for exact match, got {other:?}"),
         }
     }
@@ -636,6 +688,7 @@ mod tests {
             .map(|item| match item {
                 CommandItem::Builtin(cmd) => cmd.command().to_string(),
                 CommandItem::ServiceTier(command) => command.name,
+                CommandItem::ClaudeSkill(command) => command.name,
             })
             .collect();
 

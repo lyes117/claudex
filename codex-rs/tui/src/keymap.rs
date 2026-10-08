@@ -49,6 +49,13 @@ mod voice_tests;
 #[path = "keymap/global_find_tests.rs"]
 mod global_find_tests;
 
+#[cfg(test)]
+#[path = "keymap/claude_controls_tests.rs"]
+mod claude_controls_tests;
+#[cfg(test)]
+#[path = "keymap/claude_plan_panel_tests.rs"]
+mod claude_plan_panel_tests;
+
 pub(crate) use bindings::KeymapActionId;
 pub(crate) use bindings::KeymapContext;
 pub(crate) use bindings::bindings_for_action;
@@ -97,6 +104,8 @@ pub(crate) struct AppKeymap {
     pub(crate) open_agents: Vec<KeyBinding>,
     /// Open transcript overlay.
     pub(crate) open_transcript: Vec<KeyBinding>,
+    /// Show or hide the latest native plan checklist.
+    pub(crate) toggle_plan_checklist: Vec<KeyBinding>,
     /// Find text in the full transcript.
     pub(crate) find_transcript: Vec<KeyBinding>,
     /// Focus activity groups in the owned transcript to inspect their details.
@@ -634,8 +643,39 @@ impl RuntimeKeymap {
     /// Calling code should not merge bindings across unrelated contexts before
     /// dispatch, or conflict guarantees from this resolver no longer hold.
     pub(crate) fn from_config(keymap: &TuiKeymap) -> Result<Self, String> {
-        let defaults = Self::built_in_defaults();
+        let mut defaults = Self::built_in_defaults();
         let chords = Arc::new(RuntimeChordKeymap::from_config(keymap)?);
+        // New Claude-compatible transcript and relocated copy defaults must yield
+        // to existing user keys and chord prefixes, including explicit unbindings.
+        let new_transcript_key = key_hint::ctrl(KeyCode::Char('o'));
+        defaults.app.open_transcript.retain(|binding| {
+            *binding != new_transcript_key
+                || !configured_context_binding_is_used(keymap, *binding)
+                    && !chords.bindings.iter().any(|chord| {
+                        chord.chord.prefix.normalized_parts() == binding.normalized_parts()
+                    })
+        });
+        defaults.app.copy.retain(|binding| {
+            !configured_context_binding_is_used(keymap, *binding)
+                && !chords.bindings.iter().any(|chord| {
+                    chord.chord.prefix.normalized_parts() == binding.normalized_parts()
+                })
+        });
+        defaults.app.toggle_plan_checklist.retain(|binding| {
+            !configured_context_binding_is_used(keymap, *binding)
+                && !chords.bindings.iter().any(|chord| {
+                    chord.chord.prefix.normalized_parts() == binding.normalized_parts()
+                })
+        });
+        defaults.pager.close_transcript.retain(|binding| {
+            *binding != new_transcript_key
+                || !configured_context_binding_is_used(&keymap.pager, *binding)
+                    && !configured_context_binding_is_used(&keymap.chat, *binding)
+                    && !chords.bindings.iter().any(|chord| {
+                        chord.action.context.overlaps(KeymapContext::Pager)
+                            && chord.chord.prefix.normalized_parts() == binding.normalized_parts()
+                    })
+        });
         let side_toggle_default_is_shadowed = keymap.global.toggle_side_conversation.is_none()
             && ["ctrl-/", "ctrl-7"].into_iter().any(|alias| {
                 configured_main_surface_alias_is_used(keymap, alias)
@@ -689,6 +729,11 @@ impl RuntimeKeymap {
                 keymap.global.open_transcript.as_ref(),
                 &defaults.app.open_transcript,
                 "tui.keymap.global.open_transcript",
+            )?,
+            toggle_plan_checklist: resolve_bindings(
+                keymap.global.toggle_plan_checklist.as_ref(),
+                &defaults.app.toggle_plan_checklist,
+                "tui.keymap.global.toggle_plan_checklist",
             )?,
             find_transcript: resolve_bindings(
                 keymap.global.find_transcript.as_ref(),
@@ -1426,6 +1471,10 @@ impl RuntimeKeymap {
                 app.open_transcript.as_slice(),
             ),
             (
+                keymap.global.toggle_plan_checklist.as_ref(),
+                app.toggle_plan_checklist.as_slice(),
+            ),
+            (
                 keymap.global.find_transcript.as_ref(),
                 app.find_transcript.as_slice(),
             ),
@@ -1644,12 +1693,13 @@ impl RuntimeKeymap {
         Self {
             app: AppKeymap {
                 open_agents: default_bindings![],
-                open_transcript: default_bindings![ctrl(KeyCode::Char('t'))],
+                open_transcript: default_bindings![ctrl(KeyCode::Char('o'))],
+                toggle_plan_checklist: default_bindings![ctrl(KeyCode::Char('t'))],
                 find_transcript: default_bindings![plain(KeyCode::F(3))],
                 focus_activity: default_bindings![plain(KeyCode::F(4))],
                 open_warnings: default_bindings![plain(KeyCode::F(2))],
                 open_external_editor: default_bindings![ctrl(KeyCode::Char('g'))],
-                copy: default_bindings![ctrl(KeyCode::Char('o'))],
+                copy: default_bindings![plain(KeyCode::F(6))],
                 clear_terminal: default_bindings![ctrl(KeyCode::Char('l'))],
                 toggle_vim_mode: default_bindings![],
                 toggle_fast_mode: default_bindings![],
@@ -1883,7 +1933,7 @@ impl RuntimeKeymap {
                 jump_top: default_bindings![plain(KeyCode::Home)],
                 jump_bottom: default_bindings![plain(KeyCode::End)],
                 close: default_bindings![plain(KeyCode::Char('q')), ctrl(KeyCode::Char('c'))],
-                close_transcript: default_bindings![ctrl(KeyCode::Char('t'))],
+                close_transcript: default_bindings![ctrl(KeyCode::Char('o'))],
                 find: default_bindings![plain(KeyCode::F(3)), plain(KeyCode::Char('/'))],
                 chord_hints: Arc::default(),
             },
@@ -2005,6 +2055,10 @@ impl RuntimeKeymap {
         let main_bindings = [
             ("open_agents", self.app.open_agents.as_slice()),
             ("open_transcript", self.app.open_transcript.as_slice()),
+            (
+                "toggle_plan_checklist",
+                self.app.toggle_plan_checklist.as_slice(),
+            ),
             ("find_transcript", self.app.find_transcript.as_slice()),
             ("focus_activity", self.app.focus_activity.as_slice()),
             ("open_warnings", self.app.open_warnings.as_slice()),
@@ -2111,6 +2165,10 @@ impl RuntimeKeymap {
             [
                 ("open_agents", self.app.open_agents.as_slice()),
                 ("open_transcript", self.app.open_transcript.as_slice()),
+                (
+                    "toggle_plan_checklist",
+                    self.app.toggle_plan_checklist.as_slice(),
+                ),
                 ("find_transcript", self.app.find_transcript.as_slice()),
                 ("focus_activity", self.app.focus_activity.as_slice()),
                 ("open_warnings", self.app.open_warnings.as_slice()),
@@ -2170,6 +2228,10 @@ impl RuntimeKeymap {
             [
                 ("open_agents", self.app.open_agents.as_slice()),
                 ("open_transcript", self.app.open_transcript.as_slice()),
+                (
+                    "toggle_plan_checklist",
+                    self.app.toggle_plan_checklist.as_slice(),
+                ),
                 ("find_transcript", self.app.find_transcript.as_slice()),
                 ("focus_activity", self.app.focus_activity.as_slice()),
                 ("open_warnings", self.app.open_warnings.as_slice()),
@@ -3656,9 +3718,11 @@ mod tests {
 
         keymap.agents.stop = Some(one("f10"));
         keymap.global.open_agents = Some(one("ctrl-t"));
+        keymap.global.open_transcript = Some(one("ctrl-t"));
         expect_conflict(&keymap, "open_agents", "open_transcript");
 
         keymap.global.open_agents = Some(one("f12"));
+        keymap.global.open_transcript = None;
         keymap.agents.stop = Some(one("ctrl-c"));
         expect_conflict(&keymap, "stop", "fixed.interrupt_or_quit");
 

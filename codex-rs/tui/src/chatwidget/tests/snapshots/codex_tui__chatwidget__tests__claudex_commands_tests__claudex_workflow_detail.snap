@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+assertion_line: 100
 expression: rendered
 ---
   Workflows
@@ -13,4 +14,4 @@ expression: rendered
   5. Researcher                      running
   6. Writer                          pending
 
-  enter select · esc back
+  ↑/↓ navigate · → inspect agent/run · ← back · enter control · esc close

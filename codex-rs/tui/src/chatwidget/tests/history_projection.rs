@@ -259,7 +259,7 @@ fn raw_reasoning_keeps_its_own_heading() {
         /*config*/ None,
     );
     insta::assert_snapshot!(lines_to_single_string(&projected[0].transcript_lines(/*width*/ 80)), @"
-    • Raw investigation
+    ● Raw investigation
       Keep this heading and its details.
     ");
 }

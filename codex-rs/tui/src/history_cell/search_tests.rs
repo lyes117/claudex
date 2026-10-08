@@ -60,7 +60,7 @@ fn web_action_compact_display_preserves_transcript_and_raw_details() {
             .iter()
             .map(ToString::to_string)
             .collect::<Vec<_>>(),
-        vec![format!("• {full}")]
+        vec![format!("● {full}")]
     );
 }
 
@@ -71,7 +71,7 @@ fn pending_web_action_and_legacy_query() {
         String::new(),
         /*animations_enabled*/ false,
     );
-    insta::assert_snapshot!(cell.display_lines(/*width*/ 80)[0].to_string(), @"• Browsing the web");
+    insta::assert_snapshot!(cell.display_lines(/*width*/ 80)[0].to_string(), @"● Browsing the web");
     let legacy = new_web_search_call("call".into(), "old query".into(), WebSearchAction::Other);
     assert_eq!(
         legacy.raw_lines(),
@@ -93,5 +93,5 @@ fn batched_search_retains_each_query() {
         cell.raw_lines(),
         vec![Line::from("Searched the web for first query, second query")]
     );
-    insta::assert_snapshot!(cell.display_lines(/*width*/ 80)[0].to_string(), @"• Searched the web for first query, second query");
+    insta::assert_snapshot!(cell.display_lines(/*width*/ 80)[0].to_string(), @"● Searched the web for first query, second query");
 }

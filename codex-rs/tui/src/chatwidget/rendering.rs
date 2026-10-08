@@ -244,8 +244,8 @@ impl ChatWidget {
             } else {
                 self.ambient_pet_wrap_reserved_cols()
             };
-            self.bottom_pane
-                .as_renderable_with_options(crate::bottom_pane::ComposerRenderOptions {
+            let child = self.bottom_pane.as_renderable_with_options(
+                crate::bottom_pane::ComposerRenderOptions {
                     composer_gap,
                     working_tip,
                     warning_count: self.warning_display_state.count,
@@ -254,7 +254,17 @@ impl ChatWidget {
                         != crate::bottom_pane::CommandPopupPlacement::AboveComposer,
                     command_popup_placement,
                     footer,
-                })
+                },
+            );
+            if self.transcript.plan_checklist.visible && self.bottom_pane.no_modal_or_popup_active()
+            {
+                RenderableItem::Owned(Box::new(super::plan_checklist::ChecklistComposition {
+                    checklist: &self.transcript.plan_checklist,
+                    child,
+                }))
+            } else {
+                child
+            }
         }
     }
 

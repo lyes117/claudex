@@ -6,6 +6,13 @@ impl ChatWidget {
         notification: ServerNotification,
         replay_kind: Option<ReplayKind>,
     ) {
+        // Reject foreign plan events before recovery, replay flags or UI state can change.
+        if let ServerNotification::TurnPlanUpdated(notification) = &notification
+            && let Some(thread_id) = self.thread_id()
+            && notification.thread_id != thread_id.to_string()
+        {
+            return;
+        }
         // Reject misrouted child updates before shared notification handling mutates parent state.
         if let ServerNotification::McpServerStatusUpdated(notification) = &notification
             && let (Some(notification_thread_id), Some(thread_id)) =

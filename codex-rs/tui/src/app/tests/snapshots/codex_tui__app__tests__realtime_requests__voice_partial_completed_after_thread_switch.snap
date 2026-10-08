@@ -1,11 +1,10 @@
 ---
 source: tui/src/app/tests/realtime_requests.rs
-assertion_line: 478
 expression: "normalize_voice_snapshot_directory(&format!(\"Other task:\\n{other_ui}\\nRestored owner:\\n{}\\n{rendered}\",\nrender_bottom_popup(&app.chat_widget, 80)), &app.config.cwd,)"
 ---
 Other task:
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project   · ← for agents
 Restored owner:
@@ -13,15 +12,15 @@ Restored owner:
  voice ● listening                                  ctrl+x mute     /voice stop
    mic ▁▁▁▁▁▁  codex ▁▁▁▁▁▁
 
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project   · ← for agents
-╭──────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (v0.160.0)                           │ /help commands              │
-│ Welcome to Claudex                             │ /agents roles               │
-│ gpt-test · Codex engine                        │ /tasks session agents       │
-│ /tmp/project                                   │ /workflows runs             │
-╰──────────────────────────────────────────────────────────────────────────────╯
+  ▄████▄   Claudex v0.160.0 · Codex
+ ██  ▄▄▄   gpt-test
+  ▀████▀   /tmp/project
+
+Welcome to Claudex
+/help commands · /agents profiles · /tasks agents · /workflows runs
 
   To get started, describe a task or try one of these commands:
 
@@ -31,4 +30,4 @@ Restored owner:
   /model - choose what model and reasoning effort to use
   /review - review any changes and find issues
 
-› spoken partial completed
+❯ spoken partial completed

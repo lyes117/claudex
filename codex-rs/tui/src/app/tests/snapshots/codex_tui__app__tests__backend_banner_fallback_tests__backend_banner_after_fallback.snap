@@ -9,6 +9,6 @@ expression: normalize_snapshot_paths(rendered)
 
   Press a number to choose · esc to dismiss · type to continue
 ────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────
   gpt-5.6-terra medium · /tmp/project

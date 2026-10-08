@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+assertion_line: 45
 expression: rendered
 ---
   Agent roles
@@ -7,6 +8,8 @@ expression: rendered
 
   Find a role
 
-› researcher  Inspect the repository with evidence.
+› Active agents and threads  Open session agents; arrows navigate, right opens,
+                             left returns.
+  researcher                 Inspect the repository with evidence.
 
   enter select · esc back

@@ -271,6 +271,7 @@ define_runtime_action_bindings! {
     "global" => Global, app, global [
         open_agents,
         open_transcript,
+        toggle_plan_checklist,
         find_transcript,
         focus_activity,
         open_warnings => runtime_only,

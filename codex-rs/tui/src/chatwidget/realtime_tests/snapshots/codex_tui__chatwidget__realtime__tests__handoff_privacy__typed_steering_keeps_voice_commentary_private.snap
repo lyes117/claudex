@@ -1,6 +1,5 @@
 ---
 source: tui/src/chatwidget/realtime_tests/handoff_privacy.rs
-assertion_line: 1046
 expression: rendered
 ---
-• typed answer
+● typed answer

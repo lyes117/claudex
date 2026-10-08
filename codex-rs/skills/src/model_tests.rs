@@ -18,6 +18,7 @@ fn missing_policy_allows_implicit_invocation_and_all_products() {
 #[test]
 fn policy_restricts_implicit_invocation_and_products() {
     let policy = SkillPolicy {
+        claude_command: None,
         allow_implicit_invocation: Some(false),
         products: vec![Product::Codex],
     };

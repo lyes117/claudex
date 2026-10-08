@@ -5,10 +5,10 @@ expression: "format!(\"{first_running_snapshot}\\n\\n{second_running_snapshot}\\
 pre running
 activity:
 "                                                                                "
-"• Thinking (0s • esc to interrupt) · checking command policy                    "
+"● Thinking (0s • esc to interrupt) · checking command policy                    "
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:
@@ -17,10 +17,10 @@ history:
 post running
 activity:
 "                                                                                "
-"• Thinking (0s • esc to interrupt) · Running hooks                              "
+"● Thinking (0s • esc to interrupt) · Running hooks                              "
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:
@@ -29,10 +29,10 @@ history:
 pre completed
 activity:
 "                                                                                "
-"• Thinking (0s • esc to interrupt) · checking output policy                     "
+"● Thinking (0s • esc to interrupt) · checking output policy                     "
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:
@@ -41,10 +41,10 @@ history:
 all completed
 activity:
 "                                                                                "
-"• Thinking (0s • esc to interrupt)                                              "
+"● Thinking (0s • esc to interrupt)                                              "
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:

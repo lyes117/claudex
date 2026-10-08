@@ -8,7 +8,7 @@ activity:
 "• Checking command                                                              "
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:
@@ -18,7 +18,7 @@ completed
 activity:
 "                                                                                "
 "────────────────────────────────────────────────────────────────────────────────"
-"› Try a task, /help for commands, or @path for files                            "
+"❯ Try a task, /help for commands, or @path for files                            "
 "────────────────────────────────────────────────────────────────────────────────"
 "  GPT-5.6-Sol default · /tmp/project                                            "
 history:

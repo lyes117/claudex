@@ -69,8 +69,8 @@ async fn late_dynamic_completion_after_abort_updates_one_retained_row() {
     }
     assert_eq!(outputs[0], outputs[1]);
     insta::assert_snapshot!(outputs[0], @"
-    • Called test.lookup · 25ms
-      └ Result for late-file
+    ● Called test.lookup · 25ms
+      ⎿ Result for late-file
     ");
 }
 
@@ -117,11 +117,11 @@ async fn terminal_dynamic_activity_retains_calls_across_both_fallbacks() {
     insta::assert_snapshot!(
         lines_to_single_string(&outputs[0]),
         @"
-        • Failed test.lookup · 25ms
-          └ Result for call-1
-        • Called test.lookup · 25ms
-          └ Result for call-2
-        "
+    ● Failed test.lookup · 25ms
+      ⎿ Result for call-1
+    ● Called test.lookup · 25ms
+      ⎿ Result for call-2
+    "
     );
 }
 
@@ -142,7 +142,7 @@ async fn owned_dynamic_activity_updates_the_retained_row_after_config_refresh() 
     assert_eq!(retained.len(), 1);
     assert_eq!(
         lines_to_single_string(&retained[0].display_lines(/*width*/ 80)),
-        "• Calling test.lookup\n",
+        "● Calling test.lookup\n",
     );
 
     chat.on_dynamic_tool_item(dynamic_item("call-1", DynamicToolCallStatus::Completed));
@@ -150,7 +150,7 @@ async fn owned_dynamic_activity_updates_the_retained_row_after_config_refresh() 
     assert!(chat.transcript.dynamic_calls.is_empty());
     assert_eq!(
         lines_to_single_string(&retained[0].display_lines(/*width*/ 80)),
-        "• Called test.lookup · 25ms\n  └ Result for call-1\n",
+        "● Called test.lookup · 25ms\n  ⎿ Result for call-1\n",
     );
 }
 

@@ -112,21 +112,32 @@ impl SkillsWatcher {
         let plugins_input = config.plugins_config_input();
         let plugins_manager = thread_manager.plugins_manager();
         let plugin_outcome = plugins_manager.plugins_for_config(&plugins_input).await;
+        let legacy_selection = config.claude_plugin_selection(&plugin_outcome);
         let skills_input = HostSkillsLoadInput::new(
             config.cwd.clone(),
             plugin_outcome.effective_plugin_skill_roots(),
             config.config_layer_stack.clone(),
-        );
-        let roots = thread_manager
+        )
+        .with_legacy_plugin_selection(legacy_selection);
+        let selected_roots = thread_manager
             .skills_service()
             .watchable_skill_root_paths(&skills_input, environment.get_filesystem())
-            .await
-            .into_iter()
-            .map(|path| WatchPath {
-                path: path.into_path_buf(),
-                recursive: true,
-            })
-            .collect();
+            .await;
+        // Retain fallback roots under surveillance so edits while excluded invalidate
+        // their old cache entries before a later marker/config/thread exclusion restores them.
+        let fallback_input = skills_input.with_legacy_plugin_selection(Default::default());
+        let fallback_roots = thread_manager
+            .skills_service()
+            .watchable_skill_root_paths(&fallback_input, environment.get_filesystem())
+            .await;
+        let marker_parent = codex_config::claude::user_config_enabled(
+            config.config_layer_stack.layers_low_to_high(),
+        )
+        .then(codex_config::claude::home)
+        .flatten()
+        .and_then(|home| home.parent().map(|parent| parent.join(".claudex/memory")))
+        .filter(|directory| directory.is_dir());
+        let roots = watch_paths_with_fallback(selected_roots, fallback_roots, marker_parent);
         self.subscriber.register_paths(roots)
     }
 
@@ -169,3 +180,31 @@ impl SkillsWatcher {
         });
     }
 }
+
+fn watch_paths_with_fallback(
+    mut selected_roots: Vec<AbsolutePathBuf>,
+    fallback_roots: Vec<AbsolutePathBuf>,
+    marker_parent: Option<std::path::PathBuf>,
+) -> Vec<WatchPath> {
+    selected_roots.extend(fallback_roots);
+    selected_roots.sort();
+    selected_roots.dedup();
+    let mut paths: Vec<_> = selected_roots
+        .into_iter()
+        .map(|path| WatchPath {
+            path: path.into_path_buf(),
+            recursive: true,
+        })
+        .collect();
+    if let Some(path) = marker_parent {
+        paths.push(WatchPath {
+            path,
+            recursive: false,
+        });
+    }
+    paths
+}
+
+#[cfg(test)]
+#[path = "skills_watcher_tests.rs"]
+mod tests;

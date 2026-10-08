@@ -82,7 +82,8 @@ pub(crate) fn submitted(result: &InputResult) {
         | InputResult::ParentOwnedInputBlocked
         | InputResult::Command(_)
         | InputResult::ServiceTierCommand(_)
-        | InputResult::CommandWithArgs(..) => return,
+        | InputResult::CommandWithArgs(..)
+        | InputResult::ClaudeCommand(_) => return,
     };
     let _ = DRAFT.try_with(|draft| {
         if let Some(draft) = draft.borrow_mut().as_mut()

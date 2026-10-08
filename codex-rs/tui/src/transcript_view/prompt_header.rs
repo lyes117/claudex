@@ -48,9 +48,9 @@ pub(super) fn line(
     Some(truncate_line_with_ellipsis_if_overflow(
         Line::from(vec![
             if prompt.spoken {
-                "› ".red().bold()
+                "❯ ".red().bold()
             } else {
-                "› ".bold().dim()
+                "❯ ".bold().dim()
             },
             message.into(),
         ])

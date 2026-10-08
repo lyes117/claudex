@@ -360,6 +360,7 @@ mod tests {
             source: HookSource::User,
             display_order,
             kind: ConfiguredHandlerKind::Command {
+                args: None,
                 command: command.to_string(),
                 r#async: false,
                 env: std::collections::HashMap::new(),

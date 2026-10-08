@@ -1,5 +1,5 @@
 ---
 source: tui/src/chatwidget/tests/questions_tests.rs
-expression: "render_bottom_popup(&chat,\n80).lines().find(|line| line.starts_with('›')).unwrap()"
+expression: "render_bottom_popup(&chat,\n80).lines().find(|line| line.starts_with('❯')).unwrap()"
 ---
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files

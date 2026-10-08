@@ -10,6 +10,32 @@ use super::ManagedHooksRequirementsToml;
 use super::MatcherGroup;
 
 #[test]
+fn structured_command_args_are_preserved_and_legacy_omission_stays_omitted() {
+    let legacy: HookHandlerConfig =
+        serde_json::from_value(serde_json::json!({"type":"command","command":"node legacy.js"}))
+            .unwrap();
+    let structured: HookHandlerConfig = serde_json::from_value(serde_json::json!({"type":"command","command":"node","args":["hook.js","${tool_input.file_path}"]})).unwrap();
+    assert!(serde_json::to_value(legacy).unwrap().get("args").is_none());
+    assert_eq!(
+        serde_json::to_value(structured).unwrap()["args"],
+        serde_json::json!(["hook.js", "${tool_input.file_path}"])
+    );
+    let empty: HookHandlerConfig =
+        serde_json::from_value(serde_json::json!({"type":"command","command":"node","args":[]}))
+            .unwrap();
+    assert_eq!(
+        serde_json::to_value(empty).unwrap()["args"],
+        serde_json::json!([])
+    );
+    assert!(
+        serde_json::from_value::<HookHandlerConfig>(
+            serde_json::json!({"type":"command","command":"node","args":"wrong"})
+        )
+        .is_err()
+    );
+}
+
+#[test]
 fn hooks_file_deserializes_existing_json_shape() {
     let parsed: HooksFile = serde_json::from_str(
         r#"{
@@ -42,6 +68,7 @@ fn hooks_file_deserializes_existing_json_shape() {
                 pre_tool_use: vec![MatcherGroup {
                     matcher: Some("^Bash$".to_string()),
                     hooks: vec![HookHandlerConfig::Command {
+                        args: None,
                         command: "python3 /tmp/pre.py".to_string(),
                         command_windows: None,
                         timeout_sec: Some(10),
@@ -176,6 +203,7 @@ additionalContextLimit = 4096
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "python3 /tmp/pre.py".to_string(),
                     command_windows: None,
                     timeout_sec: Some(10),
@@ -214,6 +242,7 @@ command = "python3 /tmp/pre.py"
                 pre_tool_use: vec![MatcherGroup {
                     matcher: Some("^Bash$".to_string()),
                     hooks: vec![HookHandlerConfig::Command {
+                        args: None,
                         command: "python3 /tmp/pre.py".to_string(),
                         command_windows: None,
                         timeout_sec: None,
@@ -260,6 +289,7 @@ command = "python3 /enterprise/place/pre.py"
                 pre_tool_use: vec![MatcherGroup {
                     matcher: Some("^Bash$".to_string()),
                     hooks: vec![HookHandlerConfig::Command {
+                        args: None,
                         command: "python3 /enterprise/place/pre.py".to_string(),
                         command_windows: None,
                         timeout_sec: None,
@@ -295,6 +325,7 @@ command_windows = "powershell -File C:\\enterprise\\hooks\\pre.ps1"
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "bash /enterprise/hooks/pre.sh".to_string(),
                     command_windows: Some(
                         r"powershell -File C:\enterprise\hooks\pre.ps1".to_string(),
@@ -331,6 +362,7 @@ commandWindows = "powershell -File C:\\enterprise\\hooks\\pre.ps1"
             pre_tool_use: vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "bash /enterprise/hooks/pre.sh".to_string(),
                     command_windows: Some(
                         r"powershell -File C:\enterprise\hooks\pre.ps1".to_string(),
@@ -349,6 +381,7 @@ commandWindows = "powershell -File C:\\enterprise\\hooks\\pre.ps1"
 #[test]
 fn hook_handler_omits_unset_additional_context_limit() {
     let handler = HookHandlerConfig::Command {
+        args: None,
         command: "python3 /tmp/pre.py".to_string(),
         command_windows: None,
         timeout_sec: None,

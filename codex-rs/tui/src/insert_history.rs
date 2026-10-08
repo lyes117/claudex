@@ -932,7 +932,7 @@ mod tests {
 
         assert!(message_rows.len() > 1, "expected wrapped URL: {rows:?}");
         assert!(
-            message_rows[0].1.starts_with("› "),
+            message_rows[0].1.starts_with("❯ "),
             "the first user-message row must retain its prompt: {rows:?}"
         );
         assert!(
@@ -948,7 +948,7 @@ mod tests {
                 .enumerate()
                 .map(|(index, (_, row))| {
                     if index == 0 {
-                        row.strip_prefix("› ").unwrap().trim()
+                        row.strip_prefix("❯ ").unwrap().trim()
                     } else {
                         row.trim()
                     }

@@ -5,14 +5,14 @@ expression: frames
 before onboarding: hidden (0x0 viewport)
 ---
 after onboarding:
-╭──────────────────────────────────────────────────────────────────────────────╮
-│ ✻ Claudex (v<VERSION>)                           │ /help commands              │
-│ Pull up a prompt.                              │ /agents roles               │
-│ loading · Codex engine                         │ /tasks session agents       │
-│ loading                                        │ /workflows runs             │
-╰──────────────────────────────────────────────────────────────────────────────╯
+  ▄████▄   Claudex v<VERSION> · Codex
+ ██  ▄▄▄   loading
+  ▀████▀   loading
+
+Pull up a prompt.
+/help commands · /agents profiles · /tasks agents · /workflows runs
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   ? for shortcuts

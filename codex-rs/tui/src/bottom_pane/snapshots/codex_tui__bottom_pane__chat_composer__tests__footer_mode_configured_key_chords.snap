@@ -12,7 +12,7 @@ expression: terminal.backend()
 "  ctrl+v         Paste image          ctrl+c  Quit                                                  "
 "  ctrl+g ctrl+g  External editor                                                                    "
 "  ctrl+r         Search history       Transcript (open first)                                       "
-"  esc esc        Edit last message    ctrl+t                Open transcript                         "
+"  esc esc        Edit last message    ctrl+o                Open transcript                         "
 "                                      f3                    Find text                               "
 "                                      pgup / pgdn           Scroll                                  "
 "                                      ctrl+space            Start selection                         "

@@ -91,11 +91,32 @@ impl HookDiscoveryPolicy {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn discover_handlers(
     config_layer_stack: Option<&ConfigLayerStack>,
     plugin_hook_sources: Vec<PluginHookSource>,
     plugin_hook_load_warnings: Vec<String>,
     bypass_hook_trust: bool,
+) -> DiscoveryResult {
+    discover_handlers_with_legacy_plugin_selection(
+        config_layer_stack,
+        plugin_hook_sources,
+        plugin_hook_load_warnings,
+        bypass_hook_trust,
+        Default::default(),
+    )
+}
+
+#[cfg(test)]
+#[path = "command_args_discovery_tests.rs"]
+mod command_args_tests;
+
+pub(crate) fn discover_handlers_with_legacy_plugin_selection(
+    config_layer_stack: Option<&ConfigLayerStack>,
+    plugin_hook_sources: Vec<PluginHookSource>,
+    plugin_hook_load_warnings: Vec<String>,
+    bypass_hook_trust: bool,
+    legacy_plugin_selection: codex_config::claude::LegacyPluginSelection,
 ) -> DiscoveryResult {
     let mut handlers = Vec::new();
     let mut hook_entries = Vec::new();
@@ -152,13 +173,14 @@ pub(crate) fn discover_handlers(
             };
             let toml_hooks = load_toml_hooks_from_layer(layer, &mut warnings);
             if let Some(directory) = codex_config::claude::directory_for_layer(layer) {
-                match codex_config::claude::hook_sources_for_scope(
+                match codex_config::claude::hook_sources_with_selection(
                     &directory,
                     codex_config::claude::active_directory(config_layer_stack.layers_low_to_high())
                         .as_deref(),
                     codex_config::claude::user_config_enabled(
                         config_layer_stack.layers_low_to_high(),
                     ),
+                    legacy_plugin_selection,
                     &mut warnings,
                 ) {
                     Ok(sources) => {
@@ -557,6 +579,7 @@ fn append_matcher_groups(
             let normalized = match handler {
                 HookHandlerConfig::Command {
                     command,
+                    args,
                     command_windows,
                     timeout_sec,
                     r#async,
@@ -609,7 +632,31 @@ fn append_matcher_groups(
                     };
                     let normalized_additional_context_limit = additional_context_limit
                         .filter(|limit| *limit != DEFAULT_HOOK_OUTPUT_TOKEN_LIMIT);
+                    // Keep raw argv until runtime so plugin roots and event values are
+                    // expanded once. Validate before cloning into the trust identity.
+                    let direct_program = if let Some(args) = &args {
+                        if super::command_args::validate_args(args).is_err() {
+                            source.record_load_failure(
+                                "invalid structured hook arguments".to_string(),
+                                warnings,
+                            );
+                            continue;
+                        }
+                        match super::command_args::expand_program(&command, &source.env) {
+                            Ok(program) => Some(program),
+                            Err(()) => {
+                                source.record_load_failure(
+                                    "invalid structured hook program".to_string(),
+                                    warnings,
+                                );
+                                continue;
+                            }
+                        }
+                    } else {
+                        None
+                    };
                     let config = HookHandlerConfig::Command {
+                        args: args.clone(),
                         command: command.clone(),
                         command_windows: None,
                         timeout_sec: Some(timeout_sec),
@@ -617,13 +664,16 @@ fn append_matcher_groups(
                         status_message: status_message.clone(),
                         additional_context_limit: normalized_additional_context_limit,
                     };
-                    let command = source.env.iter().fold(command, |command, (key, value)| {
-                        command.replace(&format!("${{{key}}}"), value)
+                    let command = direct_program.unwrap_or_else(|| {
+                        source.env.iter().fold(command, |command, (key, value)| {
+                            command.replace(&format!("${{{key}}}"), value)
+                        })
                     });
                     NormalizedHandler {
                         config,
                         kind: ConfiguredHandlerKind::Command {
                             command,
+                            args,
                             env: source.env.clone(),
                             r#async: runs_async,
                         },
@@ -732,8 +782,12 @@ fn append_matcher_groups(
                 hook_trust_status(source.is_managed, builtin, &current_hash, trusted_hash);
             let handler = match &kind {
                 ConfiguredHandlerKind::Command {
-                    command, r#async, ..
+                    command,
+                    args,
+                    r#async,
+                    ..
                 } => HookListEntryHandler::Command {
+                    args: args.clone(),
                     command: command.clone(),
                     r#async: *r#async,
                 },
@@ -1023,6 +1077,7 @@ mod tests {
         MatcherGroup {
             matcher: matcher.map(str::to_string),
             hooks: vec![HookHandlerConfig::Command {
+                args: None,
                 command: "echo hello".to_string(),
                 command_windows: None,
                 timeout_sec: None,
@@ -1039,6 +1094,7 @@ mod tests {
         MatcherGroup {
             matcher: None,
             hooks: vec![HookHandlerConfig::Command {
+                args: None,
                 command: "echo hello".to_string(),
                 command_windows: None,
                 timeout_sec: None,
@@ -1317,6 +1373,7 @@ mod tests {
                 source: hook_source(),
                 display_order: 0,
                 kind: ConfiguredHandlerKind::Command {
+                    args: None,
                     command: "echo hello".to_string(),
                     r#async: false,
                     env: std::collections::HashMap::new(),
@@ -1357,6 +1414,7 @@ mod tests {
                 source: hook_source(),
                 display_order: 0,
                 kind: ConfiguredHandlerKind::Command {
+                    args: None,
                     command: "echo hello".to_string(),
                     r#async: false,
                     env: std::collections::HashMap::new(),
@@ -1385,6 +1443,7 @@ mod tests {
                 matcher: Some("other".to_string()),
                 hooks: vec![
                     HookHandlerConfig::Command {
+                        args: None,
                         command: "echo default".to_string(),
                         command_windows: None,
                         timeout_sec: None,
@@ -1393,6 +1452,7 @@ mod tests {
                         additional_context_limit: None,
                     },
                     HookHandlerConfig::Command {
+                        args: None,
                         command: "echo clamped".to_string(),
                         command_windows: None,
                         timeout_sec: Some(600),
@@ -1475,6 +1535,7 @@ mod tests {
             vec![MatcherGroup {
                 matcher: Some("ignored".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "echo interrupt".to_string(),
                     command_windows: None,
                     timeout_sec: Some(600),
@@ -1659,6 +1720,7 @@ mod tests {
                 session_start: vec![MatcherGroup {
                     matcher: None,
                     hooks: vec![HookHandlerConfig::Command {
+                        args: None,
                         command: "echo hello".to_string(),
                         command_windows: None,
                         timeout_sec: None,
@@ -1690,6 +1752,7 @@ mod tests {
             vec![MatcherGroup {
                 matcher: Some("^Bash$".to_string()),
                 hooks: vec![HookHandlerConfig::Command {
+                    args: None,
                     command: "echo unix".to_string(),
                     command_windows: Some("echo windows".to_string()),
                     timeout_sec: None,
@@ -1705,6 +1768,7 @@ mod tests {
         assert_eq!(
             handlers[0].kind,
             ConfiguredHandlerKind::Command {
+                args: None,
                 command: if cfg!(windows) {
                     "echo windows"
                 } else {

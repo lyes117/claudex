@@ -830,7 +830,8 @@ impl AppServerSession {
         thread_id: ThreadId,
         permission_mode: ForkPermissionMode,
     ) -> Result<AppServerStartedThread> {
-        self.fork_thread_at_with_presentation(
+        // As with resume, keep the lifecycle future out of each caller's stack frame.
+        Box::pin(self.fork_thread_at_with_presentation(
             local_settings,
             config,
             thread_id,
@@ -841,7 +842,7 @@ impl AppServerSession {
             /*selected_profile*/ None,
             permission_mode,
             ForkConfigSource::Local,
-        )
+        ))
         .await
     }
 
@@ -859,7 +860,7 @@ impl AppServerSession {
         goal_continuation: ForkGoalContinuation,
         selected_profile: Option<&PermissionProfileSelection>,
     ) -> Result<AppServerStartedThread> {
-        self.fork_thread_at_with_presentation(
+        Box::pin(self.fork_thread_at_with_presentation(
             local_settings,
             config,
             thread_id,
@@ -870,7 +871,7 @@ impl AppServerSession {
             selected_profile,
             ForkPermissionMode::InheritSaved,
             ForkConfigSource::Session,
-        )
+        ))
         .await
     }
 
@@ -880,7 +881,7 @@ impl AppServerSession {
         config: Config,
         thread_id: ThreadId,
     ) -> Result<AppServerStartedThread> {
-        self.fork_thread_at_with_presentation(
+        Box::pin(self.fork_thread_at_with_presentation(
             local_settings,
             config,
             thread_id,
@@ -891,7 +892,7 @@ impl AppServerSession {
             /*selected_profile*/ None,
             ForkPermissionMode::InheritSaved,
             ForkConfigSource::Session,
-        )
+        ))
         .await
     }
 

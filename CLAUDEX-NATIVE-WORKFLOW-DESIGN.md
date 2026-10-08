@@ -87,9 +87,11 @@ de 8 KiB ; JSON de profondeur 12 et 256 noeuds. Le validateur refuse les mots-cl
 inconnus, les doubles cles resultat, les schemas ouverts et les resultats invalides.
 Son sous-ensemble comprend type, properties, required, additionalProperties=false,
 items, enum et description ; pas de ref, union, format, pattern ou bornes numeriques.
-Les nombres flottants integres ne valent integer qu'en dessous de 2^53 en valeur
-absolue ; les entiers JSON i64/u64 restent exacts. Ceci ne prouve pas la compatibilite
-des schemas de film.workflow.js.
+Les nombres sont compares comme decimaux exacts, sans conversion f64 ni expansion
+des exposants. Le lexeme est borne a 8192 octets et l'exposant explicite a +/-8192.
+Les representations 2, 2.0 et 2e0 sont equivalentes ; une fraction precise ne peut
+pas devenir un entier par arrondi. Ceci ne prouve pas la compatibilite des schemas
+de film.workflow.js.
 
 Avant admission, le bridge applique aussi les contraintes de transport documentees :
 racine objet, toutes les proprietes requises, objets fermes, y compris dans les items
@@ -103,17 +105,37 @@ La fermeture utilise les Arc des threads possedes et attend leur terminaison ava
 de retirer un runtime encore identique. Elle ne depend pas d'une barriere de
 persistance reussie avant l'arret. Une reprise remplacant le runtime ne doit pas
 etre retiree par un cleanup tardif ; le statut attendu reste celui du thread capture.
-La revue trouve toutefois une course entre le retour de spawn et la capture par
-lookup ID : un remplacement dans cet intervalle pourrait etre capture et arrete.
-La capture de l'Arc au point d'admission natif reste necessaire avant activation.
-Autre limite ouverte du validateur : la conversion f64 peut arrondir des petites
-fractions precises en entier ou valeur enum. Le seuil 2^53 ne suffit pas ; il
-faut comparer exactement les lexemes decimaux bornes ou refuser ce sous-ensemble.
+Le bridge capture maintenant l'Arc dans l'admission native ; l'envoi initial,
+le statut et le cleanup utilisent cette meme instance. Un guard reste arme
+jusqu'au handoff final et ne retire un runtime que si l'Arc est encore identique.
+Le cleanup ne ferme pas le writer d'un remplacement apres l'arret du thread
+original. Les dix fixtures couvrent aussi une reprise sur le meme store, un
+thread retire par InternalAgentDied et la fermeture de son edge SQLite.
+
+La campagne ciblee `tests-claudex-native-ownership-numeric-cycle3.log` passe
+110/110 (57,789 s), incluant les dix fixtures de propriete et treize cas de
+schema/decimaux. Le cycle1 n'avait execute aucun test (erreur de compilation
+de fixture). Le cycle2 passait 109/110 : sa fixture de guard utilisait trois
+registres independants ; elle utilise maintenant le meme AgentControl et
+conserve les assertions de registre avant et apres Drop. Ce resultat valide
+les mecanismes testes, pas l'activation d'un outil Workflow.
 
 La deadline couvre preparation et attente ; une admission deja commencee est
 attendue avant arret, et la fermeture native n'a pas de deadline externe.
-La livraison automatique des completions au parent reste celle de Codex et peut
-preceder la validation locale. Elle doit etre adaptee avant activation publique,
-avec revue du budget des fragments parents/enfants. Aucun outil Workflow n'est
+La livraison automatique des completions au parent est maintenant controlee par
+une politique privee `CompletionReporting`, capturee de facon immuable avant
+startup. `SupervisorOwned` supprime les notifications brutes legacy/V2 ; les
+threads ordinaires conservent `Automatic`. La mutation ulterieure des extensions
+ne change pas cette politique. Une admission warm de propriete differente est
+refusee avant mutation ; le fallback V2 preserve aussi ce refus (revue statique).
+
+Les 17 fixtures de reporting passent dans
+`tests-claudex-recovery-cli-memory-tui-cycle1.log` : V1/V2, User/AgentMessage,
+resultats invalides/oversize, refus host factory, warm reuse et FullHistory fork.
+Le statut final, les resultats et l'absence de notification brute sont verifies
+par les fixtures natives SSE, sans inference reelle. Le restore froid de cette
+politique et le budget des fragments de resultat restent a traiter.
+
+Aucun outil Workflow n'est
 enregistre et aucun runner JS n'est active par cette tranche. Les fixtures SSE
 utilisent le runtime natif ; elles ne sont pas une inference ChatGPT ou un film reel.

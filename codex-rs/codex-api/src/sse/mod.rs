@@ -1,3 +1,6 @@
+pub(crate) mod claudex_chat;
+mod claudex_chat_framing;
+pub(crate) mod claudex_chat_stream;
 pub(crate) mod responses;
 mod responses_error;
 

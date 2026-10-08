@@ -14,7 +14,7 @@ expression: "snapshots.join(\"\\n---\\n\")"
   Keyboard shortcuts
 
   Compose                       Session                     Transcript (open first)
-  /        Commands             tab     Send message        ctrl+t                Open transcript
+  /        Commands             tab     Send message        ctrl+o                Open transcript
   @        Mention files        ⌥,      Less reasoning      f3                    Find text
   !        Shell command        ⌥.      More reasoning      pgup / pgdn           Scroll
   ctrl+j   New line             f4      Inspect activity    ctrl+space            Start selection
@@ -42,7 +42,7 @@ expression: "snapshots.join(\"\\n---\\n\")"
   Keyboard shortcuts
 
   Compose                       Session                       Transcript (open first)
-  /        Commands             tab       Send message        ctrl+t                Open transcript
+  /        Commands             tab       Send message        ctrl+o                Open transcript
   @        Mention files        ⌥,        Less reasoning      f3                    Find text
   !        Shell command        ⌥.        More reasoning      pgup / pgdn           Scroll
   ctrl+j   New line             ctrl+x t  Inspect activity    ctrl+space            Start selection
@@ -70,7 +70,7 @@ expression: "snapshots.join(\"\\n---\\n\")"
   Keyboard shortcuts
 
   Compose                       Session                   Transcript (open first)
-  /        Commands             tab     Send message      ctrl+t                Open transcript
+  /        Commands             tab     Send message      ctrl+o                Open transcript
   @        Mention files        ⌥,      Less reasoning    f3                    Find text
   !        Shell command        ⌥.      More reasoning    pgup / pgdn           Scroll
   ctrl+j   New line             ctrl+c  Quit              ctrl+space            Start selection

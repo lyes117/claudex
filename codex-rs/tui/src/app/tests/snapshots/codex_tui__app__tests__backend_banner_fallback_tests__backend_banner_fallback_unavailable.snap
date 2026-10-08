@@ -3,6 +3,6 @@ source: tui/src/app/tests/backend_banner_fallback_tests.rs
 expression: normalize_snapshot_paths(rendered)
 ---
 ────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────
   gpt-5.5 default · /tmp/project

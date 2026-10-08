@@ -213,6 +213,7 @@ mod app_server_events;
 pub(crate) mod app_server_requests;
 mod backend_banner_fallback;
 mod background_requests;
+mod claude_commands;
 mod composer_hints;
 mod config_persistence;
 mod connector_mentions;
@@ -1222,6 +1223,12 @@ impl Drop for App {
     }
 }
 
+#[cfg(test)]
+#[path = "app/claude_controls_tests.rs"]
+mod claude_controls_tests;
+#[cfg(test)]
+#[path = "app/claude_plan_panel_tests.rs"]
+mod claude_plan_panel_tests;
 #[cfg(test)]
 pub(super) mod test_support;
 #[cfg(test)]

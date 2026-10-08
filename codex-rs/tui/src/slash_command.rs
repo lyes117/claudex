@@ -189,6 +189,7 @@ impl SlashCommand {
                 | SlashCommand::Mcp
                 | SlashCommand::Export
                 | SlashCommand::Raw
+                | SlashCommand::Tui
                 | SlashCommand::Cd
                 | SlashCommand::Pwd
                 | SlashCommand::Usage

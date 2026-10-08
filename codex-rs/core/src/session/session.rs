@@ -75,6 +75,8 @@ pub(crate) struct Session {
     pub(super) features: ManagedFeatures,
     pub(super) isolation: codex_extension_api::SessionIsolation,
     pub(crate) tool_policy: Arc<codex_extension_api::ToolPolicy>,
+    /// Immutable admission policy; extensions cannot later redirect raw completions.
+    pub(super) completion_reporting: crate::agent::control::CompletionReporting,
     pub(crate) windows_sandbox_proxy_settings_mode:
         codex_sandboxing::WindowsSandboxProxySettingsMode,
     pub(super) multi_agent_version: OnceLock<MultiAgentVersion>,
@@ -619,9 +621,13 @@ async fn warm_plugins_and_skills_for_session_init(
     skills_service: Arc<HostSkillsService>,
     turn_environments: &TurnEnvironmentSnapshot,
     extensions: &codex_extension_api::ExtensionRegistry<Config>,
+    disabled_plugin_ids: &[String],
 ) -> Vec<SkillError> {
     let plugins_input = config.plugins_config_input();
-    let plugin_outcome = plugins_manager.plugins_for_config(&plugins_input).await;
+    let plugin_outcome = plugins_manager
+        .plugins_for_config(&plugins_input)
+        .await
+        .without_plugins(disabled_plugin_ids);
     if config.features.enabled(Feature::SkipHostSkillDiscovery)
         && !extensions.requires_host_skill_discovery()
     {
@@ -632,6 +638,7 @@ async fn warm_plugins_and_skills_for_session_init(
     let effective_skill_roots = plugin_outcome.effective_plugin_skill_roots();
     let plugin_skill_snapshots = plugins_manager.plugin_skill_snapshots_for_config(&plugins_input);
     let skills_input = skills_load_input_from_config(config.as_ref(), effective_skill_roots)
+        .with_legacy_plugin_selection(config.claude_plugin_selection(&plugin_outcome))
         .with_plugin_skill_snapshots(plugin_skill_snapshots);
     skills_service
         .snapshot_for_config(&skills_input, fs)
@@ -642,6 +649,9 @@ async fn warm_plugins_and_skills_for_session_init(
 }
 
 impl Session {
+    pub(crate) fn completion_reporting(&self) -> crate::agent::control::CompletionReporting {
+        self.completion_reporting
+    }
     /// Returns the concrete identity for this thread.
     pub(crate) fn thread_id(&self) -> ThreadId {
         self.thread_id
@@ -993,6 +1003,10 @@ impl Session {
             Some(crate::thread_manager::snapshot_tool_policy(&tool_policy)?)
         };
         let mcp_thread_init = thread_extension_init.clone();
+        let completion_reporting = thread_extension_init
+            .get::<crate::agent::control::CompletionReporting>()
+            .map(|reporting| *reporting)
+            .unwrap_or_default();
         let thread_extension_data = codex_extension_api::ExtensionData::new_with_init(
             thread_id.to_string(),
             thread_extension_init,
@@ -1452,6 +1466,7 @@ impl Session {
                 Arc::clone(&skills_service),
                 &resolved_environments,
                 extensions.as_ref(),
+                &session_configuration.disabled_plugin_ids,
             )
             .instrument(info_span!(
                 "session_init.plugin_skill_warmup",
@@ -1789,6 +1804,7 @@ impl Session {
                 features: config.features.clone(),
                 isolation,
                 tool_policy,
+                completion_reporting,
                 windows_sandbox_proxy_settings_mode,
                 multi_agent_version,
                 mcp_refresh: McpRefresh::new(),

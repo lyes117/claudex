@@ -1296,26 +1296,24 @@ impl MessageProcessor {
                 Ok(response)
             }
             ClientRequest::ThreadResume { params, .. } => {
-                self.thread_processor
-                    .thread_resume(
-                        ThreadResumeTarget::Client(request_id.clone()),
-                        params,
-                        app_server_client_name.clone(),
-                        client_version.clone(),
-                        client_mcp_extensions.clone(),
-                    )
-                    .await
+                Box::pin(self.thread_processor.thread_resume(
+                    ThreadResumeTarget::Client(request_id.clone()),
+                    params,
+                    app_server_client_name.clone(),
+                    client_version.clone(),
+                    client_mcp_extensions.clone(),
+                ))
+                .await
             }
             ClientRequest::ThreadFork { params, .. } => {
-                self.thread_processor
-                    .thread_fork(
-                        request_id.clone(),
-                        params,
-                        app_server_client_name.clone(),
-                        client_version.clone(),
-                        client_mcp_extensions.clone(),
-                    )
-                    .await
+                Box::pin(self.thread_processor.thread_fork(
+                    request_id.clone(),
+                    params,
+                    app_server_client_name.clone(),
+                    client_version.clone(),
+                    client_mcp_extensions.clone(),
+                ))
+                .await
             }
             ClientRequest::ThreadArchive { params, .. } => {
                 self.thread_processor
@@ -1520,6 +1518,13 @@ impl MessageProcessor {
             }
             ClientRequest::GetConversationSummary { params, .. } => {
                 self.thread_processor.conversation_summary(params).await
+            }
+            ClientRequest::WorkflowStart { params, .. } => {
+                Box::pin(self.thread_processor.workflow_start(params)).await
+            }
+            ClientRequest::ClaudeCommandExpand { params, .. } => {
+                // Keep config loading and command preparation off unrelated RPC stack frames.
+                Box::pin(self.catalog_processor.claude_command_expand(params)).await
             }
             ClientRequest::SkillsList { params, .. } => {
                 self.catalog_processor.skills_list(params).await

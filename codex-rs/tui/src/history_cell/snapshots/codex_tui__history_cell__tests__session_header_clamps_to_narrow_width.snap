@@ -2,15 +2,10 @@
 source: tui/src/history_cell/tests.rs
 expression: "render_lines(&lines).join(\"\\n\")"
 ---
-╭ Claudex vtest ───────────────────────────╮
-│ Welcome to Claudex                       │
-│                                          │
-│      ▄████▄                              │
-│     ██  ▄▄▄                              │
-│      ▀████▀                              │
-│                                          │
-│ gpt-5.6-sol · xhigh · Codex engine       │
-│ project                                  │
-│ /help commands · /tasks agents           │
-│ permissions: YOLO mode                   │
-╰──────────────────────────────────────────╯
+  ▄████▄   Claudex vtest · Codex
+ ██  ▄▄▄   gpt-5.6-sol · xhigh
+  ▀████▀   project
+permissions: YOLO mode
+
+Welcome to Claudex
+/help commands · /tasks agents

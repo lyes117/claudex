@@ -233,6 +233,12 @@ mod approval_requests;
 mod backend_banners_tests;
 #[path = "tests/bedrock_catalog_tests.rs"]
 mod bedrock_catalog_tests;
+#[path = "tests/claude_plan_panel_tests.rs"]
+mod claude_plan_panel_tests;
+#[path = "tests/claude_submission_tests.rs"]
+mod claude_submission_tests;
+#[path = "tests/claude_tui_mode_tests.rs"]
+mod claude_tui_mode_tests;
 #[path = "tests/claudex_commands_tests.rs"]
 mod claudex_commands_tests;
 #[path = "tests/collaboration_catalog_tests.rs"]

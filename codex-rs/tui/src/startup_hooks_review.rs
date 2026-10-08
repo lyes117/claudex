@@ -354,6 +354,7 @@ mod tests {
             key: key.to_string(),
             event_name: HookEventName::PreToolUse,
             handler: HookHandlerMetadata::Command {
+                args: None,
                 command: "/tmp/hook.sh".to_string(),
                 r#async: false,
             },

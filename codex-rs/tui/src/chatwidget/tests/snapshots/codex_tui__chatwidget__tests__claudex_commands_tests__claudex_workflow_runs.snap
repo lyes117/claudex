@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests/claudex_commands_tests.rs
+assertion_line: 90
 expression: "render_bottom_popup(&chat, 90)"
 ---
   Workflows
@@ -8,4 +9,4 @@ expression: "render_bottom_popup(&chat, 90)"
 
 › 1. fixture-run  running · 0/2 agents · Research
 
-  enter select · esc back
+  ↑/↓ navigate · → inspect agent/run · ← back · enter control · esc close

@@ -143,6 +143,6 @@ impl App {
 
         let params = self.agent_picker_selection_view_params(selected);
         self.chat_widget
-            .replace_selection_view_if_present(AGENT_PICKER_VIEW_ID, params);
+            .replace_claudex_agent_picker_navigation(params);
     }
 }

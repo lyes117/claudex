@@ -63,6 +63,19 @@ impl ChatWidget {
                 ..Default::default()
             });
         }
+        items.insert(
+            0,
+            SelectionItem {
+                name: "Active agents and threads".to_string(),
+                description: Some(
+                    "Open session agents; arrows navigate, right opens, left returns.".to_string(),
+                ),
+                search_value: Some("Active agents threads tasks subagents".to_string()),
+                actions: vec![Box::new(|tx| tx.send(AppEvent::OpenAgentPicker))],
+                dismiss_on_select: true,
+                ..Default::default()
+            },
+        );
         self.bottom_pane.show_selection_view(SelectionViewParams {
             title: Some("Agent roles".to_string()),
             subtitle: Some(

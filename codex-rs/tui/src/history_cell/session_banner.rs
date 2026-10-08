@@ -1,11 +1,12 @@
-//! The Claudex welcome shell. Branding does not imply a different model or permission mode.
+//! A compact, unboxed welcome for the classic terminal shell.
+//! Session metadata reflects the native model and permissions, independently of branding.
 
-use crate::line_truncation::line_width;
 use crate::line_truncation::truncate_line_with_ellipsis_if_overflow;
 use crate::style::claudex_brand_color;
 use ratatui::style::Stylize;
 use ratatui::text::Line;
 
+#[derive(Clone, Copy)]
 pub(super) struct BannerContent<'a> {
     pub version: &'a str,
     pub greeting: &'a str,
@@ -14,91 +15,94 @@ pub(super) struct BannerContent<'a> {
     pub unrestricted: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BannerLayout {
+    Classic,
+    Compact,
+}
+
 pub(super) fn render(content: BannerContent<'_>, width: u16) -> Vec<Line<'static>> {
-    let width = usize::from(width).min(100);
+    render_layout(content, width, BannerLayout::Classic)
+}
+
+pub(super) fn render_for_height(
+    content: BannerContent<'_>,
+    width: u16,
+    available_rows: u16,
+) -> Vec<Line<'static>> {
+    let rows = usize::from(available_rows);
+    if rows == 0 {
+        return Vec::new();
+    }
+    let mut lines = render(content, width);
+    if lines.len() > rows {
+        lines = render_layout(content, width, BannerLayout::Compact);
+        lines.truncate(rows);
+    }
+    lines
+}
+
+fn render_layout(
+    content: BannerContent<'_>,
+    width: u16,
+    layout: BannerLayout,
+) -> Vec<Line<'static>> {
+    let width = usize::from(width);
     if width == 0 {
         return Vec::new();
     }
-    let framed = width >= 4;
-    let inner = if framed { width - 4 } else { width };
-    let columns = inner >= 72;
-    let left = if columns { inner - 31 } else { inner };
     let brand = claudex_brand_color();
-    let mut lines = vec![
-        Line::from(content.greeting.to_owned().fg(brand).bold()),
-        Line::default(),
+    let mut metadata = vec![
+        Line::from(vec![
+            "Claudex".fg(brand).bold(),
+            format!(" v{}", content.version).dim(),
+            " · Codex".dim(),
+        ]),
+        Line::from(content.model.to_owned().bold()),
+        Line::from(
+            crate::text_formatting::center_truncate_path(
+                content.directory,
+                if layout == BannerLayout::Classic && width >= 32 {
+                    width - 11
+                } else {
+                    width
+                },
+            )
+            .dim(),
+        ),
     ];
-    // An original block C, rather than Claude Code's proprietary mascot.
-    if inner >= 30 {
-        for logo in ["     ▄████▄", "    ██  ▄▄▄", "     ▀████▀"]
+    if layout == BannerLayout::Classic && width >= 32 {
+        // Original C mark. Keep identity separate from Claude Code's mascot and model.
+        for (line, mark) in metadata
+            .iter_mut()
+            .zip(["  ▄████▄   ", " ██  ▄▄▄   ", "  ▀████▀   "])
         {
-            lines.push(Line::from(logo.fg(brand)));
+            line.spans.insert(0, mark.fg(brand));
         }
-        lines.push(Line::default());
-    }
-    lines.push(Line::from(vec![
-        content.model.to_owned().bold(),
-        " · Codex engine".dim(),
-    ]));
-    lines.push(Line::from(
-        crate::text_formatting::center_truncate_path(content.directory, left).dim(),
-    ));
-    if columns {
-        for (line, hint) in lines.iter_mut().zip([
-            "Get started",
-            "Describe a task to begin",
-            "/help     commands",
-            "/agents   profiles",
-            "/tasks    session agents",
-            "/workflows runs",
-        ]) {
-            *line = truncate_line_with_ellipsis_if_overflow(line.clone(), left);
-            line.spans
-                .push(" ".repeat(left.saturating_sub(line_width(line))).into());
-            line.spans.push(" │ ".dim());
-            line.spans.push(hint.to_owned().into());
-        }
-    } else {
-        lines.push(Line::from(vec![
-            "/help".fg(brand),
-            " commands · ".dim(),
-            "/tasks".fg(brand),
-            " agents".dim(),
-        ]));
     }
     if content.unrestricted {
-        lines.push(Line::from(vec![
+        metadata.push(Line::from(vec![
             "permissions: ".dim(),
             "YOLO mode".magenta().bold(),
         ]));
     }
-    let lines: Vec<_> = lines
+    if layout == BannerLayout::Classic {
+        metadata.push(Line::default());
+        metadata.push(Line::from(content.greeting.to_owned().dim()));
+    }
+    let mut hints = vec!["/help".fg(brand), " commands · ".dim()];
+    if width >= 72 {
+        hints.extend(["/agents".fg(brand), " profiles · ".dim()]);
+    }
+    hints.extend(["/tasks".fg(brand), " agents".dim()]);
+    if width >= 72 {
+        hints.extend([" · ".dim(), "/workflows".fg(brand), " runs".dim()]);
+    }
+    metadata.push(Line::from(hints));
+    metadata
         .into_iter()
-        .map(|line| truncate_line_with_ellipsis_if_overflow(line, inner))
-        .collect();
-    if !framed {
-        return lines;
-    }
-    let title = truncate_line_with_ellipsis_if_overflow(
-        Line::from(format!(" Claudex v{} ", content.version).fg(brand)),
-        width - 2,
-    );
-    let padding = (width - 2).saturating_sub(line_width(&title));
-    let mut top = vec!["╭".fg(brand)];
-    top.extend(title.spans);
-    top.push("─".repeat(padding).fg(brand));
-    top.push("╮".fg(brand));
-    let mut output = vec![Line::from(top)];
-    for line in lines {
-        let used = line_width(&line);
-        let mut spans = vec!["│ ".fg(brand)];
-        spans.extend(line.spans);
-        spans.push(" ".repeat(inner.saturating_sub(used)).into());
-        spans.push(" │".fg(brand));
-        output.push(Line::from(spans));
-    }
-    output.push(Line::from(format!("╰{}╯", "─".repeat(width - 2)).fg(brand)));
-    output
+        .map(|line| truncate_line_with_ellipsis_if_overflow(line, width))
+        .collect()
 }
 
 #[cfg(test)]

@@ -164,6 +164,7 @@ use toml::Value as TomlValue;
 use toml_edit::DocumentMut;
 
 mod auth_keyring;
+mod claude_plugins;
 pub mod edit;
 mod managed_features;
 mod metrics;
@@ -1813,7 +1814,9 @@ impl Config {
         for registration in additional_plugin_registrations {
             catalog.register(registration);
         }
-        for (name, server) in self.mcp_servers.get() {
+        let selected_servers =
+            self.mcp_servers_with_legacy_selection(self.claude_plugin_selection(loaded_plugins));
+        for (name, server) in &selected_servers {
             catalog.register(McpServerRegistration::from_config(
                 name.clone(),
                 server.clone(),

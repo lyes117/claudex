@@ -2,14 +2,9 @@
 source: tui/src/history_cell/session_banner_tests.rs
 expression: text
 ---
-╭ Claudex vtest ───────────────────────────╮
-│ Welcome to Claudex                       │
-│                                          │
-│      ▄████▄                              │
-│     ██  ▄▄▄                              │
-│      ▀████▀                              │
-│                                          │
-│ gpt-6.1-sol · Codex engine               │
-│ project                                  │
-│ /help commands · /tasks agents           │
-╰──────────────────────────────────────────╯
+  ▄████▄   Claudex vtest · Codex
+ ██  ▄▄▄   gpt-6.1-sol
+  ▀████▀   project
+
+Welcome to Claudex
+/help commands · /tasks agents

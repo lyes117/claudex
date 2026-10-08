@@ -57,6 +57,8 @@ use std::sync::Weak;
 use tracing::warn;
 use uuid::Uuid;
 
+pub(crate) use self::reporting::CompletionReporting;
+pub(crate) use self::reporting::LIVE_THREAD_REPORTING_MISMATCH;
 pub(crate) use self::runtime::AgentControlInit;
 pub(crate) use self::runtime::LocalAgentRuntime;
 pub(crate) use self::watch::StatusSubscription;
@@ -69,6 +71,7 @@ mod execution;
 mod inspection;
 mod interrupt;
 mod legacy;
+mod reporting;
 mod residency;
 mod resume;
 mod root_handoff;
@@ -77,11 +80,22 @@ mod runtime_context;
 mod sender_context;
 mod service_tier;
 mod spawn;
+mod spawn_admission;
 mod spawn_guard;
 mod spawn_telemetry;
 mod target;
 mod user_authorization;
 mod watch;
+pub(crate) mod workflow;
+#[cfg(windows)]
+mod workflow_run_state;
+#[cfg(windows)]
+pub(crate) mod workflow_runner;
+mod workflow_schema;
+
+#[cfg(test)]
+#[path = "control/workflow_ownership_tests.rs"]
+mod workflow_ownership_tests;
 
 /// Per-session controller handle for a local agent tree.
 /// Handles retain a session identity and share their tree's `LocalAgentRuntime`.
@@ -135,6 +149,17 @@ impl LocalAgentControl {
     ) -> CodexResult<String> {
         let state = self.runtime.upgrade()?;
         let thread = state.get_thread(agent_id).await?;
+        self.send_input_to_thread(&thread, &state, input, start_options)
+            .await
+    }
+
+    async fn send_input_to_thread(
+        &self,
+        thread: &Arc<crate::codex_thread::CodexThread>,
+        state: &Arc<ThreadManagerState>,
+        input: Vec<UserInput>,
+        start_options: TurnStartOptions,
+    ) -> CodexResult<String> {
         let result = match thread
             .start_or_steer_turn(TurnInputRequest::user_input(input).on_start(start_options))
             .await
@@ -152,7 +177,7 @@ impl LocalAgentControl {
             )),
             Err(err) => Err(err),
         };
-        self.handle_thread_request_result(agent_id, &state, result)
+        self.handle_exact_thread_request_result(thread, state, result)
             .await
     }
 

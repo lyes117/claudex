@@ -32,6 +32,64 @@ use codex_rollout_trace::ThreadTraceContext;
 use futures::future::BoxFuture;
 use std::collections::HashSet;
 
+impl LocalAgentControl {
+    pub(super) async fn spawn_retained(
+        &self,
+        request: SpawnRequest,
+    ) -> Result<super::spawn_admission::AdmittedAgent> {
+        self.spawn_retained_with_reporting(request, super::CompletionReporting::Automatic)
+            .await
+    }
+
+    pub(super) async fn spawn_retained_with_reporting(
+        &self,
+        request: SpawnRequest,
+        reporting: super::CompletionReporting,
+    ) -> Result<super::spawn_admission::AdmittedAgent> {
+        let SpawnRequest {
+            caller,
+            config,
+            input,
+            source,
+            options,
+        } = request;
+        let input = match input {
+            AgentInput::UserInput(input) => SpawnInitialInput::UserInput(input),
+            AgentInput::Message { message, mode } => {
+                if mode != MessageDeliveryMode::TriggerTurn {
+                    return Err(CodexErr::InvalidRequest(
+                        "spawn input must start the child turn".to_string(),
+                    ));
+                }
+                let recipient = source.get_agent_path().ok_or_else(|| {
+                    CodexErr::InvalidRequest(
+                        "spawned agent is missing a canonical task name".to_string(),
+                    )
+                })?;
+                let author = recipient
+                    .as_str()
+                    .rsplit_once('/')
+                    .and_then(|(parent, _)| AgentPath::try_from(parent).ok())
+                    .ok_or_else(|| {
+                        CodexErr::InvalidRequest("spawn input needs a child path".to_string())
+                    })?;
+                SpawnInitialInput::InterAgentCommunication(
+                    message.into_communication(author, recipient, mode),
+                    AgentCommunicationContext::new(AgentCommunicationKind::Spawn, caller),
+                )
+            }
+        };
+        Box::pin(self.spawn_agent_retained_with_reporting(
+            config,
+            input,
+            Some(source),
+            options,
+            reporting,
+        ))
+        .await
+    }
+}
+
 impl AgentControl for LocalAgentControl {
     fn identity(&self) -> SessionId {
         self.session_id()
@@ -60,40 +118,8 @@ impl AgentControl for LocalAgentControl {
         request: SpawnRequest,
     ) -> BoxFuture<'_, Result<(LiveAgent, ThreadConfigSnapshot)>> {
         Box::pin(async move {
-            let SpawnRequest {
-                caller,
-                config,
-                input,
-                source,
-                options,
-            } = request;
-            let input = match input {
-                AgentInput::UserInput(input) => SpawnInitialInput::UserInput(input),
-                AgentInput::Message { message, mode } => {
-                    if mode != MessageDeliveryMode::TriggerTurn {
-                        return Err(CodexErr::InvalidRequest(
-                            "spawn input must start the child turn".to_string(),
-                        ));
-                    }
-                    let recipient = source.get_agent_path().ok_or_else(|| {
-                        CodexErr::InvalidRequest(
-                            "spawned agent is missing a canonical task name".to_string(),
-                        )
-                    })?;
-                    let author = recipient
-                        .as_str()
-                        .rsplit_once('/')
-                        .and_then(|(parent, _)| AgentPath::try_from(parent).ok())
-                        .ok_or_else(|| {
-                            CodexErr::InvalidRequest("spawn input needs a child path".to_string())
-                        })?;
-                    SpawnInitialInput::InterAgentCommunication(
-                        message.into_communication(author, recipient, mode),
-                        AgentCommunicationContext::new(AgentCommunicationKind::Spawn, caller),
-                    )
-                }
-            };
-            Box::pin(self.spawn_agent_internal(config, input, Some(source), options)).await
+            let admitted = self.spawn_retained(request).await?;
+            Ok((admitted.agent, admitted.config))
         })
     }
 

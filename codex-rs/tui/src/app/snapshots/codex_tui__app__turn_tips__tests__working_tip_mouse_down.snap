@@ -18,11 +18,11 @@ Response row 9
 
 
 
-• Working (0s • esc to interrupt)
+● Working (0s • esc to interrupt)
   └ Tip: Try /help.
 
 ────────────────────────────────────────────────────────────────────────────────
-› Try a task, /help for commands, or @path for files
+❯ Try a task, /help for commands, or @path for files
 ────────────────────────────────────────────────────────────────────────────────
   gpt-test default · /tmp/project
   ? for shortcuts

@@ -155,13 +155,8 @@ impl App {
             .chat_widget
             .selected_index_for_present_view(AGENT_PICKER_VIEW_ID);
         let params = self.agent_picker_selection_view_params(selected);
-        if !self
-            .chat_widget
-            .replace_selection_view_if_present(AGENT_PICKER_VIEW_ID, params)
-        {
-            let params = self.agent_picker_selection_view_params(selected);
-            self.chat_widget.show_selection_view(params);
-        }
+        self.chat_widget
+            .show_claudex_agent_picker_navigation(params);
         if let Some(primary_thread_id) = self.primary_thread_id {
             self.refresh_agent_picker_threads(app_server, primary_thread_id);
         }
@@ -490,6 +485,8 @@ impl App {
     /// This helper copies every known nickname/role from `AgentNavigationState` into the
     /// replacement widget so that replayed collab items render agent names immediately.
     pub(super) fn replace_chat_widget(&mut self, mut chat_widget: ChatWidget) {
+        self.chat_widget.cancel_claude_command();
+        chat_widget.cancel_claude_command();
         self.pending_right_click_paste = None;
         if !self.chat_widget.realtime_conversation_is_running() {
             self.retain_realtime_replay_state_before_replace();

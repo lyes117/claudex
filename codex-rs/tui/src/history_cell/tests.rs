@@ -634,7 +634,7 @@ fn unified_exec_interaction_cell_retains_detailed_input() {
     let lines = render_lines(&cell.transcript_lines(/*width*/ 80));
     insta::assert_snapshot!(lines.join("\n"), @"
     ↳ Interacted with background terminal · cat
-      └ line 1
+      ⎿ line 1
         line 2
         line 3
         line 4
@@ -657,7 +657,7 @@ fn unified_exec_interaction_cell_retains_detailed_input() {
 fn unified_exec_interaction_cell_retains_detailed_wait() {
     let cell = new_unified_exec_interaction(/*command_display*/ None, String::new());
     let lines = render_transcript(&cell);
-    assert_eq!(lines, vec!["• Waited for background terminal"]);
+    assert_eq!(lines, vec!["● Waited for background terminal"]);
 }
 
 #[test]
@@ -1423,7 +1423,7 @@ fn web_search_history_cell_truncates() {
 
     assert_eq!(
         rendered,
-        vec!["• Searched the web for example search query with several generi…".to_string(),]
+        vec!["● Searched the web for example search query with several generi…".to_string(),]
     );
 }
 
@@ -1442,7 +1442,7 @@ fn web_search_history_cell_short_query_does_not_wrap() {
 
     assert_eq!(
         rendered,
-        vec!["• Searched the web for short query".to_string()]
+        vec!["● Searched the web for short query".to_string()]
     );
 }
 
@@ -1517,15 +1517,15 @@ fn code_mode_tool_call_uses_title_and_preserves_full_transcript() {
     let transcript = render_lines(&cell.transcript_lines(/*width*/ 180)).join("\n");
     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    • Inspect Spotify workspace
-      └ 012345678901234567890123456789012345
+    ● Inspect Spotify workspace
+      ⎿ 012345678901234567890123456789012345
         678901234567890123456789012345678901
         234567890123456789012345678901234567
-        +1 line (ctrl+t to view transcript)
+        +1 line (ctrl+o to view transcript)
 
     transcript:
-    • Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
-      └ Script completed
+    ● Called node_repl.js({"title":"Inspect Spotify workspace","code":"await tools.exec_command({ cmd: 'git status' })"})
+      ⎿ Script completed
         Wall time 0.1 seconds
         Output:
         {"chunk_id":"chunk-
@@ -1559,14 +1559,14 @@ fn code_mode_tool_call_preserves_failure_details() {
     let transcript = render_lines(&cell.transcript_lines(/*width*/ 120)).join("\n");
     insta::assert_snapshot!(format!("history:\n{history}\n\ntranscript:\n{transcript}"), @r#"
     history:
-    • Inspect workspace
-      └ Script failed
+    ● Inspect workspace
+      ⎿ Script failed
         Output:
         permission denied
 
     transcript:
-    • Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
-      └ Script failed
+    ● Called node_repl.js({"title":"Inspect workspace","code":"throw Error('denied')"})
+      ⎿ Script failed
         Output:
         permission denied
     "#);
@@ -1587,7 +1587,7 @@ fn mcp_inventory_loading_without_animations_is_stable() {
     let second = render_lines(&cell.display_lines(/*width*/ 80));
 
     assert_eq!(first, second);
-    assert_eq!(first, vec!["• Loading MCP inventory…".to_string()]);
+    assert_eq!(first, vec!["● Loading MCP inventory…".to_string()]);
 }
 
 #[test]
@@ -1595,7 +1595,7 @@ fn thread_recap_loading_without_animations_snapshot() {
     let cell = ThreadRecapLoadingCell::new(/*animations_enabled*/ false);
     let rendered = render_lines(&cell.display_lines(/*width*/ 80)).join("\n");
 
-    insta::assert_snapshot!(rendered, @"• Generating conversation recap…");
+    insta::assert_snapshot!(rendered, @"● Generating conversation recap…");
 }
 
 #[test]
@@ -2620,7 +2620,7 @@ fn render_uses_wrapping_for_long_url_like_line() {
         .enumerate()
         .map(|(index, row)| {
             if index == 0 {
-                row.strip_prefix("› ").unwrap().trim()
+                row.strip_prefix("❯ ").unwrap().trim()
             } else {
                 row.trim()
             }
@@ -2744,7 +2744,7 @@ fn reasoning_summary_block() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Detailed reasoning goes here."]);
+    assert_eq!(rendered_transcript, vec!["● Detailed reasoning goes here."]);
 }
 
 #[test]
@@ -2786,7 +2786,7 @@ fn reasoning_summary_height_matches_wrapped_rendering_for_url_like_content() {
         })
         .collect::<String>();
     assert!(
-        first_row.contains("•"),
+        first_row.contains("●"),
         "expected first rendered row to keep summary bullet visible, got: {first_row:?}"
     );
 }
@@ -2799,7 +2799,7 @@ fn reasoning_summary_block_returns_reasoning_cell_when_feature_disabled() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• Detailed reasoning goes here."]);
+    assert_eq!(rendered, vec!["● Detailed reasoning goes here."]);
 }
 
 #[tokio::test]
@@ -2823,7 +2823,7 @@ fn reasoning_summary_block_falls_back_when_header_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• **High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["● **High level reasoning without closing"]);
 }
 
 #[test]
@@ -2834,7 +2834,7 @@ fn reasoning_summary_block_falls_back_when_summary_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["● High level reasoning without closing"]);
 
     let cell = new_reasoning_summary_block(
         vec!["**High level reasoning without closing**\n\n  ".to_string()],
@@ -2842,7 +2842,7 @@ fn reasoning_summary_block_falls_back_when_summary_is_missing() {
     );
 
     let rendered = render_transcript(cell.as_ref());
-    assert_eq!(rendered, vec!["• High level reasoning without closing"]);
+    assert_eq!(rendered, vec!["● High level reasoning without closing"]);
 }
 
 #[test]
@@ -2858,7 +2858,7 @@ fn reasoning_summary_block_keeps_title_only_summary_in_expanded_transcript() {
     let rendered_transcript = render_transcript(cell.as_ref());
     assert_eq!(
         rendered_transcript,
-        vec!["• Confirming backend JSONL source"]
+        vec!["● Confirming backend JSONL source"]
     );
 }
 
@@ -2873,7 +2873,7 @@ fn reasoning_summary_block_splits_header_and_summary_when_present() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• We should fix the bug next."]);
+    assert_eq!(rendered_transcript, vec!["● We should fix the bug next."]);
 }
 
 #[test]
@@ -2908,7 +2908,7 @@ fn reasoning_summary_block_preserves_bold_content_after_empty_html_comment_part(
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Important conclusion"]);
+    assert_eq!(rendered_transcript, vec!["● Important conclusion"]);
 
     let cell = new_reasoning_summary_block(
         vec![
@@ -2919,7 +2919,7 @@ fn reasoning_summary_block_preserves_bold_content_after_empty_html_comment_part(
     );
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Result: keep this"]);
+    assert_eq!(rendered_transcript, vec!["● Result: keep this"]);
 }
 
 #[test]
@@ -2936,7 +2936,7 @@ fn reasoning_summary_block_strips_header_after_leading_empty_part() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Tests passed"]);
+    assert_eq!(rendered_transcript, vec!["● Tests passed"]);
 }
 
 #[test]
@@ -2953,7 +2953,7 @@ fn reasoning_summary_block_drops_empty_part_after_real_content() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• done"]);
+    assert_eq!(rendered_transcript, vec!["● done"]);
 }
 
 #[test]
@@ -2967,7 +2967,7 @@ fn reasoning_summary_block_preserves_literal_html_comment() {
     assert_eq!(rendered_display, Vec::<String>::new());
 
     let rendered_transcript = render_transcript(cell.as_ref());
-    assert_eq!(rendered_transcript, vec!["• Use <!-- --> in JSX."]);
+    assert_eq!(rendered_transcript, vec!["● Use <!-- --> in JSX."]);
 }
 
 #[test]
@@ -2997,7 +2997,7 @@ fn agent_markdown_cell_renders_source_at_different_widths() {
 
     let lines_80 = render_lines(&cell.display_lines(/*width*/ 80));
     assert!(
-        lines_80.first().is_some_and(|line| line.starts_with("• ")),
+        lines_80.first().is_some_and(|line| line.starts_with("● ")),
         "first line should start with bullet prefix: {:?}",
         lines_80[0]
     );
@@ -3055,7 +3055,7 @@ fn agent_markdown_cell_narrow_width_shows_prefix_only() {
     let cell = AgentMarkdownCell::new(source.to_string(), &test_cwd());
 
     let lines = render_lines(&cell.display_lines(/*width*/ 2));
-    assert_eq!(lines, vec!["• ".to_string()]);
+    assert_eq!(lines, vec!["● ".to_string()]);
 }
 
 #[test]

@@ -122,8 +122,11 @@ fn voice_toggle_default_yields_to_existing_shortcuts_and_chord_prefixes() {
         #[cfg(unix)]
         ("ctrl-z", "ctrl-z is reserved for suspend"),
     ] {
-        let config =
-            toml::from_str::<TuiKeymap>(&format!("[chat]\ntoggle_voice = '{binding}'")).unwrap();
+        let mut config = format!("[chat]\ntoggle_voice = '{binding}'");
+        if binding == "ctrl-t" {
+            config.push_str("\n[global]\nopen_transcript = 'ctrl-t'");
+        }
+        let config = toml::from_str::<TuiKeymap>(&config).unwrap();
         assert!(
             RuntimeKeymap::from_config(&config)
                 .unwrap_err()

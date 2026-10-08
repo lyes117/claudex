@@ -45,11 +45,17 @@ pub(crate) mod conpty;
 mod job;
 mod procthreadattr;
 mod psuedocon;
+mod workflow_job;
 
 pub use conpty::ConPtySystem;
 pub use job::JobObject;
 pub use psuedocon::PsuedoCon;
 pub use psuedocon::conpty_supported;
+pub use workflow_job::WORKFLOW_HOST_MEMORY_BYTES;
+pub use workflow_job::WorkflowHostCompletion;
+pub use workflow_job::WorkflowHostLaunchCompletion;
+pub use workflow_job::WorkflowHostMode;
+pub use workflow_job::WorkflowHostProcess;
 
 #[derive(Debug)]
 pub struct WinChild {
