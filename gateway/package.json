@@ -1,0 +1,1 @@
+{"name":"claudex-local-gateway","version":"0.1.0","private":true,"type":"module","license":"GPL-3.0-only","description":"Claude Code original, inférence OpenAI par abonnement et relais Z.ai","scripts":{"start":"node launcher.mjs","test":"node --test test/*.test.mjs","doctor":"node launcher.mjs doctor"},"dependencies":{"@caixiaoshun/claudex":"1.0.12"}}
